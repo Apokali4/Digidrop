@@ -100,6 +100,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.zip.ZipInputStream
+import java.io.InputStream
+import java.io.StringReader
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
 import kotlin.time.Duration.Companion.milliseconds
 
 data class RouteItem(
@@ -141,6 +146,95 @@ private fun splitCsvLine(line: String, delimiter: Char): List<String> {
     }
     result.add(field.toString().trim())
     return result
+}
+
+private fun xlsxColumnIndex(reference: String): Int {
+    var value = 0
+    for (char in reference.takeWhile { it.isLetter() }) {
+        value = value * 26 + (char.uppercaseChar() - 'A' + 1)
+    }
+    return (value - 1).coerceAtLeast(0)
+}
+
+private fun readXlsxXml(xml: String, sharedStrings: List<String> = emptyList()): List<List<String>> {
+    val parser = XmlPullParserFactory.newInstance().newPullParser()
+    parser.setInput(StringReader(xml))
+    val rows = mutableListOf<List<String>>()
+    var row: MutableMap<Int, String>? = null
+    var cellIndex = -1
+    var cellType = ""
+    var cellValue = StringBuilder()
+    var capture = false
+    var event = parser.eventType
+    while (event != XmlPullParser.END_DOCUMENT) {
+        when (event) {
+            XmlPullParser.START_TAG -> when (parser.name) {
+                "row" -> row = mutableMapOf()
+                "c" -> {
+                    cellIndex = xlsxColumnIndex(parser.getAttributeValue(null, "r") ?: "A")
+                    cellType = parser.getAttributeValue(null, "t") ?: ""
+                    cellValue = StringBuilder()
+                }
+                "v", "t" -> if (cellIndex >= 0) capture = true
+            }
+            XmlPullParser.TEXT -> if (capture) cellValue.append(parser.text)
+            XmlPullParser.END_TAG -> when (parser.name) {
+                "v", "t" -> capture = false
+                "c" -> {
+                    val raw = cellValue.toString()
+                    val value = if (cellType == "s") sharedStrings.getOrNull(raw.toIntOrNull() ?: -1).orEmpty() else raw
+                    row?.set(cellIndex, value)
+                    cellIndex = -1
+                }
+                "row" -> {
+                    val current = row.orEmpty()
+                    val max = current.keys.maxOrNull() ?: -1
+                    rows.add((0..max).map { current[it].orEmpty() })
+                    row = null
+                }
+            }
+        }
+        event = parser.next()
+    }
+    return rows
+}
+
+private fun parseXlsx(input: InputStream): List<RouteItem> {
+    val entries = mutableMapOf<String, ByteArray>()
+    ZipInputStream(input).use { zip ->
+        while (true) {
+            val entry = zip.nextEntry ?: break
+            if (!entry.isDirectory && (entry.name == "xl/sharedStrings.xml" || entry.name.matches(Regex("xl/worksheets/sheet[0-9]+\\\\.xml")))) {
+                entries[entry.name] = zip.readBytes()
+            }
+            zip.closeEntry()
+        }
+    }
+    val sharedXml = entries["xl/sharedStrings.xml"]?.toString(Charsets.UTF_8)
+    val shared = if (sharedXml == null) emptyList() else {
+        val parser = XmlPullParserFactory.newInstance().newPullParser()
+        parser.setInput(StringReader(sharedXml))
+        val values = mutableListOf<String>()
+        var inString = false
+        var current = StringBuilder()
+        var event = parser.eventType
+        while (event != XmlPullParser.END_DOCUMENT) {
+            when (event) {
+                XmlPullParser.START_TAG -> if (parser.name == "si") { inString = true; current = StringBuilder() }
+                XmlPullParser.TEXT -> if (inString) current.append(parser.text)
+                XmlPullParser.END_TAG -> if (parser.name == "si") { values.add(current.toString()); inString = false }
+            }
+            event = parser.next()
+        }
+        values
+    }
+    val sheetName = entries.keys.filter { it.startsWith("xl/worksheets/sheet") }.sorted().firstOrNull()
+        ?: return emptyList()
+    val rows = readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
+    val tsv = rows.joinToString("\n") { row ->
+        row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
+    }
+    return parseManifest(tsv)
 }
 
 private fun parseManifest(text: String): List<RouteItem> {
@@ -382,10 +476,17 @@ fun DigitDropRoot() {
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val content = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                    val imported = parseManifest(content)
-                    if (imported.isNotEmpty()) {
+                val mime = context.contentResolver.getType(uri).orEmpty()
+                val isExcel = mime.contains("spreadsheet") || uri.toString().lowercase().endsWith(".xlsx")
+                val imported = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    if (isExcel) parseXlsx(inputStream)
+                    else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                }.orEmpty()
+                if (imported.isNotEmpty()) {
+                        val content = imported.joinToString("\n") { item ->
+                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
+                                item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\t") { it.replace("\t", " ") }
+                        }
                         prefs.edit().putString("active_manifest", content).apply()
                         val withProgress = imported.map { item ->
                             item.copy(
@@ -409,9 +510,8 @@ fun DigitDropRoot() {
                                 Toast.LENGTH_LONG
                             ).show()
                         }
-                    } else {
-                        Toast.makeText(context, "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.", Toast.LENGTH_LONG).show()
-                    }
+                } else {
+                    Toast.makeText(context, "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.", Toast.LENGTH_LONG).show()
                 }
             } catch (ex: Exception) {
                 Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_SHORT).show()
@@ -492,7 +592,7 @@ fun DigitDropRoot() {
                 onFlashToggle = { toggleFlashlight() },
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenScanner = { openScanner() },
-                onLoadFile = { filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel")) },
+                onLoadFile = { filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) },
                 onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
                 onResetRoute = { resetRouteProgress() },
