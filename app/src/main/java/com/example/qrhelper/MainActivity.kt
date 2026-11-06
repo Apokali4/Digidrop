@@ -460,6 +460,7 @@ fun DigitDropRoot() {
             editor.remove("scanned_" + routeItemKey(item))
         }
         editor.remove("scan_codes")
+        editor.remove("unknown_codes")
         editor.remove("active_manifest")
         editor.apply()
         routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
@@ -1251,7 +1252,7 @@ fun PointGroupScreen(
         Text("Состав точки", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(items, key = { routeItemKey(it) }) { item ->
+            items(items) { item ->
                 Card(Modifier.fillMaxWidth().bounceClick { onOpenInvoice(item) },
                     colors = CardDefaults.cardColors(containerColor = CardSurface), shape = RoundedCornerShape(14.dp)) {
                     Column(Modifier.padding(14.dp)) {
