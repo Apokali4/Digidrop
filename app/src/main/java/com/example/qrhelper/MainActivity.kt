@@ -539,10 +539,19 @@ fun DigitDropRoot() {
                 onFlashToggle = { toggleFlashlight() },
                 onBack = { currentScreen = previousScreen },
                 onBarcodeScanned = { scannedCode ->
-                    val matchedItem = routeItems.firstOrNull { it.barcode.equals(scannedCode.trim(), ignoreCase = true) }
-                    val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
                     val normalizedCode = scannedCode.trim()
+                    val matches = routeItems.filter { it.barcode.equals(normalizedCode, ignoreCase = true) }
+                    val matchedItem = matches.singleOrNull()
+                    val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    val isPlainProductCode = normalizedCode.matches(Regex("\\d{8}|\\d{12,14}"))
                     when {
+                        matches.size > 1 -> {
+                            val candidates = matches.joinToString("; ") {
+                                "${it.storeName}: ${it.totalBoxes - it.scannedBoxes} ост."
+                            }
+                            Toast.makeText(context, "Код встречается в нескольких накладных: $candidates", Toast.LENGTH_LONG).show()
+                            currentScreen = AppScreen.ROUTE_LIST
+                        }
                         matchedItem == null -> {
                             val unknown = prefs.getStringSet("unknown_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
                             unknown.add(normalizedCode)
@@ -550,8 +559,18 @@ fun DigitDropRoot() {
                             Toast.makeText(context, "Неизвестный код: $normalizedCode", Toast.LENGTH_LONG).show()
                             currentScreen = AppScreen.HUB
                         }
+                        isPlainProductCode -> {
+                            val remaining = (matchedItem.totalBoxes - matchedItem.scannedBoxes).coerceAtLeast(0)
+                            Toast.makeText(
+                                context,
+                                "${matchedItem.storeName} • ${matchedItem.itemName} • осталось $remaining из ${matchedItem.totalBoxes}. Обычный товарный EAN не подтверждает отдельную коробку.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            selectedItem = matchedItem
+                            currentScreen = AppScreen.DETAILS
+                        }
                         normalizedCode in savedCodes -> {
-                            Toast.makeText(context, "Дубликат сканирования: $normalizedCode", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Дубликат уникального кода упаковки: $normalizedCode", Toast.LENGTH_LONG).show()
                             currentScreen = AppScreen.HUB
                         }
                         else -> {
