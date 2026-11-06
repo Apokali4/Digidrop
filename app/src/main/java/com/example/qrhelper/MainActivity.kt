@@ -14,7 +14,6 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Bundle
-import android.view.SoundEffectConstants
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -367,7 +366,7 @@ val TextMuted = Color(0xFF586979)
 
 @Composable
 fun Modifier.bounceClick(
-    scaleDown: Float = 0.94f,
+    scaleDown: Float = 0.975f,
     onClick: () -> Unit
 ): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
@@ -377,17 +376,12 @@ fun Modifier.bounceClick(
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
         label = "bounceScale"
     )
-    val view = LocalView.current
-
     return this
         .scale(scale)
         .clickable(
             interactionSource = interactionSource,
             indication = null
-        ) {
-            view.playSoundEffect(SoundEffectConstants.CLICK)
-            onClick()
-        }
+        ) { onClick() }
 }
 
 class MainActivity : ComponentActivity() {
@@ -631,8 +625,6 @@ fun DigitDropRoot() {
         AppScreen.HUB -> {
             HubScreen(
                 routeItems = routeItems,
-                isFlashOn = isFlashlightOn,
-                onFlashToggle = { toggleFlashlight() },
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenScanner = { openScanner() },
                 onLoadFile = { currentScreen = AppScreen.INVOICE_IMPORT },
@@ -653,8 +645,6 @@ fun DigitDropRoot() {
         AppScreen.ROUTE_LIST -> {
             RouteListScreen(
                 routeItems = routeItems,
-                isFlashOn = isFlashlightOn,
-                onFlashToggle = { toggleFlashlight() },
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onOpenPointMap = { address -> launchNavigation(address) },
@@ -919,8 +909,6 @@ fun InvoiceLandingScreen(onBack: () -> Unit, onLoadInvoice: () -> Unit) {
 @Composable
 fun HubScreen(
     routeItems: List<RouteItem>,
-    isFlashOn: Boolean,
-    onFlashToggle: () -> Unit,
     onOpenRoute: () -> Unit,
     onOpenScanner: () -> Unit,
     onLoadFile: () -> Unit,
@@ -953,12 +941,7 @@ fun HubScreen(
                     Text("DigiDrop", color = TextLight, fontSize = 27.sp, fontWeight = FontWeight.Bold)
                     Text("Логистика • Сборка • Доставка", color = TextMuted, fontSize = 13.sp)
                 }
-                Box(
-                    modifier = Modifier.size(48.dp).clip(CircleShape)
-                        .background(CardSurface).border(1.dp, CardBorder, CircleShape)
-                        .bounceClick { onFlashToggle() },
-                    contentAlignment = Alignment.Center
-                ) { FlashlightVector(tint = if (isFlashOn) EmeraldPrimary else TextMuted) }
+                Spacer(Modifier.size(1.dp))
             }
         }
         item {
@@ -1001,14 +984,14 @@ fun HubScreen(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HubTile("Накладные", "Список точек и сдача", "▤", Color(0xFF2D7BFF), Modifier.weight(1f), onOpenRoute)
+                HubTile("Накладная", "Загрузить или заменить", "⇧", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
                 HubTile("Сканер", "Приём и отгрузка", "▣", Color(0xFF168F78), Modifier.weight(1f), onOpenScanner)
             }
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
-                HubTile("Накладная", "Загрузить или заменить", "⇧", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
+                HubTile("Точки рейса", "Список и сдача", "▤", Color(0xFF2D7BFF), Modifier.weight(1f), onOpenRoute)
             }
         }
         item {
@@ -1609,8 +1592,6 @@ fun PointDetailsScreen(
 @Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
-    isFlashOn: Boolean,
-    onFlashToggle: () -> Unit,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenPointMap: (String) -> Unit,
@@ -1661,7 +1642,6 @@ fun RouteListScreen(
                     )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -1677,57 +1657,6 @@ fun RouteListScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .bounceClick { onFlashToggle() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            AnimatedVisibility(
-                                visible = isFlashOn,
-                                enter = fadeIn(),
-                                exit = fadeOut()
-                            ) {
-                                Canvas(modifier = Modifier.size(46.dp)) {
-                                    val path = Path().apply {
-                                        moveTo(size.width * 0.5f, size.height * 0.35f)
-                                        lineTo(size.width * 0.05f, size.height)
-                                        lineTo(size.width * 0.95f, size.height)
-                                        close()
-                                    }
-                                    drawPath(
-                                        path = path,
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                MintAccent.copy(alpha = 0.55f),
-                                                Color.Transparent
-                                            )
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(if (isFlashOn) EmeraldPrimary.copy(alpha = 0.25f) else Color.Transparent)
-                                .border(1.dp, if (isFlashOn) MintAccent else CardBorder, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            FlashlightVector(tint = if (isFlashOn) MintAccent else TextMuted)
-                        }
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
