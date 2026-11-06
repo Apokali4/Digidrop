@@ -596,6 +596,8 @@ fun DigitDropRoot() {
     BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
         currentScreen = when (currentScreen) {
             AppScreen.SCANNER -> previousScreen
+            AppScreen.SCAN_RESULTS -> AppScreen.SCANNER
+            AppScreen.POINT_DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
             AppScreen.HUB -> AppScreen.HUB
