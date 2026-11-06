@@ -345,6 +345,7 @@ const val DISPATCHER_PHONE = "+74842998877"
 enum class AppScreen {
     SPLASH,
     HUB,
+    INVOICE_IMPORT,
     ROUTE_LIST,
     DETAILS,
     SCANNER,
@@ -609,6 +610,7 @@ fun DigitDropRoot() {
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
             AppScreen.HUB -> AppScreen.HUB
+            AppScreen.INVOICE_IMPORT -> AppScreen.HUB
             AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
         }
@@ -616,7 +618,11 @@ fun DigitDropRoot() {
 
     when (currentScreen) {
         AppScreen.SPLASH -> {
+            SplashScreen(onFinished = { currentScreen = AppScreen.HUB })
+        }
+        AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
+                onBack = { currentScreen = AppScreen.HUB },
                 onLoadInvoice = {
                     filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 }
@@ -629,7 +635,7 @@ fun DigitDropRoot() {
                 onFlashToggle = { toggleFlashlight() },
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenScanner = { openScanner() },
-                onLoadFile = { filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) },
+                onLoadFile = { currentScreen = AppScreen.INVOICE_IMPORT },
                 onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
                 onResetRoute = { resetRouteProgress() },
@@ -856,12 +862,16 @@ fun SplashScreen(onFinished: () -> Unit) {
 }
 
 @Composable
-fun InvoiceLandingScreen(onLoadInvoice: () -> Unit) {
+fun InvoiceLandingScreen(onBack: () -> Unit, onLoadInvoice: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark).padding(horizontal = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+            Text("‹ Назад", color = TextMuted, fontSize = 16.sp, modifier = Modifier.bounceClick { onBack() })
+        }
+        Spacer(Modifier.height(24.dp))
         Box(
             Modifier.size(88.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFDCEBFA)),
             contentAlignment = Alignment.Center
@@ -984,6 +994,17 @@ fun HubScreen(
                     Text(if (totalPoints == 0) "Загрузите накладную, чтобы начать рейс" else "Нажмите, чтобы открыть список точек",
                         color = TextMuted, fontSize = 12.sp)
                 }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    "＋ Загрузить другую накладную",
+                    color = Color(0xFF1767D2),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.bounceClick { onLoadFile() }.padding(vertical = 4.dp)
+                )
             }
         }
         item {
