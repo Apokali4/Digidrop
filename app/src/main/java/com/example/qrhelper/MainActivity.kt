@@ -237,13 +237,13 @@ enum class AppScreen {
     SCANNER
 }
 
-val BgDark = Color(0xFF0B1410)
-val CardSurface = Color(0xFF14241C)
-val CardBorder = Color(0xFF1F3A2B)
-val EmeraldPrimary = Color(0xFF10B981)
-val MintAccent = Color(0xFF34D399)
-val TextLight = Color(0xFFECFDF5)
-val TextMuted = Color(0xFF7B9E8D)
+val BgDark = Color(0xFFE7ECF1)
+val CardSurface = Color(0xFFF7F9FC)
+val CardBorder = Color(0xFFC9D3DB)
+val EmeraldPrimary = Color(0xFF2D7BFF)
+val MintAccent = Color(0xFF1767D2)
+val TextLight = Color(0xFF1F2B36)
+val TextMuted = Color(0xFF586979)
 
 @Composable
 fun Modifier.bounceClick(
