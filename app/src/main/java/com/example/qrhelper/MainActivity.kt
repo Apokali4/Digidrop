@@ -1006,7 +1006,10 @@ fun HubScreen(
             }
         }
         item {
-            HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.fillMaxWidth(), onNavigateNext)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
+                HubTile("Накладная", "Загрузить или заменить", "⇧", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
+            }
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
