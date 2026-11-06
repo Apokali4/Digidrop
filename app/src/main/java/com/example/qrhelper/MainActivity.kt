@@ -18,6 +18,7 @@ import android.view.SoundEffectConstants
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -283,6 +284,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    var previousScreen by remember { mutableStateOf(AppScreen.HUB) }
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
@@ -317,7 +319,7 @@ fun DigitDropRoot() {
 
     var routeItems by remember {
         mutableStateOf(
-            INITIAL_DEMO_ROUTE.map { item ->
+            parseManifest(prefs.getString("active_manifest", "").orEmpty()).map { item ->
                 val savedDelivered = prefs.getBoolean("delivered_" + item.barcode, item.isDelivered)
                 val savedScanned = prefs.getInt("scanned_" + item.barcode, item.scannedBoxes)
                 item.copy(isDelivered = savedDelivered, scannedBoxes = savedScanned)
@@ -343,6 +345,7 @@ fun DigitDropRoot() {
             editor.remove("scanned_" + item.barcode)
         }
         editor.remove("scan_codes")
+        editor.remove("active_manifest")
         editor.apply()
         routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
@@ -383,6 +386,7 @@ fun DigitDropRoot() {
                     val content = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                     val imported = parseManifest(content)
                     if (imported.isNotEmpty()) {
+                        prefs.edit().putString("active_manifest", content).apply()
                         val withProgress = imported.map { item ->
                             item.copy(
                                 isDelivered = prefs.getBoolean("delivered_" + item.barcode, false),
@@ -440,8 +444,10 @@ fun DigitDropRoot() {
 
     fun openScanner() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            previousScreen = currentScreen
             currentScreen = AppScreen.SCANNER
         } else {
+            previousScreen = currentScreen
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
@@ -456,7 +462,23 @@ fun DigitDropRoot() {
         try {
             context.startActivity(mapIntent)
         } catch (_: Exception) {
-            Toast.makeText(context, "Навигатор не найден", Toast.LENGTH_SHORT).show()
+            try {
+                val webMap = Uri.parse("https://yandex.ru/maps/?text=" + Uri.encode(query))
+                context.startActivity(Intent(Intent.ACTION_VIEW, webMap))
+            } catch (_: Exception) {
+                Toast.makeText(context, "Не найдено приложение карт или браузер", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    when (currentScreen) {
+    BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
+        currentScreen = when (currentScreen) {
+            AppScreen.SCANNER -> previousScreen
+            AppScreen.DETAILS -> AppScreen.ROUTE_LIST
+            AppScreen.ROUTE_LIST -> AppScreen.HUB
+            AppScreen.HUB -> AppScreen.HUB
+            AppScreen.SPLASH -> AppScreen.HUB
         }
     }
 
@@ -471,7 +493,7 @@ fun DigitDropRoot() {
                 onFlashToggle = { toggleFlashlight() },
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenScanner = { openScanner() },
-                onLoadFile = { filePickerLauncher.launch(arrayOf("text/csv", "text/plain", "text/tab-separated-values", "application/csv")) },
+                onLoadFile = { filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel")) },
                 onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
                 onResetRoute = { resetRouteProgress() },
@@ -515,7 +537,7 @@ fun DigitDropRoot() {
             LiveCameraScannerScreen(
                 isFlashOn = isFlashlightOn,
                 onFlashToggle = { toggleFlashlight() },
-                onBack = { currentScreen = AppScreen.HUB },
+                onBack = { currentScreen = previousScreen },
                 onBarcodeScanned = { scannedCode ->
                     val matchedItem = routeItems.firstOrNull { it.barcode.equals(scannedCode.trim(), ignoreCase = true) }
                     val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
