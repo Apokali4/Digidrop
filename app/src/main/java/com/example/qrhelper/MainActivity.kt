@@ -469,7 +469,6 @@ fun DigitDropRoot() {
         }
         editor.remove("scan_codes")
         editor.remove("unknown_codes")
-        editor.remove("active_manifest")
         editor.apply()
         routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
@@ -2112,6 +2111,141 @@ fun BottomActionButtons(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+@Composable
+fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () -> Unit) {
+    val points = routeItems.groupBy { it.storeName to it.address }
+    val delivered = points.values.count { group -> group.all { it.isDelivered } }
+    val totalBoxes = routeItems.sumOf { it.totalBoxes }
+    val scanned = routeItems.sumOf { it.scannedBoxes }
+    val remaining = (totalBoxes - scanned).coerceAtLeast(0)
+    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(18.dp))
+        Text("Отчёты и сверка", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        val stats = listOf(
+            "Точек всего" to points.size.toString(),
+            "Точек доставлено" to "$delivered / ${points.size}",
+            "Мест по накладным" to totalBoxes.toString(),
+            "Отсканировано" to scanned.toString(),
+            "Осталось по сканам" to remaining.toString(),
+            "Строк накладных" to routeItems.size.toString()
+        )
+        stats.forEach { (label, value) ->
+            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                shape = RoundedCornerShape(14.dp)) {
+                Row(Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label, color = TextMuted, fontSize = 14.sp)
+                    Text(value, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Экспорт CSV", "Сохранить отчёт рейса", CardSurface, TextLight, MintAccent, onExport)
+        Spacer(Modifier.height(8.dp))
+        Text("В CSV входят штрихкод, точка, адрес, товар, план, факт, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    offlineMode: Boolean,
+    autoSave: Boolean,
+    compactMode: Boolean,
+    onBack: () -> Unit,
+    onOfflineChange: (Boolean) -> Unit,
+    onAutoSaveChange: (Boolean) -> Unit,
+    onCompactChange: (Boolean) -> Unit,
+    onClearUnknown: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(18.dp))
+        Text("Настройки", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        SettingToggleRow("Офлайн-режим", "Не требует учётной записи или сервера; карты могут требовать интернет", offlineMode, onOfflineChange)
+        SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
+        SettingToggleRow("Компактный режим", "Настройка сохранена; плотность экранов будет применена в следующих UI-экранах", compactMode, onCompactChange)
+        Spacer(Modifier.height(12.dp))
+        HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFFD18B26), onClearUnknown)
+        Spacer(Modifier.height(14.dp))
+        Text("Тема сейчас: светлая серо-голубая. Переключение темы и резервное копирование ещё требуют отдельной реализации.", color = TextMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = CardSurface),
+        shape = RoundedCornerShape(14.dp)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = TextMuted, fontSize = 11.sp)
+            }
+            Text(if (enabled) "ВКЛ" else "ВЫКЛ", color = if (enabled) MintAccent else TextMuted,
+                fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp)).background(BgDark).padding(horizontal = 12.dp, vertical = 10.dp)
+                    .bounceClick { onChange(!enabled) })
+        }
+    }
+}
+
+@Composable
+fun HistoryScreen(routeItems: List<RouteItem>, onBack: () -> Unit) {
+    val points = routeItems.groupBy { it.storeName to it.address }
+    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(18.dp))
+        Text("Текущий рейс", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("История завершённых рейсов пока не ведётся. Здесь показано текущее состояние.", color = TextMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(12.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(points.toList()) { entry ->
+                val group = entry.second
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(group.first().storeName, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(group.first().address, color = TextMuted, fontSize = 12.sp)
+                        Text("${group.sumOf { it.scannedBoxes }} / ${group.sumOf { it.totalBoxes }} мест • " +
+                            if (group.all { it.isDelivered }) "Доставлено" else "В работе",
+                            color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun UnknownCodesScreen(codes: List<String>, onBack: () -> Unit, onClear: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(18.dp))
+        Text("Неизвестные коды", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Скан-коды, которых нет в загруженных накладных: ${codes.size}", color = TextMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(12.dp))
+        if (codes.isEmpty()) {
+            Text("Пока нет неизвестных кодов.", color = TextMuted, fontSize = 14.sp)
+        } else {
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                items(codes) { code ->
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(12.dp)) {
+                        Text(code, Modifier.padding(14.dp), color = TextLight, fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            HubActionButton("Очистить список", "Удалить неизвестные сканы", CardSurface, TextLight, Color(0xFFD18B26), onClear)
         }
     }
 }
