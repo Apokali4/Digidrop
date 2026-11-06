@@ -204,7 +204,7 @@ private fun parseXlsx(input: InputStream): List<RouteItem> {
     ZipInputStream(input).use { zip ->
         while (true) {
             val entry = zip.nextEntry ?: break
-            if (!entry.isDirectory && (entry.name == "xl/sharedStrings.xml" || entry.name.matches(Regex("xl/worksheets/sheet[0-9]+\\\\.xml")))) {
+            if (!entry.isDirectory && (entry.name == "xl/sharedStrings.xml" || entry.name.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")))) {
                 entries[entry.name] = zip.readBytes()
             }
             zip.closeEntry()
