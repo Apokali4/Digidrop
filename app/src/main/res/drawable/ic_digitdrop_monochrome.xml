@@ -1,44 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <!-- Внешний контур маркера -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,20 C40.7,20 30,30.7 30,44 C30,60 54,82 54,82 C54,82 78,60 78,44 C78,30.7 67.3,20 54,20 Z" />
-
-    <!-- Внутренний вырез (прозрачный круг в центре) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:pathData="M54,44m-12,0a12,12 0 1,0 24,0a12,12 0 1,0 -24,0" />
-
-    <!-- Центральная точка -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,44m-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0" />
-
-    <!-- Штрихкоды снизу -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M42,66 L44,66 L44,82 L42,82 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M46,68 L49,68 L49,84 L46,84 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M52,72 L53.5,72 L53.5,86 L52,86 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54.5,72 L56,72 L56,86 L54.5,86 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M59,68 L62,68 L62,84 L59,84 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M64,66 L66,66 L66,82 L64,82 Z" />
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M54,15 L86,33 L54,51 L22,33 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M22,33 L27,30 L27,68 L54,84 L54,90 L22,72 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M86,33 L81,30 L81,68 L54,84 L54,90 L86,72 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M47,57h4v19h-4zM56,57h5v19h-5zM66,57h4v19h-4z"/>
 </vector>
