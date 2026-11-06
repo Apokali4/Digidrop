@@ -997,17 +997,6 @@ fun HubScreen(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Text(
-                    "＋ Загрузить другую накладную",
-                    color = Color(0xFF1767D2),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.bounceClick { onLoadFile() }.padding(vertical = 4.dp)
-                )
-            }
-        }
-        item {
             Text("Рабочие инструменты", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         item {
