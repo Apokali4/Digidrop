@@ -353,16 +353,17 @@ fun DigitDropRoot() {
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Осталось;Статус\\n"
-                val rows = routeItems.joinToString("\\n") { item ->
-                    listOf(item.barcode, item.storeName, item.address, item.itemName,
+                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Осталось;Статус\n"
+                val rows = routeItems.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName,
                         item.totalBoxes.toString(), item.scannedBoxes.toString(),
                         (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0).toString(),
-                        if (item.isDelivered) "Доставлено" else "В пути")
-                        .joinToString(";") { value -> "\\\"" + value.replace("\\\"", "\\\"\\\"") + "\\\"" }
+                        if (item.isDelivered) "Доставлено" else "В пути"
+                    ).joinToString(";") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
                 }
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                    writer.write("\\uFEFF")
+                    writer.write("\uFEFF")
                     writer.write(header)
                     writer.write(rows)
                 }
