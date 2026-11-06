@@ -858,6 +858,33 @@ fun HubScreen(
         }
         item {
             Card(
+                modifier = Modifier.fillMaxWidth()
+                    .border(1.dp, Color(0xFF2D7BFF).copy(alpha = 0.65f), RoundedCornerShape(20.dp))
+                    .bounceClick(scaleDown = 0.97f) { onLoadFile() },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE5F0FF)),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 17.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFD2E5FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("⇧", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Загрузить накладную", color = Color(0xFF15365D), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("Excel XLSX • CSV • TSV", color = Color(0xFF46627F), fontSize = 12.sp)
+                    }
+                    Text("›", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        item {
+            Card(
                 modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(22.dp))
                     .bounceClick(scaleDown = 0.985f) { onOpenRoute() },
                 colors = CardDefaults.cardColors(containerColor = CardSurface),
@@ -902,7 +929,7 @@ fun HubScreen(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HubTile("Файлы", "Импорт CSV / TSV", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
+                HubTile("Файлы", "Другие форматы", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
                 HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
             }
         }
