@@ -30,6 +30,8 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
       - name: Build debug APK
         run: ./gradlew --no-daemon --stacktrace assembleDebug
       - name: Upload APK
