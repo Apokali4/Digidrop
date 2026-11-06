@@ -797,165 +797,195 @@ fun DigitDropRoot() {
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    var startAnim by remember { mutableStateOf(false) }
-    val scaleAnim by animateFloatAsState(
-        targetValue = if (startAnim) 1f else 0.96f,
-        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
-        label = "splashScale"
+    var visible by remember { mutableStateOf(false) }
+    val appear by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "splashAppear"
     )
-    val alphaAnim by animateFloatAsState(
-        targetValue = if (startAnim) 1f else 0f,
-        animationSpec = tween(durationMillis = 500),
-        label = "splashAlpha"
-    )
-    val pulse = rememberInfiniteTransition(label = "splashPulse")
-    val glow by pulse.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "splashGlow"
+    val pulse = rememberInfiniteTransition(label = "splashLights")
+    val lightPulse by pulse.animateFloat(
+        initialValue = 0.72f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse),
+        label = "truckLights"
     )
     LaunchedEffect(Unit) {
-        startAnim = true
-        delay(2000)
+        visible = true
+        delay(2200)
         onFinished()
     }
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFF04142D), Color(0xFF0B3763), Color(0xFF07182B)))
-        ),
-        contentAlignment = Alignment.Center
+            Brush.verticalGradient(
+                0f to Color(0xFF03132B),
+                0.42f to Color(0xFF0B3764),
+                0.72f to Color(0xFF092B48),
+                1f to Color(0xFF020D1C)
+            )
+        )
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val mountain = Path().apply {
-                moveTo(0f, h * 0.56f)
-                lineTo(w * 0.19f, h * 0.40f)
-                lineTo(w * 0.34f, h * 0.53f)
-                lineTo(w * 0.57f, h * 0.35f)
-                lineTo(w * 0.78f, h * 0.52f)
-                lineTo(w, h * 0.39f)
-                lineTo(w, h * 0.76f)
-                lineTo(0f, h * 0.76f)
-                close()
-            }
-            drawPath(mountain, Color(0xFF17466B))
-            val distant = Path().apply {
-                moveTo(0f, h * 0.65f)
-                lineTo(w * 0.25f, h * 0.51f)
-                lineTo(w * 0.47f, h * 0.64f)
-                lineTo(w * 0.72f, h * 0.48f)
-                lineTo(w, h * 0.63f)
-                lineTo(w, h)
-                lineTo(0f, h)
-                close()
-            }
-            drawPath(distant, Color(0xFF0C2D48))
-            drawRect(
-                Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC04101F))),
-                topLeft = Offset(0f, h * 0.62f),
-                size = Size(w, h * 0.38f)
+            // Distant atmospheric glow and dawn behind the mountain ridge.
+            drawCircle(
+                Brush.radialGradient(
+                    listOf(Color(0xFF4C9CC4).copy(alpha = 0.28f), Color.Transparent),
+                    center = Offset(w * 0.77f, h * 0.49f),
+                    radius = w * 0.68f
+                ),
+                radius = w * 0.68f,
+                center = Offset(w * 0.77f, h * 0.49f)
             )
-            // Wet road with reflective lane markings.
-            drawPath(Path().apply {
-                moveTo(w * 0.18f, h)
-                lineTo(w * 0.39f, h * 0.67f)
-                lineTo(w * 0.68f, h * 0.67f)
+            // Layered mountain silhouettes with soft gradients.
+            val ridgeBack = Path().apply {
+                moveTo(0f, h * 0.59f)
+                lineTo(w * 0.13f, h * 0.42f)
+                lineTo(w * 0.27f, h * 0.56f)
+                lineTo(w * 0.48f, h * 0.33f)
+                lineTo(w * 0.68f, h * 0.54f)
+                lineTo(w * 0.84f, h * 0.39f)
+                lineTo(w, h * 0.51f)
+                lineTo(w, h * 0.79f)
+                lineTo(0f, h * 0.79f)
+                close()
+            }
+            drawPath(ridgeBack, Brush.verticalGradient(listOf(Color(0xFF28618A), Color(0xFF123957)), h * 0.33f, h * 0.79f))
+            val ridgeFront = Path().apply {
+                moveTo(0f, h * 0.69f)
+                lineTo(w * 0.18f, h * 0.56f)
+                lineTo(w * 0.36f, h * 0.70f)
+                lineTo(w * 0.59f, h * 0.51f)
+                lineTo(w * 0.79f, h * 0.68f)
+                lineTo(w, h * 0.55f)
+                lineTo(w, h * 0.86f)
+                lineTo(0f, h * 0.86f)
+                close()
+            }
+            drawPath(ridgeFront, Brush.verticalGradient(listOf(Color(0xFF174767), Color(0xFF09283F)), h * 0.52f, h * 0.86f))
+            // Atmospheric mist band between the trees and the distant peaks.
+            drawRect(
+                Brush.verticalGradient(listOf(Color.Transparent, Color(0x334DB5E2), Color.Transparent)),
+                topLeft = Offset(0f, h * 0.54f),
+                size = Size(w, h * 0.19f)
+            )
+            // Forest in multiple depth layers.
+            fun tree(x: Float, base: Float, height: Float, color: Color, width: Float) {
+                drawLine(color.copy(alpha = 0.9f), Offset(x, base), Offset(x, base - height * 0.88f), width * 0.11f)
+                for (layer in 0..3) {
+                    val y = base - height * (0.20f + layer * 0.17f)
+                    val half = width * (0.48f - layer * 0.075f)
+                    drawPath(Path().apply {
+                        moveTo(x, y - height * 0.27f)
+                        lineTo(x - half, y + height * 0.12f)
+                        quadraticTo(x, y + height * 0.04f, x + half, y + height * 0.12f)
+                        close()
+                    }, color.copy(alpha = 0.88f))
+                }
+            }
+            for (i in 0..12) {
+                val x = w * (i / 12f)
+                val base = h * (0.77f + (i % 3) * 0.018f)
+                tree(x, base, h * (0.16f + (i % 4) * 0.018f), Color(0xFF061D30), w * 0.075f)
+            }
+            for (i in 0..9) {
+                val x = w * (0.02f + i * 0.108f)
+                val base = h * (0.91f + (i % 2) * 0.018f)
+                tree(x, base, h * (0.21f + (i % 3) * 0.018f), Color(0xFF031525), w * 0.09f)
+            }
+            // Wet highway, broad foreground perspective and reflective markings.
+            val road = Path().apply {
+                moveTo(w * 0.22f, h)
+                lineTo(w * 0.40f, h * 0.70f)
+                lineTo(w * 0.67f, h * 0.70f)
                 lineTo(w, h)
                 close()
-            }, Color(0xFF101F31))
-            drawLine(Color(0xFF4CCEFF).copy(alpha = 0.55f), Offset(w * 0.42f, h * 0.82f), Offset(w * 0.14f, h), 3f)
-            drawLine(Color(0xFF4CCEFF).copy(alpha = 0.55f), Offset(w * 0.69f, h * 0.82f), Offset(w * 0.98f, h), 3f)
-            drawLine(Color.White.copy(alpha = 0.75f), Offset(w * 0.54f, h * 0.83f), Offset(w * 0.58f, h), 4f)
-            // Evergreen silhouettes along both sides.
-            for (i in 0..5) {
-                val x = w * (0.03f + i * 0.075f)
-                val y = h * (0.60f + (i % 3) * 0.035f)
-                drawLine(Color(0xFF071A27), Offset(x, y + h * 0.13f), Offset(x, y - h * 0.08f), 5f)
-                for (j in 0..2) {
-                    val yy = y - h * (0.025f + j * 0.035f)
-                    drawPath(Path().apply {
-                        moveTo(x, yy - h * 0.045f)
-                        lineTo(x - w * 0.035f, yy + h * 0.025f)
-                        lineTo(x + w * 0.035f, yy + h * 0.025f)
-                        close()
-                    }, Color(0xFF062438))
-                }
             }
+            drawPath(road, Brush.verticalGradient(listOf(Color(0xFF172B40), Color(0xFF030C18)), h * 0.70f, h))
+            drawLine(Color(0xFF1BA9E5).copy(alpha = 0.6f), Offset(w * 0.40f, h * 0.78f), Offset(w * 0.13f, h), 3.5f)
+            drawLine(Color(0xFF1BA9E5).copy(alpha = 0.6f), Offset(w * 0.67f, h * 0.78f), Offset(w * 0.97f, h), 3.5f)
+            drawLine(Color.White.copy(alpha = 0.72f), Offset(w * 0.54f, h * 0.80f), Offset(w * 0.59f, h), 4f)
+            // Road reflections.
             for (i in 0..5) {
-                val x = w * (0.72f + i * 0.055f)
-                val y = h * (0.60f + (i % 2) * 0.04f)
-                drawLine(Color(0xFF071A27), Offset(x, y + h * 0.13f), Offset(x, y - h * 0.08f), 5f)
-                for (j in 0..2) {
-                    val yy = y - h * (0.025f + j * 0.035f)
-                    drawPath(Path().apply {
-                        moveTo(x, yy - h * 0.045f)
-                        lineTo(x - w * 0.035f, yy + h * 0.025f)
-                        lineTo(x + w * 0.035f, yy + h * 0.025f)
-                        close()
-                    }, Color(0xFF062438))
-                }
+                val yy = h * (0.82f + i * 0.028f)
+                drawLine(Color(0xFF3B9BC5).copy(alpha = 0.18f - i * 0.02f), Offset(w * 0.28f, yy), Offset(w * 0.72f, yy + h * 0.018f), 5f + i)
             }
-            // Delivery truck: cargo box, cab, windshield, chassis and wheels.
-            val truckY = h * 0.70f
-            drawRoundRect(Color(0xFFB8D7E9), Offset(w * 0.18f, truckY), Size(w * 0.39f, h * 0.105f), androidx.compose.ui.geometry.CornerRadius(12f))
-            drawRoundRect(Color(0xFFEAF7FF), Offset(w * 0.18f, truckY), Size(w * 0.39f, h * 0.018f), androidx.compose.ui.geometry.CornerRadius(8f))
+            // Large delivery truck, with a shaded cargo box, cab, glass, bumper and wheels.
+            val ty = h * 0.695f
+            val trailerLeft = w * 0.17f
+            val trailerTop = ty + h * 0.018f
+            val trailerWidth = w * 0.43f
+            val trailerHeight = h * 0.115f
+            drawRoundRect(
+                Brush.linearGradient(listOf(Color(0xFFF4FBFF), Color(0xFFB5D5E8), Color(0xFF719CB8)), Offset(trailerLeft, trailerTop), Offset(trailerLeft + trailerWidth, trailerTop + trailerHeight)),
+                Offset(trailerLeft, trailerTop), Size(trailerWidth, trailerHeight),
+                androidx.compose.ui.geometry.CornerRadius(w * 0.012f)
+            )
+            drawRoundRect(Color(0xFFEAF8FF), Offset(trailerLeft, trailerTop), Size(trailerWidth, h * 0.014f), androidx.compose.ui.geometry.CornerRadius(w * 0.01f))
+            drawLine(Color(0xFF789DB5), Offset(w * 0.20f, ty + h * 0.035f), Offset(w * 0.20f, ty + h * 0.12f), 2f)
+            drawLine(Color(0xFF789DB5), Offset(w * 0.57f, ty + h * 0.035f), Offset(w * 0.57f, ty + h * 0.12f), 2f)
             val cab = Path().apply {
-                moveTo(w * 0.57f, truckY + h * 0.105f)
-                lineTo(w * 0.57f, truckY + h * 0.035f)
-                lineTo(w * 0.64f, truckY + h * 0.005f)
-                lineTo(w * 0.75f, truckY + h * 0.025f)
-                lineTo(w * 0.80f, truckY + h * 0.105f)
+                moveTo(w * 0.59f, ty + h * 0.13f)
+                lineTo(w * 0.59f, ty + h * 0.052f)
+                quadraticTo(w * 0.61f, ty + h * 0.015f, w * 0.66f, ty + h * 0.006f)
+                lineTo(w * 0.77f, ty + h * 0.035f)
+                quadraticTo(w * 0.79f, ty + h * 0.045f, w * 0.81f, ty + h * 0.13f)
                 close()
             }
-            drawPath(cab, Color(0xFFE7F5FF))
-            drawPath(Path().apply {
-                moveTo(w * 0.65f, truckY + h * 0.018f)
-                lineTo(w * 0.73f, truckY + h * 0.035f)
-                lineTo(w * 0.76f, truckY + h * 0.075f)
-                lineTo(w * 0.65f, truckY + h * 0.075f)
+            drawPath(cab, Brush.linearGradient(listOf(Color(0xFFFFFFFF), Color(0xFFD8EAF5), Color(0xFF8CB4CE)), Offset(w * 0.60f, ty), Offset(w * 0.81f, ty + h * 0.14f)))
+            val windshield = Path().apply {
+                moveTo(w * 0.665f, ty + h * 0.025f)
+                lineTo(w * 0.755f, ty + h * 0.047f)
+                lineTo(w * 0.785f, ty + h * 0.103f)
+                lineTo(w * 0.665f, ty + h * 0.103f)
                 close()
-            }, Color(0xFF173C5C))
-            drawRoundRect(Color(0xFF14263A), Offset(w * 0.17f, truckY + h * 0.10f), Size(w * 0.65f, h * 0.022f), androidx.compose.ui.geometry.CornerRadius(5f))
-            for (x in listOf(0.29f, 0.53f, 0.70f)) {
-                drawCircle(Color(0xFF081321), h * 0.027f, Offset(w * x, truckY + h * 0.125f))
-                drawCircle(Color(0xFF8FB6C9), h * 0.012f, Offset(w * x, truckY + h * 0.125f))
             }
-            drawRoundRect(Color(0xFFFFD58A).copy(alpha = glow), Offset(w * 0.765f, truckY + h * 0.077f), Size(w * 0.035f, h * 0.014f), androidx.compose.ui.geometry.CornerRadius(5f))
-            // Glowing cube mark.
+            drawPath(windshield, Brush.linearGradient(listOf(Color(0xFF214C6D), Color(0xFF071C32)), Offset(w * 0.66f, ty), Offset(w * 0.78f, ty + h * 0.11f)))
+            drawLine(Color(0xFFBDEBFF).copy(alpha = 0.55f), Offset(w * 0.68f, ty + h * 0.034f), Offset(w * 0.75f, ty + h * 0.052f), 3f)
+            drawRoundRect(Color(0xFF26394C), Offset(w * 0.16f, ty + h * 0.125f), Size(w * 0.67f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(8f))
+            drawRoundRect(Color(0xFF0A1624), Offset(w * 0.18f, ty + h * 0.144f), Size(w * 0.64f, h * 0.012f), androidx.compose.ui.geometry.CornerRadius(5f))
+            // Wheels with rubber, hubs and highlights.
+            for (x in listOf(0.29f, 0.53f, 0.72f)) {
+                drawCircle(Color(0xFF030A13), h * 0.027f, Offset(w * x, ty + h * 0.151f))
+                drawCircle(Color(0xFF344B60), h * 0.020f, Offset(w * x, ty + h * 0.151f))
+                drawCircle(Color(0xFFB6D8E8), h * 0.012f, Offset(w * x, ty + h * 0.151f))
+                drawCircle(Color(0xFF5F8298), h * 0.005f, Offset(w * x, ty + h * 0.151f))
+            }
+            drawRoundRect(Color(0xFFFFD58A).copy(alpha = lightPulse), Offset(w * 0.79f, ty + h * 0.105f), Size(w * 0.026f, h * 0.015f), androidx.compose.ui.geometry.CornerRadius(6f))
+            drawCircle(Color(0xFFFFE5A8).copy(alpha = lightPulse * 0.18f), h * 0.045f, Offset(w * 0.81f, ty + h * 0.112f))
+            // Neon cube mark above the wordmark.
             val cx = w * 0.5f
-            val cy = h * 0.17f
+            val cy = h * 0.155f
             val r = w * 0.105f
             val top = Offset(cx, cy - r)
             val left = Offset(cx - r, cy - r * 0.42f)
             val right = Offset(cx + r, cy - r * 0.42f)
-            val mid = Offset(cx, cy + r * 0.18f)
-            val bottomLeft = Offset(cx - r, cy + r * 0.78f)
-            val bottomRight = Offset(cx + r, cy + r * 0.78f)
+            val middle = Offset(cx, cy + r * 0.18f)
+            val lowLeft = Offset(cx - r, cy + r * 0.78f)
+            val lowRight = Offset(cx + r, cy + r * 0.78f)
             val bottom = Offset(cx, cy + r * 1.38f)
-            val cubeColor = Color(0xFF21DFFF).copy(alpha = glow)
-            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f)
-            drawPath(Path().apply { moveTo(top.x, top.y); lineTo(right.x, right.y); lineTo(mid.x, mid.y); lineTo(left.x, left.y); close() }, cubeColor, style = stroke)
-            drawPath(Path().apply { moveTo(left.x, left.y); lineTo(bottomLeft.x, bottomLeft.y); lineTo(bottom.x, bottom.y); lineTo(mid.x, mid.y) }, cubeColor, style = stroke)
-            drawPath(Path().apply { moveTo(mid.x, mid.y); lineTo(bottom.x, bottom.y); lineTo(bottomRight.x, bottomRight.y); lineTo(right.x, right.y) }, cubeColor, style = stroke)
+            val neon = Color(0xFF24DFFF).copy(alpha = lightPulse)
+            val outline = androidx.compose.ui.graphics.drawscope.Stroke(width = 5f)
+            drawPath(Path().apply { moveTo(top.x, top.y); lineTo(right.x, right.y); lineTo(middle.x, middle.y); lineTo(left.x, left.y); close() }, neon, style = outline)
+            drawPath(Path().apply { moveTo(left.x, left.y); lineTo(lowLeft.x, lowLeft.y); lineTo(bottom.x, bottom.y); lineTo(middle.x, middle.y) }, neon, style = outline)
+            drawPath(Path().apply { moveTo(middle.x, middle.y); lineTo(bottom.x, bottom.y); lineTo(lowRight.x, lowRight.y); lineTo(right.x, right.y) }, neon, style = outline)
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 42.dp)
-                .scale(scaleAnim).alpha(alphaAnim)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 54.dp)
+                .scale(0.98f + appear * 0.02f).alpha(appear)
         ) {
-            Spacer(Modifier.height(170.dp))
+            Spacer(Modifier.height(150.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = Color.White, fontSize = 43.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Drop", color = Color(0xFF27DFFF), fontSize = 43.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Drop", color = Color(0xFF28DFFF), fontSize = 44.sp, fontWeight = FontWeight.ExtraBold)
             }
-            Text("ЛОГИСТИКА  •  ДОСТАВКА  •  СКАНЕР", color = Color(0xFFD8F4FF), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text("ЛОГИСТИКА  •  ДОСТАВКА  •  СКАНЕР", color = Color(0xFFE1F7FF), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            Text("Загрузка приложения…", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text("Загрузка приложения…", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
-            Box(Modifier.fillMaxWidth(0.72f).height(5.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.2f))) {
-                Box(Modifier.fillMaxWidth(0.72f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Color(0xFF25DFFF)))
+            Box(Modifier.fillMaxWidth(0.72f).height(5.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.22f))) {
+                Box(Modifier.fillMaxWidth(0.72f).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Color(0xFF24DFFF)))
             }
             Spacer(Modifier.height(18.dp))
         }
