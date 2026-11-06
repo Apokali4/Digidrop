@@ -348,6 +348,31 @@ fun DigitDropRoot() {
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
+    val reportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Осталось;Статус\\n"
+                val rows = routeItems.joinToString("\\n") { item ->
+                    listOf(item.barcode, item.storeName, item.address, item.itemName,
+                        item.totalBoxes.toString(), item.scannedBoxes.toString(),
+                        (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0).toString(),
+                        if (item.isDelivered) "Доставлено" else "В пути")
+                        .joinToString(";") { value -> "\\\"" + value.replace("\\\"", "\\\"\\\"") + "\\\"" }
+                }
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                    writer.write("\\uFEFF")
+                    writer.write(header)
+                    writer.write(rows)
+                }
+                Toast.makeText(context, "Отчёт сохранён", Toast.LENGTH_SHORT).show()
+            } catch (ex: Exception) {
+                Toast.makeText(context, "Не удалось сохранить отчёт: " + ex.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -446,6 +471,7 @@ fun DigitDropRoot() {
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenScanner = { openScanner() },
                 onLoadFile = { filePickerLauncher.launch(arrayOf("text/csv", "text/plain", "text/tab-separated-values", "application/csv")) },
+                onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
                 onResetRoute = { resetRouteProgress() },
                 onNavigateNext = {
@@ -607,6 +633,7 @@ fun HubScreen(
     onOpenRoute: () -> Unit,
     onOpenScanner: () -> Unit,
     onLoadFile: () -> Unit,
+    onExportReport: () -> Unit,
     onCallDispatcher: () -> Unit,
     onResetRoute: () -> Unit,
     onNavigateNext: () -> Unit
@@ -687,6 +714,9 @@ fun HubScreen(
                 HubTile("Файлы", "Импорт CSV / TSV", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
                 HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
             }
+        }
+        item {
+            HubTile("Экспорт отчёта", "CSV • сверка рейса", "⇩", Color(0xFF16834A), Modifier.fillMaxWidth(), onExportReport)
         }
         item {
             Card(
