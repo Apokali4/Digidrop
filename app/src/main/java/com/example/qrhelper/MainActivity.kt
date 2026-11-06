@@ -254,7 +254,7 @@ private fun parseXlsx(input: InputStream): List<RouteItem> {
     return parseManifest(tsv)
 }
 
-private fun parseManifest(text: String): List<RouteItem> {
+internal fun parseManifest(text: String): List<RouteItem> {
     val lines = text.removePrefix("\uFEFF").lineSequence()
         .map { it.trimEnd('\r') }
         .filter { it.isNotBlank() && !it.trimStart().startsWith("#") }
