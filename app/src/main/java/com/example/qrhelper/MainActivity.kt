@@ -94,6 +94,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.common.Barcode
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -1068,6 +1072,9 @@ fun LiveCameraScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasScanned by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    var lastRaw by remember { mutableStateOf("") }
+    var lastScanAt by remember { mutableStateOf(0L) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scannerLaser")
     val laserY by infiniteTransition.animateFloat(
@@ -1102,7 +1109,7 @@ fun LiveCameraScannerScreen(
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
 
-                    val barcodeScanner = BarcodeScanning.getClient()
+                    val barcodeScanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_EAN_13, Barcode.FORMAT_DATA_MATRIX, Barcode.FORMAT_QR_CODE, Barcode.FORMAT_UPC_A, Barcode.FORMAT_CODE_128).build())
                     val analysisExecutor = Executors.newSingleThreadExecutor()
 
                     val imageAnalysis = ImageAnalysis.Builder()
@@ -1111,7 +1118,7 @@ fun LiveCameraScannerScreen(
 
                     imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
                         val mediaImage = imageProxy.image
-                        if (mediaImage != null && !hasScanned) {
+                        if (mediaImage != null) {
                             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
                             barcodeScanner.process(image)
                                 .addOnSuccessListener { barcodes ->
