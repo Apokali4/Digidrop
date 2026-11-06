@@ -7,9 +7,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.camera2.CameraCharacteristics
 import android.location.Geocoder
-import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -62,6 +60,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -357,9 +357,9 @@ enum class AppScreen {
     UNKNOWN_CODES
 }
 
-val BgDark = Color(0xFFE7ECF1)
-val CardSurface = Color(0xFFF7F9FC)
-val CardBorder = Color(0xFFC9D3DB)
+val BgDark = Color(0xFFF1F2F4)
+val CardSurface = Color(0xFFFFFFFF)
+val CardBorder = Color(0xFFD9DEE5)
 val EmeraldPrimary = Color(0xFF2D7BFF)
 val MintAccent = Color(0xFF1767D2)
 val TextLight = Color(0xFF1F2B36)
@@ -793,7 +793,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 90)
         } catch (_: Exception) {}
 
-        delay(1400.milliseconds)
+        delay(2000.milliseconds)
         onFinished()
     }
 
@@ -844,55 +844,62 @@ fun SplashScreen(onFinished: () -> Unit) {
 
 @Composable
 fun InvoiceLandingScreen(onBack: () -> Unit, onLoadInvoice: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().background(BgDark).padding(horizontal = 26.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Box(
+        modifier = Modifier.fillMaxSize().background(BgDark)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-            Text("‹ Назад", color = TextMuted, fontSize = 16.sp, modifier = Modifier.bounceClick { onBack() })
-        }
-        Spacer(Modifier.height(24.dp))
-        Box(
-            Modifier.size(88.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFDCEBFA)),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("D", color = Color(0xFF1767D2), fontSize = 48.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(22.dp))
-        Text("DigiDrop", color = TextLight, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Text("Рабочее место водителя", color = TextMuted, fontSize = 14.sp)
-        Spacer(Modifier.height(44.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth()
-                .border(1.dp, Color(0xFF9BBFE5), RoundedCornerShape(22.dp))
-                .bounceClick(scaleDown = 0.97f) { onLoadInvoice() },
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE5F0FF)),
-            shape = RoundedCornerShape(22.dp)
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                Modifier.size(88.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFE5EEFA)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFD2E5FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("⇧", color = Color(0xFF1767D2), fontSize = 31.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.width(15.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Загрузить накладную", color = Color(0xFF15365D), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(4.dp))
-                    Text("Excel XLSX • CSV • TSV", color = Color(0xFF46627F), fontSize = 12.sp)
-                }
-                Text("›", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text("D", color = Color(0xFF286BC4), fontSize = 48.sp, fontWeight = FontWeight.Bold)
             }
+            Spacer(Modifier.height(22.dp))
+            Text("DigiDrop", color = TextLight, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Text("Рабочее место водителя", color = TextMuted, fontSize = 14.sp)
+            Spacer(Modifier.height(44.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth()
+                    .border(1.dp, Color(0xFFB9CBE0), RoundedCornerShape(24.dp))
+                    .bounceClick(scaleDown = 0.965f) { onLoadInvoice() },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF1FA)),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 2.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFDCE8F7)),
+                        contentAlignment = Alignment.Center
+                    ) { Text("⇧", color = Color(0xFF286BC4), fontSize = 31.sp, fontWeight = FontWeight.Bold) }
+                    Spacer(Modifier.width(15.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Загрузить накладную", color = Color(0xFF20364F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Excel XLSX • CSV • TSV", color = Color(0xFF617286), fontSize = 12.sp)
+                    }
+                    Text("›", color = Color(0xFF286BC4), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "После загрузки откроется рабочий экран с точками, сканером, маршрутом и отчётами.",
+                color = TextMuted, fontSize = 13.sp
+            )
         }
-        Spacer(Modifier.height(14.dp))
         Text(
-            "После загрузки откроется рабочий экран с точками, сканером, маршрутом и отчётами.",
-            color = TextMuted, fontSize = 13.sp
+            "‹ Назад",
+            color = TextMuted,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 18.dp)
+                .bounceClick { onBack() }
         )
     }
 }
@@ -1593,6 +1600,7 @@ fun RouteListScreen(
     onToggleItem: (RouteItem) -> Unit
 ) {
     var hideDelivered by remember { mutableStateOf(false) }
+    var manualDestination by remember { mutableStateOf("") }
 
     val displayedGroups = remember(routeItems, hideDelivered) {
         (if (hideDelivered) routeItems.filter { !it.isDelivered } else routeItems)
@@ -1652,7 +1660,27 @@ fun RouteListScreen(
                     }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = manualDestination,
+                    onValueChange = { manualDestination = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    label = { Text("Адрес или точка на карте") },
+                    placeholder = { Text("Введите адрес вручную") }
+                )
+                Button(
+                    onClick = { if (manualDestination.isNotBlank()) onOpenPointMap(manualDestination.trim()) },
+                    enabled = manualDestination.isNotBlank()
+                ) { Text("Маршрут") }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(
                 modifier = Modifier
