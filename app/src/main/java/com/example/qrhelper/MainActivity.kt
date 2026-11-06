@@ -828,8 +828,9 @@ fun HubScreen(
     onResetRoute: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
-    val totalPoints = routeItems.size
-    val deliveredCount = routeItems.count { it.isDelivered }
+    val pointGroups = routeItems.groupBy { it.storeName to it.address }
+    val totalPoints = pointGroups.size
+    val deliveredCount = pointGroups.values.count { group -> group.all { it.isDelivered } }
     val remainingBoxes = routeItems.filter { !it.isDelivered }.sumOf { it.totalBoxes }
     val progress = if (totalPoints == 0) 0f else deliveredCount.toFloat() / totalPoints
 
