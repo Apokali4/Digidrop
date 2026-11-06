@@ -807,42 +807,50 @@ fun LiveCameraScannerScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F9FC)),
+                shape = RoundedCornerShape(18.dp)
             ) {
-                Text(
-                    text = "← Назад",
-                    color = MintAccent,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.bounceClick { onBack() }
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(if (isFlashOn) EmeraldPrimary.copy(alpha = 0.3f) else CardSurface)
-                        .border(1.dp, if (isFlashOn) MintAccent else CardBorder, CircleShape)
-                        .bounceClick { onFlashToggle() },
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FlashlightVector(tint = if (isFlashOn) MintAccent else TextMuted)
+                    Text(
+                        text = "← Назад",
+                        color = Color(0xFF1F2B36),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.bounceClick { onBack() }
+                    )
+                    Text("СКАНЕР", color = Color(0xFF586979), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(CircleShape)
+                            .background(if (isFlashOn) Color(0xFFDDF5E7) else Color(0xFFE7ECF1))
+                            .border(1.dp, if (isFlashOn) Color(0xFF34C759) else Color(0xFFC9D3DB), CircleShape)
+                            .bounceClick { onFlashToggle() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FlashlightVector(tint = if (isFlashOn) Color(0xFF16834A) else Color(0xFF586979))
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                text = "Наведите рамку на штрихкод накладной",
-                color = TextLight,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F9FC)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = "Наведите рамку на штрихкод накладной",
+                    color = Color(0xFF1F2B36),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
