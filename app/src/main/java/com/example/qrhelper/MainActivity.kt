@@ -589,152 +589,121 @@ fun HubScreen(
     val totalPoints = routeItems.size
     val deliveredCount = routeItems.count { it.isDelivered }
     val remainingBoxes = routeItems.filter { !it.isDelivered }.sumOf { it.totalBoxes }
+    val progress = if (totalPoints == 0) 0f else deliveredCount.toFloat() / totalPoints
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgDark)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(BgDark).padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 20.dp)
-        ) {
-            TopBarSection(
-                title = "DigiDrop • РЕЙСЫ",
-                isFlashOn = isFlashOn,
-                onFlashToggle = onFlashToggle
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Вся плашка теперь кликабельная и сразу открывает список точек
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                    .bounceClick(scaleDown = 0.98f) { onOpenRoute() },
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
-                shape = RoundedCornerShape(20.dp)
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Смена • Калуга",
-                                color = TextMuted,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "→ к точкам",
-                                color = MintAccent,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Text(
-                            text = "Сброс рейса",
-                            color = EmeraldPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.bounceClick { onResetRoute() }
-                        )
+                Column {
+                    Text("DigiDrop", color = TextLight, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                    Text("Логистика • Сборка • Доставка", color = TextMuted, fontSize = 13.sp)
+                }
+                Box(
+                    modifier = Modifier.size(48.dp).clip(CircleShape)
+                        .background(CardSurface).border(1.dp, CardBorder, CircleShape)
+                        .bounceClick { onFlashToggle() },
+                    contentAlignment = Alignment.Center
+                ) { FlashlightVector(tint = if (isFlashOn) EmeraldPrimary else TextMuted) }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(22.dp))
+                    .bounceClick(scaleDown = 0.985f) { onOpenRoute() },
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                shape = RoundedCornerShape(22.dp)
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("АКТИВНЫЙ РЕЙС", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Сбросить", color = Color(0xFFD94B4B), fontSize = 12.sp,
+                            modifier = Modifier.bounceClick { onResetRoute() })
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom) {
                         Column {
-                            Text(
-                                text = "" + deliveredCount + " / " + totalPoints,
-                                color = MintAccent,
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(text = "Точек сдано", color = TextLight, fontSize = 13.sp)
+                            Text("$deliveredCount / $totalPoints", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                            Text("точек доставлено", color = TextMuted, fontSize = 13.sp)
                         }
-                        Column {
-                            Text(
-                                text = "" + remainingBoxes + " шт",
-                                color = EmeraldPrimary,
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(text = "Осталось мест", color = TextLight, fontSize = 13.sp)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("$remainingBoxes", color = Color(0xFF16834A), fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                            Text("мест осталось", color = TextMuted, fontSize = 12.sp)
                         }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Box(Modifier.fillMaxWidth().height(10.dp).clip(CircleShape).background(Color(0xFFD9E2EA))) {
+                        Box(Modifier.fillMaxWidth(progress).height(10.dp).clip(CircleShape).background(Color(0xFF34C759)))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(if (totalPoints == 0) "Загрузите накладную, чтобы начать рейс" else "Нажмите, чтобы открыть список точек",
+                        color = TextMuted, fontSize = 12.sp)
+                }
+            }
+        }
+        item {
+            Text("Рабочие инструменты", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubTile("Накладные", "Список точек и сдача", "▤", Color(0xFF2D7BFF), Modifier.weight(1f), onOpenRoute)
+                HubTile("Сканер", "Приём и отгрузка", "▣", Color(0xFF168F78), Modifier.weight(1f), onOpenScanner)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubTile("Файлы", "Импорт CSV / TSV", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
+                HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().bounceClick { onCallDispatcher() },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE2ECF7)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("☎", color = Color(0xFF1767D2), fontSize = 25.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("Связь с диспетчером", color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("Быстрый звонок на склад", color = TextMuted, fontSize = 12.sp)
                     }
                 }
             }
+        }
+        item { Spacer(Modifier.height(10.dp)) }
+    }
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Быстрые действия",
-                color = TextLight,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HubActionButton(
-                title = "Список точек маршрута",
-                subtitle = "Накладные, отметки сдачи, звонки",
-                buttonColor = EmeraldPrimary,
-                textColor = BgDark,
-                onClick = onOpenRoute
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HubActionButton(
-                title = "Сканировать накладную",
-                subtitle = "Боевая камера с автораспознаванием",
-                buttonColor = CardSurface,
-                textColor = MintAccent,
-                borderColor = MintAccent,
-                onClick = onOpenScanner
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HubActionButton(
-                title = "Загрузить рейс из файла (1С / CSV)",
-                subtitle = "Открыть таблицу рейса из памяти",
-                buttonColor = CardSurface,
-                textColor = EmeraldPrimary,
-                borderColor = CardBorder,
-                onClick = onLoadFile
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HubActionButton(
-                title = "Маршрут к следующей точке",
-                subtitle = "Открыть адрес в Картах / Навигаторе",
-                buttonColor = CardSurface,
-                textColor = TextLight,
-                borderColor = CardBorder,
-                onClick = onNavigateNext
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HubActionButton(
-                title = "Связь с базой / Логист",
-                subtitle = "Быстрый звонок диспетчеру на склад",
-                buttonColor = CardSurface,
-                textColor = MintAccent,
-                borderColor = CardBorder,
-                onClick = onCallDispatcher
-            )
+@Composable
+fun HubTile(
+    title: String,
+    subtitle: String,
+    symbol: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.height(132.dp).border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+            .bounceClick(scaleDown = 0.97f) { onClick() },
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(symbol, color = accent, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+            Column {
+                Text(title, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = TextMuted, fontSize = 11.sp, maxLines = 1)
+            }
         }
     }
 }
