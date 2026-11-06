@@ -111,7 +111,8 @@ data class RouteItem(
     val note: String = "Разгрузка через пандус",
     val isDelivered: Boolean = false,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val scannedBoxes: Int = 0
 )
 
 // Реальный рейс появляется только после загрузки файла накладной.
@@ -318,7 +319,8 @@ fun DigitDropRoot() {
         mutableStateOf(
             INITIAL_DEMO_ROUTE.map { item ->
                 val savedDelivered = prefs.getBoolean("delivered_" + item.barcode, item.isDelivered)
-                item.copy(isDelivered = savedDelivered)
+                val savedScanned = prefs.getInt("scanned_" + item.barcode, item.scannedBoxes)
+                item.copy(isDelivered = savedDelivered, scannedBoxes = savedScanned)
             }
         )
     }
@@ -338,9 +340,11 @@ fun DigitDropRoot() {
         val editor = prefs.edit()
         routeItems.forEach { item ->
             editor.remove("delivered_" + item.barcode)
+            editor.remove("scanned_" + item.barcode)
         }
+        editor.remove("scan_codes")
         editor.apply()
-        routeItems = routeItems.map { it.copy(isDelivered = false) }
+        routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
@@ -354,7 +358,10 @@ fun DigitDropRoot() {
                     val imported = parseManifest(content)
                     if (imported.isNotEmpty()) {
                         val withProgress = imported.map { item ->
-                            item.copy(isDelivered = prefs.getBoolean("delivered_" + item.barcode, false))
+                            item.copy(
+                                isDelivered = prefs.getBoolean("delivered_" + item.barcode, false),
+                                scannedBoxes = prefs.getInt("scanned_" + item.barcode, 0)
+                            )
                         }
                         routeItems = withProgress
                         importScope.launch {
@@ -483,18 +490,36 @@ fun DigitDropRoot() {
                 onFlashToggle = { toggleFlashlight() },
                 onBack = { currentScreen = AppScreen.HUB },
                 onBarcodeScanned = { scannedCode ->
-                    val matchedItem = routeItems.firstOrNull { it.barcode == scannedCode }
-                    if (matchedItem != null) {
-                        try {
-                            val toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
-                            toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 120)
-                        } catch (_: Exception) {}
-
-                        selectedItem = matchedItem
-                        Toast.makeText(context, "Накладная найдена: " + matchedItem.storeName, Toast.LENGTH_SHORT).show()
-                        currentScreen = AppScreen.DETAILS
-                    } else {
-                        Toast.makeText(context, "Штрихкод " + scannedCode + " не найден в рейсе", Toast.LENGTH_SHORT).show()
+                    val matchedItem = routeItems.firstOrNull { it.barcode.equals(scannedCode.trim(), ignoreCase = true) }
+                    val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    val normalizedCode = scannedCode.trim()
+                    when {
+                        matchedItem == null -> {
+                            val unknown = prefs.getStringSet("unknown_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
+                            unknown.add(normalizedCode)
+                            prefs.edit().putStringSet("unknown_codes", unknown).apply()
+                            Toast.makeText(context, "Неизвестный код: $normalizedCode", Toast.LENGTH_LONG).show()
+                            currentScreen = AppScreen.HUB
+                        }
+                        normalizedCode in savedCodes -> {
+                            Toast.makeText(context, "Дубликат сканирования: $normalizedCode", Toast.LENGTH_LONG).show()
+                            currentScreen = AppScreen.HUB
+                        }
+                        else -> {
+                            savedCodes.add(normalizedCode)
+                            prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
+                                "scanned_" + matchedItem.barcode,
+                                prefs.getInt("scanned_" + matchedItem.barcode, matchedItem.scannedBoxes) + 1
+                            ).apply()
+                            val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
+                            routeItems = routeItems.map { if (it.barcode == matchedItem.barcode) updated else it }
+                            selectedItem = updated
+                            try {
+                                ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
+                            } catch (_: Exception) {}
+                            Toast.makeText(context, "Скан принят: ${updated.scannedBoxes} / ${updated.totalBoxes}", Toast.LENGTH_SHORT).show()
+                            currentScreen = AppScreen.DETAILS
+                        }
                     }
                 }
             )
@@ -983,6 +1008,19 @@ fun PointDetailsScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Отсканировано: ${item.scannedBoxes} / ${item.totalBoxes}",
+                        color = if (item.scannedBoxes >= item.totalBoxes) Color(0xFF16834A) else Color(0xFF1767D2),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Box(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape).background(Color(0xFFD9E2EA))) {
+                        Box(
+                            Modifier.fillMaxWidth((item.scannedBoxes.toFloat() / item.totalBoxes.coerceAtLeast(1)).coerceIn(0f, 1f))
+                                .height(9.dp).clip(CircleShape).background(Color(0xFF34C759))
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1439,6 +1477,12 @@ fun RouteItemCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
+                )
+                Text(
+                    text = "Сканировано: ${item.scannedBoxes} / ${item.totalBoxes}",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
