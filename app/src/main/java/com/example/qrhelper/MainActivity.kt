@@ -471,7 +471,6 @@ fun DigitDropRoot() {
         }
     }
 
-    when (currentScreen) {
     BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
         currentScreen = when (currentScreen) {
             AppScreen.SCANNER -> previousScreen
