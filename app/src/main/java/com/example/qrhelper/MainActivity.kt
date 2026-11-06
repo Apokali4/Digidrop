@@ -125,6 +125,9 @@ data class RouteItem(
 val INITIAL_DEMO_ROUTE: List<RouteItem> = emptyList()
 
 
+private fun routeItemKey(item: RouteItem): String =
+    listOf(item.barcode, item.storeName, item.address, item.itemName, item.phone).joinToString("|")
+
 private fun splitCsvLine(line: String, delimiter: Char): List<String> {
     val result = mutableListOf<String>()
     val field = StringBuilder()
@@ -330,7 +333,8 @@ enum class AppScreen {
     HUB,
     ROUTE_LIST,
     DETAILS,
-    SCANNER
+    SCANNER,
+    SCAN_RESULTS
 }
 
 val BgDark = Color(0xFFE7ECF1)
@@ -380,6 +384,7 @@ fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
     var previousScreen by remember { mutableStateOf(AppScreen.HUB) }
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
+    var scanMatches by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
@@ -414,8 +419,8 @@ fun DigitDropRoot() {
     var routeItems by remember {
         mutableStateOf(
             parseManifest(prefs.getString("active_manifest", "").orEmpty()).map { item ->
-                val savedDelivered = prefs.getBoolean("delivered_" + item.barcode, item.isDelivered)
-                val savedScanned = prefs.getInt("scanned_" + item.barcode, item.scannedBoxes)
+                val savedDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), item.isDelivered)
+                val savedScanned = prefs.getInt("scanned_" + routeItemKey(item), item.scannedBoxes)
                 item.copy(isDelivered = savedDelivered, scannedBoxes = savedScanned)
             }
         )
@@ -423,11 +428,11 @@ fun DigitDropRoot() {
 
     fun updateItemStatus(item: RouteItem) {
         val nextStatus = !item.isDelivered
-        prefs.edit().putBoolean("delivered_" + item.barcode, nextStatus).apply()
+        prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
         routeItems = routeItems.map { current ->
-            if (current.barcode == item.barcode) current.copy(isDelivered = nextStatus) else current
+            if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
         }
-        if (selectedItem?.barcode == item.barcode) {
+        if (selectedItem?.let(::routeItemKey) == routeItemKey(item)) {
             selectedItem = selectedItem?.copy(isDelivered = nextStatus)
         }
     }
@@ -435,8 +440,8 @@ fun DigitDropRoot() {
     fun resetRouteProgress() {
         val editor = prefs.edit()
         routeItems.forEach { item ->
-            editor.remove("delivered_" + item.barcode)
-            editor.remove("scanned_" + item.barcode)
+            editor.remove("delivered_" + routeItemKey(item))
+            editor.remove("scanned_" + routeItemKey(item))
         }
         editor.remove("scan_codes")
         editor.remove("active_manifest")
@@ -490,8 +495,8 @@ fun DigitDropRoot() {
                         prefs.edit().putString("active_manifest", content).apply()
                         val withProgress = imported.map { item ->
                             item.copy(
-                                isDelivered = prefs.getBoolean("delivered_" + item.barcode, false),
-                                scannedBoxes = prefs.getInt("scanned_" + item.barcode, 0)
+                                isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
+                                scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
                             )
                         }
                         routeItems = withProgress
@@ -632,6 +637,17 @@ fun DigitDropRoot() {
                 currentScreen = AppScreen.ROUTE_LIST
             }
         }
+        AppScreen.SCAN_RESULTS -> {
+            ScanResultsScreen(
+                code = scanMatches.firstOrNull()?.barcode.orEmpty(),
+                matches = scanMatches,
+                onBack = { currentScreen = AppScreen.SCANNER },
+                onOpenPoint = { item ->
+                    selectedItem = item
+                    currentScreen = AppScreen.DETAILS
+                }
+            )
+        }
         AppScreen.SCANNER -> {
             LiveCameraScannerScreen(
                 isFlashOn = isFlashlightOn,
@@ -645,11 +661,8 @@ fun DigitDropRoot() {
                     val isPlainProductCode = normalizedCode.matches(Regex("\\d{8}|\\d{12,14}"))
                     when {
                         matches.size > 1 -> {
-                            val candidates = matches.joinToString("; ") {
-                                "${it.storeName}: ${it.totalBoxes - it.scannedBoxes} ост."
-                            }
-                            Toast.makeText(context, "Код встречается в нескольких накладных: $candidates", Toast.LENGTH_LONG).show()
-                            currentScreen = AppScreen.ROUTE_LIST
+                            scanMatches = matches
+                            currentScreen = AppScreen.SCAN_RESULTS
                         }
                         matchedItem == null -> {
                             val unknown = prefs.getStringSet("unknown_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
@@ -674,12 +687,13 @@ fun DigitDropRoot() {
                         }
                         else -> {
                             savedCodes.add(normalizedCode)
+                            val itemKey = routeItemKey(matchedItem)
                             prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
-                                "scanned_" + matchedItem.barcode,
-                                prefs.getInt("scanned_" + matchedItem.barcode, matchedItem.scannedBoxes) + 1
+                                "scanned_" + itemKey,
+                                prefs.getInt("scanned_" + itemKey, matchedItem.scannedBoxes) + 1
                             ).apply()
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
-                            routeItems = routeItems.map { if (it.barcode == matchedItem.barcode) updated else it }
+                            routeItems = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
                             selectedItem = updated
                             try {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -1091,6 +1105,53 @@ fun LiveCameraScannerScreen(
     }
 }
 
+@Composable
+fun ScanResultsScreen(
+    code: String,
+    matches: List<RouteItem>,
+    onBack: () -> Unit,
+    onOpenPoint: (RouteItem) -> Unit
+) {
+    val groups = matches.groupBy { it.storeName to it.address }.toList()
+    Column(
+        modifier = Modifier.fillMaxSize().background(BgDark).padding(18.dp)
+    ) {
+        Text("← Назад к сканеру", color = MintAccent, fontSize = 16.sp,
+            fontWeight = FontWeight.Bold, modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(18.dp))
+        Text("Найдено несколько назначений", color = TextLight, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text("Код: $code", color = TextMuted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Spacer(Modifier.height(8.dp))
+        Text("Обычный товарный штрихкод не указывает на одну конкретную коробку. Выбери нужную точку по данным накладной.",
+            color = TextMuted, fontSize = 13.sp)
+        Spacer(Modifier.height(14.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(groups, key = { it.first.first + "|" + it.first.second }) { entry ->
+                val pointItems = entry.second
+                val total = pointItems.sumOf { it.totalBoxes }
+                val scanned = pointItems.sumOf { it.scannedBoxes }
+                Card(
+                    modifier = Modifier.fillMaxWidth().bounceClick { onOpenPoint(pointItems.first()) },
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(pointItems.first().storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(pointItems.first().address, color = TextMuted, fontSize = 12.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("По накладным: $total", color = TextLight, fontSize = 14.sp)
+                            Text("Осталось: ${(total - scanned).coerceAtLeast(0)}", color = MintAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text("${pointItems.size} строк(и) накладной • нажми для подробностей", color = TextMuted, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- ЭКРАН ДЕТАЛЬНОЙ НАКЛАДНОЙ (ЧТО ВНУТРИ) ---
 @Composable
 fun PointDetailsScreen(
@@ -1465,7 +1526,7 @@ fun RouteListScreen(
                         }
                     }
                 } else {
-                    items(displayedItems, key = { it.barcode }) { item ->
+                    items(displayedItems, key = { routeItemKey(it) }) { item ->
                         RouteItemCard(
                             item = item,
                             onCardClick = { onItemClick(item) },
