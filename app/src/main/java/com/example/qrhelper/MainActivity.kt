@@ -128,6 +128,20 @@ val INITIAL_DEMO_ROUTE: List<RouteItem> = emptyList()
 private fun routeItemKey(item: RouteItem): String =
     listOf(item.barcode, item.storeName, item.address, item.itemName, item.phone).joinToString("|")
 
+private data class BarcodeLookup(val candidates: Set<String>, val hasUniquePackageId: Boolean)
+
+private fun normalizeScannedBarcode(raw: String): BarcodeLookup {
+    val value = raw.trim().removePrefix("]C1").replace("(", "").replace(")", "")
+    val candidates = linkedSetOf(value)
+    val gtin = Regex("01(\\d{14})").find(value)?.groupValues?.getOrNull(1)
+    if (gtin != null) candidates.add(gtin)
+    val hasSscc = Regex("00\\d{18}").containsMatchIn(value)
+    val hasSerial = Regex("21[A-Za-z0-9-]{1,20}").containsMatchIn(value)
+    val digitsOnly = value.all { it.isDigit() }
+    val plainRetailCode = digitsOnly && value.length in setOf(8, 12, 13, 14)
+    return BarcodeLookup(candidates, hasSscc || hasSerial || (!plainRetailCode && gtin == null && value.length > 14))
+}
+
 private fun splitCsvLine(line: String, delimiter: Char): List<String> {
     val result = mutableListOf<String>()
     val field = StringBuilder()
@@ -655,10 +669,11 @@ fun DigitDropRoot() {
                 onBack = { currentScreen = previousScreen },
                 onBarcodeScanned = { scannedCode ->
                     val normalizedCode = scannedCode.trim()
-                    val matches = routeItems.filter { it.barcode.equals(normalizedCode, ignoreCase = true) }
+                    val lookup = normalizeScannedBarcode(normalizedCode)
+                    val matches = routeItems.filter { item -> lookup.candidates.any { it.equals(item.barcode.trim(), ignoreCase = true) } }
                     val matchedItem = matches.singleOrNull()
                     val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
-                    val isPlainProductCode = normalizedCode.matches(Regex("\\d{8}|\\d{12,14}"))
+                    val isPlainProductCode = !lookup.hasUniquePackageId
                     when {
                         matches.size > 1 -> {
                             scanMatches = matches
