@@ -349,7 +349,11 @@ enum class AppScreen {
     DETAILS,
     SCANNER,
     SCAN_RESULTS,
-    POINT_DETAILS
+    POINT_DETAILS,
+    REPORTS,
+    SETTINGS,
+    HISTORY,
+    UNKNOWN_CODES
 }
 
 val BgDark = Color(0xFFE7ECF1)
@@ -401,6 +405,10 @@ fun DigitDropRoot() {
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     var scanMatches by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
+    var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
+    var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
+    var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
+    var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty()) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
@@ -601,6 +609,7 @@ fun DigitDropRoot() {
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
             AppScreen.HUB -> AppScreen.HUB
+            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
         }
     }
@@ -620,6 +629,10 @@ fun DigitDropRoot() {
                 onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
                 onResetRoute = { resetRouteProgress() },
+                onOpenReports = { currentScreen = AppScreen.REPORTS },
+                onOpenSettings = { currentScreen = AppScreen.SETTINGS },
+                onOpenHistory = { currentScreen = AppScreen.HISTORY },
+                onOpenUnknown = { unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty(); currentScreen = AppScreen.UNKNOWN_CODES },
                 onNavigateNext = {
                     val nextItem = routeItems.firstOrNull { !it.isDelivered }
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
@@ -681,6 +694,27 @@ fun DigitDropRoot() {
                     currentScreen = AppScreen.DETAILS
                 }
             )
+        }
+        AppScreen.REPORTS -> {
+            ReportsScreen(routeItems, onBack = { currentScreen = AppScreen.HUB }, onExport = { reportLauncher.launch("DigiDrop_report.csv") })
+        }
+        AppScreen.SETTINGS -> {
+            SettingsScreen(
+                offlineMode = settingsOffline, autoSave = settingsAutoSave, compactMode = settingsCompact,
+                onBack = { currentScreen = AppScreen.HUB },
+                onOfflineChange = { settingsOffline = it; prefs.edit().putBoolean("offline_mode", it).apply() },
+                onAutoSaveChange = { settingsAutoSave = it; prefs.edit().putBoolean("auto_save", it).apply() },
+                onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
+                onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() }
+            )
+        }
+        AppScreen.HISTORY -> {
+            HistoryScreen(routeItems, onBack = { currentScreen = AppScreen.HUB })
+        }
+        AppScreen.UNKNOWN_CODES -> {
+            UnknownCodesScreen(unknownCodes, onBack = { currentScreen = AppScreen.HUB }, onClear = {
+                prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList()
+            })
         }
         AppScreen.SCANNER -> {
             LiveCameraScannerScreen(
@@ -826,6 +860,10 @@ fun HubScreen(
     onExportReport: () -> Unit,
     onCallDispatcher: () -> Unit,
     onResetRoute: () -> Unit,
+    onOpenReports: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenUnknown: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
     val pointGroups = routeItems.groupBy { it.storeName to it.address }
@@ -931,6 +969,18 @@ fun HubScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HubTile("Файлы", "Другие форматы", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
                 HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubTile("Отчёты", "Сводка и экспорт", "▥", Color(0xFF16834A), Modifier.weight(1f), onOpenReports)
+                HubTile("Настройки", "Режимы и параметры", "⚙", Color(0xFF527DA8), Modifier.weight(1f), onOpenSettings)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HubTile("История", "Состояние рейса", "◷", Color(0xFF527DA8), Modifier.weight(1f), onOpenHistory)
+                HubTile("Неизвестные коды", "Проверить сканы", "?", Color(0xFFD18B26), Modifier.weight(1f), onOpenUnknown)
             }
         }
         item {
