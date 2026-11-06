@@ -348,7 +348,8 @@ enum class AppScreen {
     ROUTE_LIST,
     DETAILS,
     SCANNER,
-    SCAN_RESULTS
+    SCAN_RESULTS,
+    POINT_DETAILS
 }
 
 val BgDark = Color(0xFFE7ECF1)
@@ -398,6 +399,7 @@ fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
     var previousScreen by remember { mutableStateOf(AppScreen.HUB) }
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
+    var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     var scanMatches by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
@@ -631,9 +633,9 @@ fun DigitDropRoot() {
                 onOpenScanner = { openScanner() },
                 onOpenPointMap = { address -> launchNavigation(address) },
                 onCallClient = { phone -> makePhoneCall(phone) },
-                onItemClick = { item ->
-                    selectedItem = item
-                    currentScreen = AppScreen.DETAILS
+                onPointClick = { pointItems ->
+                    selectedPointItems = pointItems
+                    currentScreen = AppScreen.POINT_DETAILS
                 },
                 onToggleItem = { item -> updateItemStatus(item) }
             )
@@ -650,6 +652,21 @@ fun DigitDropRoot() {
             } ?: run {
                 currentScreen = AppScreen.ROUTE_LIST
             }
+        }
+        AppScreen.POINT_DETAILS -> {
+            PointGroupScreen(
+                items = selectedPointItems,
+                onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                onOpenInvoice = { item ->
+                    selectedItem = item
+                    currentScreen = AppScreen.DETAILS
+                },
+                onNavigate = {
+                    val item = selectedPointItems.firstOrNull()
+                    if (item != null) launchNavigation(item.address, item.latitude, item.longitude)
+                },
+                onCall = { makePhoneCall(selectedPointItems.firstOrNull()?.phone.orEmpty()) }
+            )
         }
         AppScreen.SCAN_RESULTS -> {
             ScanResultsScreen(
@@ -1167,6 +1184,91 @@ fun ScanResultsScreen(
     }
 }
 
+@Composable
+fun StoreGroupCard(
+    items: List<RouteItem>,
+    onClick: () -> Unit,
+    onMapClick: () -> Unit,
+    onCallClick: () -> Unit
+) {
+    val first = items.first()
+    val total = items.sumOf { it.totalBoxes }
+    val scanned = items.sumOf { it.scannedBoxes }
+    val delivered = items.all { it.isDelivered }
+    Card(
+        modifier = Modifier.fillMaxWidth().border(1.dp, if (delivered) CardBorder else EmeraldPrimary.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
+            .bounceClick(scaleDown = 0.98f, onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(if (delivered) "Доставлено" else "В пути", color = if (delivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(first.address, color = TextMuted, fontSize = 12.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Позиций: ${items.map { it.itemName }.distinct().size} • Учтено сканов: $scanned", color = TextMuted, fontSize = 11.sp)
+                Text(items.take(2).joinToString(" · ") { it.itemName }, color = MintAccent, fontSize = 12.sp, maxLines = 1)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(38.dp).clip(CircleShape).background(CardBorder).bounceClick { onMapClick() }, contentAlignment = Alignment.Center) { MapIconVector(MintAccent) }
+                Box(Modifier.size(38.dp).clip(CircleShape).background(CardBorder).bounceClick { onCallClick() }, contentAlignment = Alignment.Center) { PhoneIconVector(MintAccent) }
+                Text("Открыть", color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun PointGroupScreen(
+    items: List<RouteItem>,
+    onBack: () -> Unit,
+    onOpenInvoice: (RouteItem) -> Unit,
+    onNavigate: () -> Unit,
+    onCall: () -> Unit
+) {
+    val total = items.sumOf { it.totalBoxes }
+    val scanned = items.sumOf { it.scannedBoxes }
+    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+        Text("← Точки маршрута", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(16.dp))
+        Text(items.firstOrNull()?.storeName.orEmpty(), color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text(items.firstOrNull()?.address.orEmpty(), color = TextMuted, fontSize = 13.sp)
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Накладных/строк: ${items.size}", color = TextLight, fontSize = 14.sp)
+            Text("Всего мест: $total", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        }
+        Text("Учтено уникальных сканов: $scanned", color = TextMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubActionButton("Навигатор", "Открыть точку", CardSurface, TextLight, MintAccent, onNavigate)
+            HubActionButton("Позвонить", "Связаться с точкой", CardSurface, TextLight, MintAccent, onCall)
+        }
+        Spacer(Modifier.height(14.dp))
+        Text("Состав точки", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(items, key = { routeItemKey(it) }) { item ->
+                Card(Modifier.fillMaxWidth().bounceClick { onOpenInvoice(item) },
+                    colors = CardDefaults.cardColors(containerColor = CardSurface), shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(item.itemName, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("Штрихкод: ${item.barcode}", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
+                            Text(if (item.isDelivered) "Сдано" else "В пути", color = if (item.isDelivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text("Нажми, чтобы открыть накладную", color = TextMuted, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- ЭКРАН ДЕТАЛЬНОЙ НАКЛАДНОЙ (ЧТО ВНУТРИ) ---
 @Composable
 fun PointDetailsScreen(
@@ -1392,13 +1494,14 @@ fun RouteListScreen(
     onOpenScanner: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
-    onItemClick: (RouteItem) -> Unit,
+    onPointClick: (List<RouteItem>) -> Unit,
     onToggleItem: (RouteItem) -> Unit
 ) {
     var hideDelivered by remember { mutableStateOf(false) }
 
-    val displayedItems = remember(routeItems, hideDelivered) {
-        if (hideDelivered) routeItems.filter { !it.isDelivered } else routeItems
+    val displayedGroups = remember(routeItems, hideDelivered) {
+        (if (hideDelivered) routeItems.filter { !it.isDelivered } else routeItems)
+            .groupBy { it.storeName to it.address }.toList()
     }
 
     Box(
@@ -1514,7 +1617,7 @@ fun RouteListScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                if (displayedItems.isEmpty()) {
+                if (displayedGroups.isEmpty()) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
@@ -1541,13 +1644,12 @@ fun RouteListScreen(
                         }
                     }
                 } else {
-                    items(displayedItems, key = { routeItemKey(it) }) { item ->
-                        RouteItemCard(
-                            item = item,
-                            onCardClick = { onItemClick(item) },
-                            onMapClick = { onOpenPointMap(item.address) },
-                            onCallClick = { onCallClient(item.phone) },
-                            onToggleStatus = { onToggleItem(item) }
+                    items(displayedGroups, key = { it.first.first + "|" + it.first.second }) { group ->
+                        StoreGroupCard(
+                            items = group.second,
+                            onClick = { onPointClick(group.second) },
+                            onMapClick = { onOpenPointMap(group.second.first().address) },
+                            onCallClick = { onCallClient(group.second.first().phone) }
                         )
                     }
                 }
