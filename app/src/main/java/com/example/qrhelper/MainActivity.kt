@@ -452,7 +452,7 @@ fun DigitDropRoot() {
 
     fun updateItemStatus(item: RouteItem) {
         val nextStatus = !item.isDelivered
-        prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
+        if (settingsAutoSave) prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
         routeItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
         }
@@ -525,7 +525,7 @@ fun DigitDropRoot() {
                         }
                         routeItems = withProgress
                         importScope.launch {
-                            val ordered = geocodeRoute(context, withProgress)
+                            val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
                             routeItems = ordered
                             val optimized = ordered.map { it.barcode } != withProgress.map { it.barcode }
                             val geocoded = ordered.count { it.latitude != null && it.longitude != null }
@@ -756,10 +756,12 @@ fun DigitDropRoot() {
                         else -> {
                             savedCodes.add(normalizedCode)
                             val itemKey = routeItemKey(matchedItem)
-                            prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
-                                "scanned_" + itemKey,
-                                prefs.getInt("scanned_" + itemKey, matchedItem.scannedBoxes) + 1
-                            ).apply()
+                            if (settingsAutoSave) {
+                                prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
+                                    "scanned_" + itemKey,
+                                    prefs.getInt("scanned_" + itemKey, matchedItem.scannedBoxes) + 1
+                                ).apply()
+                            }
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
                             routeItems = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
                             selectedItem = updated
