@@ -1229,14 +1229,42 @@ fun RouteListScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(displayedItems, key = { it.barcode }) { item ->
-                    RouteItemCard(
-                        item = item,
-                        onCardClick = { onItemClick(item) },
-                        onMapClick = { onOpenPointMap(item.address) },
-                        onCallClick = { onCallClient(item.phone) },
-                        onToggleStatus = { onToggleItem(item) }
-                    )
+                if (displayedItems.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
+                                .border(1.dp, CardBorder, RoundedCornerShape(20.dp)),
+                            colors = CardDefaults.cardColors(containerColor = CardSurface),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(22.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    if (hideDelivered && routeItems.isNotEmpty()) "Все точки уже сданы" else "Рейс пока пуст",
+                                    color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    if (hideDelivered && routeItems.isNotEmpty()) "Переключите фильтр, чтобы увидеть завершённые точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
+                                    color = TextMuted, fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(displayedItems, key = { it.barcode }) { item ->
+                        RouteItemCard(
+                            item = item,
+                            onCardClick = { onItemClick(item) },
+                            onMapClick = { onOpenPointMap(item.address) },
+                            onCallClick = { onCallClient(item.phone) },
+                            onToggleStatus = { onToggleItem(item) }
+                        )
+                    }
                 }
             }
 
