@@ -405,13 +405,13 @@ fun DigitDropRoot() {
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     var scanMatches by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
-    var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
-    var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
-    var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
-    var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty()) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
+    var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
+    var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
+    var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
+    var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet<String>())?.toList().orEmpty()) }
 
     val cameraManager = remember { context.getSystemService(Context.CAMERA_SERVICE) as CameraManager }
     val cameraId = remember {
