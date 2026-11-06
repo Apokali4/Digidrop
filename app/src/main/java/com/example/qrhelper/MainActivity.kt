@@ -7,6 +7,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.app.Activity
+import android.view.View
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.layout.statusBarsPadding
 import android.location.Geocoder
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -402,6 +407,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    val windowContext = LocalContext.current
+    SideEffect {
+        val activity = windowContext as? Activity
+        activity?.window?.let { window ->
+            if (currentScreen == AppScreen.SPLASH) {
+                window.statusBarColor = Color(0xFF04142D).toArgb()
+                window.decorView.systemUiVisibility = 0
+            } else {
+                window.statusBarColor = BgDark.toArgb()
+                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            }
+        }
+    }
     var previousScreen by remember { mutableStateOf(AppScreen.HUB) }
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
@@ -1028,17 +1046,17 @@ fun HubScreen(
     val progress = if (totalPoints == 0) 0f else deliveredCount.toFloat() / totalPoints
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(BgDark).padding(horizontal = 18.dp),
+        modifier = Modifier.fillMaxSize().background(BgDark).statusBarsPadding().padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("DigiDrop", color = TextLight, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                    Text("DigiDrop", color = TextLight, fontSize = 24.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp)
                     Text("Логистика • Сборка • Доставка", color = TextMuted, fontSize = 13.sp)
                 }
                 Spacer(Modifier.size(1.dp))
