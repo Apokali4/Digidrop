@@ -524,6 +524,7 @@ fun DigitDropRoot() {
                             )
                         }
                         routeItems = withProgress
+                        currentScreen = AppScreen.HUB
                         importScope.launch {
                             val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
                             routeItems = ordered
@@ -615,7 +616,11 @@ fun DigitDropRoot() {
 
     when (currentScreen) {
         AppScreen.SPLASH -> {
-            SplashScreen(onFinished = { currentScreen = AppScreen.HUB })
+            InvoiceLandingScreen(
+                onLoadInvoice = {
+                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                }
+            )
         }
         AppScreen.HUB -> {
             HubScreen(
@@ -851,6 +856,57 @@ fun SplashScreen(onFinished: () -> Unit) {
 }
 
 @Composable
+fun InvoiceLandingScreen(onLoadInvoice: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(BgDark).padding(horizontal = 26.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            Modifier.size(88.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFDCEBFA)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("D", color = Color(0xFF1767D2), fontSize = 48.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(22.dp))
+        Text("DigiDrop", color = TextLight, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        Text("Рабочее место водителя", color = TextMuted, fontSize = 14.sp)
+        Spacer(Modifier.height(44.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth()
+                .border(1.dp, Color(0xFF9BBFE5), RoundedCornerShape(22.dp))
+                .bounceClick(scaleDown = 0.97f) { onLoadInvoice() },
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE5F0FF)),
+            shape = RoundedCornerShape(22.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFD2E5FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⇧", color = Color(0xFF1767D2), fontSize = 31.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(15.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Загрузить накладную", color = Color(0xFF15365D), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Excel XLSX • CSV • TSV", color = Color(0xFF46627F), fontSize = 12.sp)
+                }
+                Text("›", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "После загрузки откроется рабочий экран с точками, сканером, маршрутом и отчётами.",
+            color = TextMuted, fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
 fun HubScreen(
     routeItems: List<RouteItem>,
     isFlashOn: Boolean,
@@ -893,33 +949,6 @@ fun HubScreen(
                         .bounceClick { onFlashToggle() },
                     contentAlignment = Alignment.Center
                 ) { FlashlightVector(tint = if (isFlashOn) EmeraldPrimary else TextMuted) }
-            }
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-                    .border(1.dp, Color(0xFF2D7BFF).copy(alpha = 0.65f), RoundedCornerShape(20.dp))
-                    .bounceClick(scaleDown = 0.97f) { onLoadFile() },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE5F0FF)),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 17.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFD2E5FF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("⇧", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Загрузить накладную", color = Color(0xFF15365D), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text("Excel XLSX • CSV • TSV", color = Color(0xFF46627F), fontSize = 12.sp)
-                    }
-                    Text("›", color = Color(0xFF1767D2), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
         item {
@@ -967,10 +996,7 @@ fun HubScreen(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HubTile("Файлы", "Другие форматы", "▱", Color(0xFF527DA8), Modifier.weight(1f), onLoadFile)
-                HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.weight(1f), onNavigateNext)
-            }
+            HubTile("Маршрут", "Следующая точка", "⌖", Color(0xFF16834A), Modifier.fillMaxWidth(), onNavigateNext)
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
