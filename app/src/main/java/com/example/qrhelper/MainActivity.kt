@@ -21,6 +21,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -408,31 +409,20 @@ fun DigitDropRoot() {
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
     var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet<String>())?.toList().orEmpty()) }
 
-    val cameraManager = remember { context.getSystemService(Context.CAMERA_SERVICE) as CameraManager }
-    val cameraId = remember {
-        try {
-            cameraManager.cameraIdList.firstOrNull { id ->
-                cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
+    var cameraXCamera by remember { mutableStateOf<Camera?>(null) }
     var isFlashlightOn by remember { mutableStateOf(false) }
 
     fun toggleFlashlight() {
-        if (cameraId != null) {
-            try {
-                val newState = !isFlashlightOn
-                cameraManager.setTorchMode(cameraId, newState)
-                isFlashlightOn = newState
-            } catch (ex: Exception) {
-                Toast.makeText(context, "Фонарик: " + ex.message, Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Toast.makeText(context, "Вспышка не найдена", Toast.LENGTH_SHORT).show()
+        val activeCamera = cameraXCamera
+        if (activeCamera == null) {
+            Toast.makeText(context, "Камера ещё запускается", Toast.LENGTH_SHORT).show()
+            return
         }
+        val newState = !isFlashlightOn
+        activeCamera.cameraControl.enableTorch(newState)
+            .addListener({
+                isFlashlightOn = newState
+            }, ContextCompat.getMainExecutor(context))
     }
 
     var routeItems by remember {
@@ -720,6 +710,7 @@ fun DigitDropRoot() {
             LiveCameraScannerScreen(
                 isFlashOn = isFlashlightOn,
                 onFlashToggle = { toggleFlashlight() },
+                onCameraBound = { cameraXCamera = it },
                 onBack = { currentScreen = previousScreen },
                 onBarcodeScanned = { scannedCode ->
                     val normalizedCode = scannedCode.trim()
@@ -1060,6 +1051,7 @@ fun HubTile(
 fun LiveCameraScannerScreen(
     isFlashOn: Boolean,
     onFlashToggle: () -> Unit,
+    onCameraBound: (Camera) -> Unit,
     onBack: () -> Unit,
     onBarcodeScanned: (String) -> Unit
 ) {
@@ -1132,12 +1124,13 @@ fun LiveCameraScannerScreen(
 
                     try {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
+                        val boundCamera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             preview,
                             imageAnalysis
                         )
+                        onCameraBound(boundCamera)
                     } catch (e: Exception) {
                         Toast.makeText(ctx, "Камера недоступна: " + e.message, Toast.LENGTH_SHORT).show()
                     }
