@@ -990,6 +990,10 @@ fun DigitDropRoot() {
                         val found = resolved.count { it.latitude != null && it.longitude != null }
                         Toast.makeText(context, "Координаты определены: $found из ${resolved.size}", Toast.LENGTH_LONG).show()
                     }
+                },
+                onSelectPoint = { items ->
+                    selectedPointItems = items
+                    currentScreen = AppScreen.POINT_DETAILS
                 }
             )
         }
