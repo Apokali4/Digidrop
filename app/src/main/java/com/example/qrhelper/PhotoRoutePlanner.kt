@@ -101,8 +101,9 @@ private suspend fun runRussianOcr(
 
     withContext(Dispatchers.Main) { onProgress("Подготавливаю фотографию для распознавания…") }
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    context.contentResolver.openInputStream(imageUri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    val boundsStream = context.contentResolver.openInputStream(imageUri)
         ?: error("Не удалось открыть фотографию")
+    boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
     check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Файл не является читаемым изображением" }
     val options = BitmapFactory.Options().apply {
         inSampleSize = PhotoOcrImageSizing.sampleSize(bounds.outWidth, bounds.outHeight)
