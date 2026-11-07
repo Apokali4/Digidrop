@@ -121,12 +121,17 @@ fun OfflineMapScreen(
                             routeItems.filter { it.latitude != null && it.longitude != null }.forEachIndexed { index, item ->
                                 val coordinates = JSONArray().put(item.longitude).put(item.latitude)
                                 routeCoordinates.put(coordinates)
+                                val markerStatus = when {
+                                    item.isDelivered -> "Сдано" to "#27AE60"
+                                    item.scannedBoxes > 0 -> "В работе" to "#2878C8"
+                                    else -> "Ожидает" to "#E5A000"
+                                }
                                 val properties = JSONObject()
                                     .put("number", index + 1)
                                     .put("name", item.storeName)
                                     .put("address", item.address)
-                                    .put("status", if (item.isDelivered) "Сдано" else "Ожидает")
-                                    .put("color", if (item.isDelivered) "#27AE60" else "#E5A000")
+                                    .put("status", markerStatus.first)
+                                    .put("color", markerStatus.second)
                                 pointFeatures.put(JSONObject().put("type", "Feature")
                                     .put("geometry", JSONObject().put("type", "Point").put("coordinates", coordinates))
                                     .put("properties", properties))
