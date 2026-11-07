@@ -379,23 +379,6 @@ internal fun parseManifest(text: String): List<RouteItem> {
     return parsed
 }
 
-private fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
-    val groups = items.groupBy { it.storeName to it.address }.values.map { it.toList() }
-    if (groups.size < 3) return items
-    val stops = groups.map { group ->
-        val first = group.first()
-        RouteStop(
-            id = first.storeName + "|" + first.address,
-            latitude = first.latitude,
-            longitude = first.longitude,
-            completed = group.all { it.isDelivered }
-        )
-    }
-    val optimized = RouteOrderOptimizer.optimize(stops)
-    val byId = groups.associateBy { group -> group.first().storeName + "|" + group.first().address }
-    return optimized.flatMap { stop -> byId[stop.id].orEmpty() }
-}
-
 private fun orderRouteByCoordinates(items: List<RouteItem>): List<RouteItem> {
     if (items.size < 3 || items.any { it.latitude == null || it.longitude == null }) return items
     val remaining = items.drop(1).toMutableList()
@@ -993,7 +976,7 @@ fun DigitDropRoot() {
                     }
                 },
                 onNavigateNext = {
-                    val nextItem = routeItems.firstOrNull { !it.isDelivered }
+                    val nextItem = nextPendingPoint(routeItems)?.firstOrNull()
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
                     else launchNavigation(nextItem.address, nextItem.latitude, nextItem.longitude)
                 }
@@ -1897,7 +1880,7 @@ fun StoreGroupCard(
     val first = items.first()
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
-    val delivered = items.all { it.isDelivered }
+    val delivered = deliveryPointStatus(items) == DeliveryPointStatus.DELIVERED
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
         modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> Color(0xFFB3261E); delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
@@ -2609,7 +2592,7 @@ fun RouteListScreen(
 
             BottomActionButtons(
                 onRouteClick = {
-                    val nextPoint = routeItems.firstOrNull { !it.isDelivered }?.address.orEmpty()
+                    val nextPoint = nextPendingPoint(routeItems)?.firstOrNull()?.address.orEmpty()
                     onOpenPointMap(nextPoint)
                 },
                 onScanClick = onOpenScanner
