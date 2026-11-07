@@ -958,7 +958,7 @@ fun DigitDropRoot() {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 onLoadInvoice = {
-                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 },
                 onPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE }
             )
