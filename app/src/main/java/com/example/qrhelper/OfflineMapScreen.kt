@@ -67,12 +67,7 @@ fun OfflineMapScreen(
             val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
             val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
             val discrepancies = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
-            val status = when {
-                discrepancies > 0 -> DeliveryPointStatus.PROBLEM
-                group.all { it.isDelivered } || (expected > 0 && scanned >= expected) -> DeliveryPointStatus.DELIVERED
-                scanned > 0 -> DeliveryPointStatus.IN_PROGRESS
-                else -> DeliveryPointStatus.PENDING
-            }
+            val status = deliveryPointStatus(group)
             DeliveryPointSnapshot(
                 id = group.first().storeName + "|" + group.first().address,
                 sortOrder = index,
@@ -195,11 +190,11 @@ fun OfflineMapScreen(
                                 val item = group.first()
                                 val coordinates = JSONArray().put(item.longitude).put(item.latitude)
                                 routeCoordinates.put(coordinates)
-                                val markerStatus = when {
-                                    group.any { it.discrepancyQty > 0 } -> "Проблема" to "#C62828"
-                                    group.all { it.isDelivered } -> "Сдано" to "#27AE60"
-                                    group.any { it.scannedBoxes > 0 || it.isDelivered } -> "В работе" to "#2878C8"
-                                    else -> "Ожидает" to "#E5A000"
+                                val markerStatus = when (deliveryPointStatus(group)) {
+                                    DeliveryPointStatus.PROBLEM -> "Проблема" to "#C62828"
+                                    DeliveryPointStatus.DELIVERED -> "Сдано" to "#27AE60"
+                                    DeliveryPointStatus.IN_PROGRESS -> "В работе" to "#2878C8"
+                                    DeliveryPointStatus.PENDING -> "Ожидает" to "#E5A000"
                                 }
                                 val properties = JSONObject()
                                     .put("number", pointGroups.indexOf(group) + 1)
@@ -273,17 +268,18 @@ fun OfflineMapScreen(
             ) {
                 itemsIndexed(visiblePointGroups) { index, group ->
                     val first = group.first()
-                    val status = when {
-                        group.any { it.discrepancyQty > 0 } -> "Проблема"
-                        group.all { it.isDelivered } -> "Сдано"
-                        group.any { it.scannedBoxes > 0 || it.isDelivered } -> "В работе"
-                        else -> "Ожидает"
+                    val pointStatus = deliveryPointStatus(group)
+                    val status = when (pointStatus) {
+                        DeliveryPointStatus.PROBLEM -> "Проблема"
+                        DeliveryPointStatus.DELIVERED -> "Сдано"
+                        DeliveryPointStatus.IN_PROGRESS -> "В работе"
+                        DeliveryPointStatus.PENDING -> "Ожидает"
                     }
-                    val tint = when (status) {
-                        "Проблема" -> Color(0xFFC62828)
-                        "Сдано" -> Color(0xFF27AE60)
-                        "В работе" -> Color(0xFF2878C8)
-                        else -> Color(0xFFE5A000)
+                    val tint = when (pointStatus) {
+                        DeliveryPointStatus.PROBLEM -> Color(0xFFC62828)
+                        DeliveryPointStatus.DELIVERED -> Color(0xFF27AE60)
+                        DeliveryPointStatus.IN_PROGRESS -> Color(0xFF2878C8)
+                        DeliveryPointStatus.PENDING -> Color(0xFFE5A000)
                     }
                     Card(
                         Modifier.width(190.dp).clickable { onSelectPoint(group) },
