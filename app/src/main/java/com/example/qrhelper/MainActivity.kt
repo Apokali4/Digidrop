@@ -295,14 +295,19 @@ internal fun parseXlsx(input: InputStream): List<RouteItem> {
         .filter { it.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")) }
         .sortedBy { Regex("sheet([0-9]+)").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
     if (sheetNames.isEmpty()) return emptyList()
-    return sheetNames.flatMap { sheetName ->
-        val rows = readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
+    val sheets = sheetNames.map { sheetName ->
+        readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
+    }
+    return parseXlsxSheets(sheets)
+}
+
+internal fun parseXlsxSheets(sheets: List<List<List<String>>>): List<RouteItem> =
+    sheets.flatMap { rows ->
         val tsv = rows.joinToString("\n") { row ->
             row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
         }
         parseManifest(tsv)
     }
-}
 
 internal fun parseManifest(text: String): List<RouteItem> {
     val lines = text.removePrefix("\uFEFF").lineSequence()
