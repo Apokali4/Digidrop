@@ -618,17 +618,20 @@ fun DigitDropRoot() {
 
         // DigiDrop хранит и управляет маршрутом. Яндекс Навигатор получает только
         // назначение текущей точки и отвечает за голосовое ведение до неё.
-        val navigatorIntent = if (latitude != null && longitude != null) {
-            Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("yandexnavi://build_route_on_map?lat_to=$latitude&lon_to=$longitude")
-            ).setPackage("ru.yandex.yandexnavi")
+        val navigatorUri = if (latitude != null && longitude != null) {
+            Uri.parse("yandexnavi://build_route_on_map")
+                .buildUpon()
+                .appendQueryParameter("lat_to", latitude.toString())
+                .appendQueryParameter("lon_to", longitude.toString())
+                .build()
         } else {
-            Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://yandex.ru/maps/?rtext=~" + Uri.encode(address) + "&rtt=auto")
-            )
+            Uri.parse("yandexnavi://map_search")
+                .buildUpon()
+                .appendQueryParameter("text", address)
+                .build()
         }
+        val navigatorIntent = Intent(Intent.ACTION_VIEW, navigatorUri)
+            .setPackage("ru.yandex.yandexnavi")
 
         try {
             context.startActivity(navigatorIntent)
