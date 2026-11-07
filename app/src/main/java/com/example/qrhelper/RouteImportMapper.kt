@@ -31,19 +31,26 @@ internal data class PointImportPlan(
     val cargo: List<CargoImportPlan>
 )
 
+internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
+    if (items.isEmpty()) return DeliveryStatus.PENDING
+    val expected = items.sumOf { it.totalBoxes.coerceAtLeast(0) }
+    val scanned = items.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+    return when {
+        items.any { it.discrepancyQty > 0 } -> DeliveryStatus.HAS_DISCREPANCY
+        items.all { it.isDelivered } -> DeliveryStatus.COMPLETED
+        expected > 0 && scanned >= expected -> DeliveryStatus.COMPLETED
+        items.any { it.isDelivered } || scanned > 0 -> DeliveryStatus.IN_PROGRESS
+        else -> DeliveryStatus.PENDING
+    }
+}
+
 internal object RouteImportMapper {
     fun map(items: List<RouteItem>): List<PointImportPlan> =
         items.groupBy { it.storeName.trim() to it.address.trim() }
             .entries
             .mapIndexed { index, entry ->
                 val group = entry.value
-                val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
-                val status = when {
-                    group.all { it.isDelivered } -> DeliveryStatus.COMPLETED
-                    group.any { it.discrepancyQty > 0 } -> DeliveryStatus.HAS_DISCREPANCY
-                    group.any { it.isDelivered } || scanned > 0 -> DeliveryStatus.IN_PROGRESS
-                    else -> DeliveryStatus.PENDING
-                }
+                val status = deliveryStatusForItems(group)
                 PointImportPlan(
                     storeName = entry.key.first,
                     address = entry.key.second,

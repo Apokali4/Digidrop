@@ -5,6 +5,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RouteImportMapperTest {
+    @Test fun marksPointCompletedWhenAllExpectedBoxesWereScannedWithoutManualConfirmation() {
+        val item = RouteItem("a", "Магазин", "Адрес", "Товар", 3, "", scannedBoxes = 3)
+        assertEquals(DeliveryStatus.COMPLETED, RouteImportMapper.map(listOf(item)).single().status)
+    }
+
+    @Test fun discrepancyOverridesManualCompletionInStoredPointStatus() {
+        val item = RouteItem(
+            "a", "Магазин", "Адрес", "Товар", 3, "",
+            isDelivered = true, scannedBoxes = 2, discrepancyQty = 1, discrepancyReason = "НЕДОВОЗ"
+        )
+        assertEquals(DeliveryStatus.HAS_DISCREPANCY, RouteImportMapper.map(listOf(item)).single().status)
+    }
+
     @Test fun groupsMultipleInvoiceRowsAtTheSameStoreAndAddress() {
         val items = listOf(
             RouteItem("4601234567890", "Магазин", "Калуга, ул. Кирова, 1", "Молоко", 4, "8800"),
