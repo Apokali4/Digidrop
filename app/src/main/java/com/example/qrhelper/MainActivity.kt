@@ -1208,7 +1208,31 @@ fun DigitDropRoot() {
             )
         }
         AppScreen.HISTORY -> {
-            HistoryScreen(archivedRoutes, onBack = { currentScreen = AppScreen.HUB })
+            HistoryScreen(
+                routes = archivedRoutes,
+                onBack = { currentScreen = AppScreen.HUB },
+                onRestoreRoute = { routeId ->
+                    importScope.launch {
+                        runCatching { LogisticsRepository(context).restoreArchivedRoute(routeId) }
+                            .onSuccess { restored ->
+                                routeItems = restored
+                                val manifest = restored.joinToString("\n") { item ->
+                                    listOf(
+                                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                                    ).joinToString("\t") { it.replace("\t", " ") }
+                                }
+                                prefs.edit().putString("active_manifest", manifest).apply()
+                                currentScreen = AppScreen.ROUTE_LIST
+                                Toast.makeText(context, "Архивный рейс восстановлен", Toast.LENGTH_LONG).show()
+                            }
+                            .onFailure { error ->
+                                Toast.makeText(context, "Не удалось восстановить рейс: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
+                }
+            )
         }
         AppScreen.PRODUCTS -> {
             ProductCatalogScreen(
@@ -3090,7 +3114,11 @@ fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange
 }
 
 @Composable
-internal fun HistoryScreen(routes: List<RouteHistorySnapshot>, onBack: () -> Unit) {
+internal fun HistoryScreen(
+    routes: List<RouteHistorySnapshot>,
+    onBack: () -> Unit,
+    onRestoreRoute: (Long) -> Unit
+) {
     val formatter = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("ru", "RU")) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
@@ -3118,6 +3146,10 @@ internal fun HistoryScreen(routes: List<RouteHistorySnapshot>, onBack: () -> Uni
                                 color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
                             )
                             Text("Выполнение по сканам: $percent%", color = TextMuted, fontSize = 12.sp)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { onRestoreRoute(route.routeId) }) {
+                                Text("Восстановить этот рейс", color = MintAccent)
+                            }
                         }
                     }
                 }
