@@ -34,6 +34,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Query("SELECT * FROM products WHERE barcode LIKE '%' || :query || '%' OR productName LIKE '%' || :query || '%' ORDER BY productName COLLATE NOCASE") suspend fun searchProducts(query:String):List<ProductEntity>
  @Query("SELECT * FROM products ORDER BY productName COLLATE NOCASE") suspend fun allProducts():List<ProductEntity>
  @Query("UPDATE delivery_routes SET active=0 WHERE active=1") suspend fun deactivateRoutes()
+ @Query("UPDATE delivery_routes SET active=1 WHERE id=:id AND active=0") suspend fun activateArchivedRoute(id:Long):Int
  @Query("SELECT * FROM delivery_routes WHERE active=0 ORDER BY createdAt DESC") suspend fun archivedRoutesOnce():List<DeliveryRouteEntity>
  @Query("SELECT COUNT(*) FROM delivery_points WHERE routeId=:routeId") suspend fun pointCount(routeId:Long):Int
  @Query("SELECT COUNT(*) FROM delivery_points WHERE routeId=:routeId AND status='COMPLETED'") suspend fun completedPointCount(routeId:Long):Int
