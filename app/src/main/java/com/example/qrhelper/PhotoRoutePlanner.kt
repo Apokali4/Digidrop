@@ -184,22 +184,40 @@ private fun openExternalMap(context: android.content.Context, url: String) {
     }
 }
 
-private suspend fun geocodePhotoStops(context: android.content.Context, addresses: List<String>): Pair<List<LocatedPhotoStop>, List<String>> =
-    withContext(Dispatchers.IO) {
-        val geocoder = Geocoder(context, Locale("ru", "RU"))
-        val found = mutableListOf<LocatedPhotoStop>()
-        val failed = mutableListOf<String>()
-        for (address in addresses) {
-            try {
-                val result = geocoder.getFromLocationName(address, 1)?.firstOrNull()
-                if (result == null) failed += address
-                else found += LocatedPhotoStop(address, result.latitude, result.longitude)
-            } catch (_: Exception) {
-                failed += address
-            }
-        }
-        found to failed
+internal object PhotoRouteGeocodingQuery {
+    fun build(address: String, city: String): String {
+        val cleanCity = city.trim()
+        return if (cleanCity.isEmpty()) address.trim()
+        else "${address.trim()}, $cleanCity, Россия"
     }
+}
+
+private suspend fun geocodePhotoStops(
+    context: android.content.Context,
+    addresses: List<String>,
+    city: String
+): Pair<List<LocatedPhotoStop>, List<String>> = withContext(Dispatchers.IO) {
+    val geocoder = Geocoder(context, Locale("ru", "RU"))
+    val found = mutableListOf<LocatedPhotoStop>()
+    val failed = mutableListOf<String>()
+    for (address in addresses) {
+        try {
+            val query = PhotoRouteGeocodingQuery.build(address, city)
+            val result = geocoder.getFromLocationName(query, 3)
+                ?.minByOrNull { candidate ->
+                    // Prefer a result whose locality/sub-admin area matches the selected city.
+                    val locality = listOfNotNull(candidate.locality, candidate.subAdminArea, candidate.adminArea)
+                        .joinToString(" ").lowercase(Locale("ru", "RU"))
+                    if (city.isNotBlank() && locality.contains(city.trim().lowercase(Locale("ru", "RU")))) 0 else 1
+                }
+            if (result == null) failed += address
+            else found += LocatedPhotoStop(address, result.latitude, result.longitude)
+        } catch (_: Exception) {
+            failed += address
+        }
+    }
+    found to failed
+}
 
 private data class OptimizedPhotoRoute(val stops: List<LocatedPhotoStop>, val geometryJson: String)
 
@@ -233,6 +251,7 @@ fun PhotoRoutePlannerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var rawText by remember { mutableStateOf("") }
+    var routeCity by remember { mutableStateOf("Калуга") }
     var addresses by remember { mutableStateOf(listOf<String>()) }
     var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
@@ -282,6 +301,14 @@ fun PhotoRoutePlannerScreen(
             status = "Кандидатов адресов: ${addresses.size}. Проверьте список ниже."
         }, modifier = Modifier.fillMaxWidth()) { Text("Выделить адреса из текста") }
         Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = routeCity,
+            onValueChange = { routeCity = it },
+            label = { Text("Город маршрута") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(Modifier.height(8.dp))
         Text("Адреса для маршрута: ${addresses.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             addresses.forEachIndexed { index, address ->
@@ -305,7 +332,7 @@ fun PhotoRoutePlannerScreen(
                         val clean = addresses.map { it.trim() }.filter { it.isNotBlank() }.distinct()
                         require(clean.size >= 2) { "Добавьте минимум два адреса" }
                         status = "Ищу координаты адресов…"
-                        val (resolved, failed) = geocodePhotoStops(context, clean)
+                        val (resolved, failed) = geocodePhotoStops(context, clean, routeCity)
                         located = resolved
                         if (failed.isNotEmpty()) {
                             status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
@@ -314,8 +341,18 @@ fun PhotoRoutePlannerScreen(
                         } else {
                             status = "Оптимизирую дорожный порядок точек…"
                             val optimized = optimizePhotoRoute(resolved)
+                            check(optimized.stops.size == resolved.size) {
+                                "После оптимизации изменилось количество точек: было ${resolved.size}, стало ${optimized.stops.size}"
+                            }
                             located = optimized.stops
-                            status = "Маршрут построен: ${optimized.stops.size} точек. Порядок рассчитан по дорожной сети OSRM."
+                            val duplicateGroups = optimized.stops.groupBy {
+                                "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
+                            }.values.filter { it.size > 1 }
+                            status = if (duplicateGroups.isEmpty()) {
+                                "Маршрут построен: ${optimized.stops.size} точек в городе «${routeCity.trim()}». Порядок рассчитан по дорожной сети OSRM."
+                            } else {
+                                "Маршрут построен, но ${duplicateGroups.sumOf { it.size - 1 }} адрес(а) получили совпадающие координаты. Проверьте город и адреса: Яндекс может объединить такие точки."
+                            }
                         }
                     } catch (error: Exception) {
                         status = "Не удалось построить маршрут: ${error.message ?: "ошибка сети"}"
