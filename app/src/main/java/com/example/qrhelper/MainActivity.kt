@@ -123,6 +123,8 @@ import com.example.qrhelper.domain.DeliveryPointSnapshot
 import com.example.qrhelper.domain.DeliveryPointStatus
 import com.example.qrhelper.domain.PointFilter
 import com.example.qrhelper.domain.RouteProgress
+import com.example.qrhelper.domain.RouteStop
+import com.example.qrhelper.domain.RouteOrderOptimizer
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -368,6 +370,23 @@ internal fun parseManifest(text: String): List<RouteItem> {
         ))
     }
     return parsed
+}
+
+private fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
+    val groups = items.groupBy { it.storeName to it.address }.values.map { it.toList() }
+    if (groups.size < 3) return items
+    val stops = groups.map { group ->
+        val first = group.first()
+        RouteStop(
+            id = first.storeName + "|" + first.address,
+            latitude = first.latitude,
+            longitude = first.longitude,
+            completed = group.all { it.isDelivered }
+        )
+    }
+    val optimized = RouteOrderOptimizer.optimize(stops)
+    val byId = groups.associateBy { group -> group.first().storeName + "|" + group.first().address }
+    return optimized.flatMap { stop -> byId[stop.id].orEmpty() }
 }
 
 private fun orderRouteByCoordinates(items: List<RouteItem>): List<RouteItem> {
@@ -1004,6 +1023,24 @@ fun DigitDropRoot() {
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
+                onRebuildRoute = {
+                    val reordered = rebuildRemainingRoute(routeItems)
+                    if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
+                        Toast.makeText(context, "Маршрут уже оптимален или не хватает координат точек", Toast.LENGTH_LONG).show()
+                    } else {
+                        routeItems = reordered
+                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
+                        val saved = reordered.joinToString("\n") { item ->
+                            listOf(
+                                item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                            ).joinToString("\t") { it.replace("\t", " ") }
+                        }
+                        prefs.edit().putString("active_manifest", saved).apply()
+                        Toast.makeText(context, "Оставшийся маршрут перестроен", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onOpenPointMap = { address -> launchNavigation(address) },
                 onCallClient = { phone -> makePhoneCall(phone) },
                 onPointClick = { pointItems ->
@@ -2233,6 +2270,7 @@ fun RouteListScreen(
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenOfflineMap: () -> Unit,
+    onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
@@ -2343,7 +2381,10 @@ fun RouteListScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onRebuildRoute) {
+                    Text("Перестроить оставшийся маршрут")
+                }
                 TextButton(onClick = onOpenOfflineMap) {
                     Text("ОФЛАЙН-КАРТА КАЛУГИ И ОБЛАСТИ")
                 }
