@@ -526,20 +526,16 @@ fun PhotoRoutePlannerScreen(
                         } else if (resolved.size < 2) {
                             status = "Найдено меньше двух координат. Проверьте адреса."
                         } else {
-                            status = "Оптимизирую дорожный порядок точек…"
-                            val optimized = optimizePhotoRoute(context, resolved, routeCity)
-                            check(optimized.stops.size == resolved.size) {
-                                "После оптимизации изменилось количество точек: было ${resolved.size}, стало ${optimized.stops.size}"
-                            }
-                            routeOrigin = optimized.origin
-                            located = optimized.stops
-                            val duplicateGroups = optimized.stops.groupBy {
+                            // Сначала только проверка и просмотр адресов. Оптимизация запускается отдельно после проверки водителем.
+                            routeOrigin = null
+                            located = resolved
+                            val duplicateGroups = resolved.groupBy {
                                 "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
                             }.values.filter { it.size > 1 }
                             status = if (duplicateGroups.isEmpty()) {
-                                "Маршрут построен от базы: Параллельная, 21. ${optimized.stops.size} доставок; финиш — самая дальняя точка. Порядок рассчитан по дорожной сети OSRM."
+                                "Найдено точек: ${resolved.size}. Проверьте каждую в Яндекс Картах и при необходимости исправьте адреса."
                             } else {
-                                "Маршрут построен, но ${duplicateGroups.sumOf { it.size - 1 }} адрес(а) получили совпадающие координаты. Проверьте город и адреса: Яндекс может объединить такие точки."
+                                "Найдено точек: ${resolved.size}. ${duplicateGroups.sumOf { it.size - 1 }} точек получили одинаковые координаты. Проверьте их вручную."
                             }
                         }
                     } catch (error: Exception) {
@@ -547,14 +543,14 @@ fun PhotoRoutePlannerScreen(
                     } finally { busy = false }
                 }
             }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
-                Text(if (busy) "Подождите…" else "Оптимизировать")
+                Text(if (busy) "Подождите…" else "Найти и проверить точки")
             }
         }
         if (located.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
-            Text("Маршрут: база → ${located.size} доставок → самая дальняя точка", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            Text("Предварительный список: ${located.size} точек", color = TextLight, style = MaterialTheme.typography.titleMedium)
             Text(
-                "Порядок точек уже оптимизирован. Открой маршрут во внешнем навигаторе: встроенная мини-карта больше не используется.",
+                "Проверьте каждую точку в Яндекс Картах. Порядок пока сохранён как в маршрутном листе, оптимизация не запускалась.",
                 color = TextMuted,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -618,6 +614,10 @@ fun PhotoRoutePlannerScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Точка ${index + 1}", color = TextLight, style = MaterialTheme.typography.labelLarge)
                             Text(stop.address, color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = {
+                                val query = "${stop.latitude},${stop.longitude}"
+                                openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
+                            }) { Text("Проверить в Яндекс Картах") }
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             TextButton(
