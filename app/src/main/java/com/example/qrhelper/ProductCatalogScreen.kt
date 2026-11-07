@@ -57,7 +57,7 @@ fun ProductCatalogScreen(
         Spacer(Modifier.height(10.dp))
         Text("Найдено товаров: ${products.size}", color = TextMuted, fontSize = 12.sp)
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(products, key = { it.barcode }) { product ->
