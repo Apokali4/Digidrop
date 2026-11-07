@@ -15,8 +15,8 @@ class ProductCatalogMapperTest {
         )
         assertEquals(
             listOf(
-                ProductCatalogRecord("4601", "Сок яблочный 1л"),
-                ProductCatalogRecord("4602", "Вода")
+                ProductCatalogRecord("4602", "Вода"),
+                ProductCatalogRecord("4601", "Сок яблочный 1л")
             ),
             products
         )
