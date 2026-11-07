@@ -13,7 +13,9 @@ internal data class CargoImportPlan(
     val ownerName: String,
     val workingHours: String,
     val cashNote: String,
-    val extraComment: String
+    val extraComment: String,
+    val discrepancyQty: Int,
+    val discrepancyReason: com.example.qrhelper.data.DiscrepancyReason?
 )
 
 internal data class PointImportPlan(
@@ -58,7 +60,11 @@ internal object RouteImportMapper {
                             ownerName = item.ownerName,
                             workingHours = item.workingHours,
                             cashNote = item.cashNote,
-                            extraComment = item.extraComment
+                            extraComment = item.extraComment,
+                            discrepancyQty = item.discrepancyQty.coerceAtLeast(0),
+                            discrepancyReason = item.discrepancyReason?.let {
+                                runCatching { com.example.qrhelper.data.DiscrepancyReason.valueOf(it) }.getOrNull()
+                            }
                         )
                     }
                 )
