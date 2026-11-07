@@ -102,7 +102,8 @@ internal object PhotoRouteTextParser {
         val hours = Regex("""(?iu)\b\d{1,2}[:.]\d{2}\s*[-–—до]+\s*\d{1,2}[:.]\d{2}\b""")
             .find(block.joinToString(" "))?.value.orEmpty()
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс)""").containsMatchIn(it) }.orEmpty()
-        val owner = block.firstOrNull { Regex("""(?iu)\b(ИП|ООО|АО|ИП\s+[А-ЯЁ])""").containsMatchIn(it) }.orEmpty()
+        val owner = block.firstOrNull { Regex("""(?iu)\bИП\b""").containsMatchIn(it) }
+            ?: block.firstOrNull { Regex("""(?iu)\b(ООО|АО)\b""").containsMatchIn(it) }.orEmpty()
         val shop = block.firstOrNull {
             it != address && Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|доставка|павильон|ООО|АО)""").containsMatchIn(it)
         }.orEmpty()
