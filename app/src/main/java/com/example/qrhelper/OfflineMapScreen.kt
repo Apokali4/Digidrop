@@ -46,7 +46,8 @@ fun OfflineMapScreen(
     routeItems: List<RouteItem>,
     refreshKey: Int,
     onBack: () -> Unit,
-    onImportMap: () -> Unit
+    onImportMap: () -> Unit,
+    onGeocodeMissing: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -98,6 +99,11 @@ fun OfflineMapScreen(
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
+            if (missingCoordinates > 0) {
+                TextButton(onClick = onGeocodeMissing) {
+                    Text("Определить координаты недостающих точек (нужен интернет)")
+                }
+            }
             key(refreshKey, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
