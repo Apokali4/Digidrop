@@ -67,6 +67,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -539,6 +540,22 @@ fun DigitDropRoot() {
         }
     }
 
+    fun updateItemDiscrepancy(item: RouteItem, quantity: Int, reason: String) {
+        val updatedItems = routeItems.map { current ->
+            if (routeItemKey(current) == routeItemKey(item)) {
+                current.copy(discrepancyQty = quantity.coerceAtLeast(0), discrepancyReason = reason)
+            } else current
+        }
+        routeItems = updatedItems
+        selectedItem = updatedItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+        importScope.launch {
+            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+                .onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить расхождение: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+        }
+    }
+
     fun resetRouteProgress() {
         val editor = prefs.edit()
         routeItems.forEach { item ->
@@ -857,7 +874,8 @@ fun DigitDropRoot() {
                     onBack = { currentScreen = AppScreen.ROUTE_LIST },
                     onNavigate = { launchNavigation(item.address, item.latitude, item.longitude) },
                     onCall = { makePhoneCall(item.phone) },
-                    onToggleDelivered = { updateItemStatus(item) }
+                    onToggleDelivered = { updateItemStatus(item) },
+                    onSetDiscrepancy = { quantity, reason -> updateItemDiscrepancy(item, quantity, reason) }
                 )
             } ?: run {
                 currentScreen = AppScreen.ROUTE_LIST
@@ -1551,8 +1569,13 @@ fun PointDetailsScreen(
     onBack: () -> Unit,
     onNavigate: () -> Unit,
     onCall: () -> Unit,
-    onToggleDelivered: () -> Unit
+    onToggleDelivered: () -> Unit,
+    onSetDiscrepancy: (Int, String) -> Unit
 ) {
+    var showDiscrepancyDialog by remember(item.barcode) { mutableStateOf(false) }
+    var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
+    var discrepancyReason by remember(item.barcode) { mutableStateOf("НЕДОВОЗ") }
+    var discrepancyError by remember(item.barcode) { mutableStateOf("") }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1716,6 +1739,21 @@ fun PointDetailsScreen(
                 }
             }
 
+            HubActionButton(
+                if (item.discrepancyQty > 0) "Изменить расхождение: ${item.discrepancyQty}" else "Зафиксировать расхождение",
+                "Недовоз, брак или излишек",
+                CardSurface,
+                TextLight,
+                Color(0xFFD18B26)
+            ) { showDiscrepancyDialog = true }
+            if (item.discrepancyQty > 0) {
+                Text(
+                    "Текущее расхождение: ${item.discrepancyReason ?: "причина не указана"} • ${item.discrepancyQty} мест",
+                    color = Color(0xFFD18B26),
+                    fontSize = 12.sp
+                )
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             Row(
@@ -1772,6 +1810,50 @@ fun PointDetailsScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+        if (showDiscrepancyDialog) {
+            AlertDialog(
+                onDismissRequest = { showDiscrepancyDialog = false },
+                title = { Text("Расхождение по накладной") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = discrepancyQtyText,
+                            onValueChange = { discrepancyQtyText = it.filter(Char::isDigit).take(5); discrepancyError = "" },
+                            label = { Text("Количество мест") },
+                            singleLine = true
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("НЕДОВОЗ", "БРАК", "ИЗЛИШЕК").forEach { value ->
+                                TextButton(onClick = { discrepancyReason = value; discrepancyError = "" }) {
+                                    Text(value, color = if (discrepancyReason == value) MintAccent else TextMuted)
+                                }
+                            }
+                        }
+                        if (discrepancyError.isNotBlank()) {
+                            Text(discrepancyError, color = Color(0xFFB3261E), fontSize = 12.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val quantity = discrepancyQtyText.toIntOrNull()
+                        val maxAllowed = if (discrepancyReason == "ИЗЛИШЕК") Int.MAX_VALUE
+                            else (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0)
+                        when {
+                            quantity == null || quantity <= 0 -> discrepancyError = "Укажи количество больше нуля"
+                            quantity > maxAllowed -> discrepancyError = "Количество превышает остаток по накладной ($maxAllowed)"
+                            else -> {
+                                onSetDiscrepancy(quantity, discrepancyReason)
+                                showDiscrepancyDialog = false
+                            }
+                        }
+                    }) { Text("Сохранить") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDiscrepancyDialog = false }) { Text("Отмена") }
+                }
+            )
         }
     }
 }
