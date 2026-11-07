@@ -536,7 +536,23 @@ fun DigitDropRoot() {
         }
     }
 
-    val mapFileLauncher = rememberLauncherForActivityResult(\n        contract = ActivityResultContracts.OpenDocument()\n    ) { uri: Uri? ->\n        if (uri != null) {\n            importScope.launch {\n                try {\n                    val imported = withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }\n                    offlineMapRefresh++\n                    Toast.makeText(context, "Офлайн-карта установлена: ${imported.length() / (1024 * 1024)} МБ", Toast.LENGTH_LONG).show()\n                } catch (error: Exception) {\n                    Toast.makeText(context, error.message ?: "Не удалось импортировать карту", Toast.LENGTH_LONG).show()\n                }\n            }\n        }\n    }\n\n    val filePickerLauncher = rememberLauncherForActivityResult(
+    val mapFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            importScope.launch {
+                try {
+                    val imported = withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }
+                    offlineMapRefresh++
+                    Toast.makeText(context, "Офлайн-карта установлена: ${imported.length() / (1024 * 1024)} МБ", Toast.LENGTH_LONG).show()
+                } catch (error: Exception) {
+                    Toast.makeText(context, error.message ?: "Не удалось импортировать карту", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
