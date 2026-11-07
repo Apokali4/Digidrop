@@ -12,6 +12,7 @@ import android.view.View
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import android.location.Geocoder
 import android.media.AudioManager
 import android.media.ToneGenerator
