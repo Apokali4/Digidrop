@@ -45,6 +45,10 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.json.JSONArray
 import org.json.JSONObject
+import com.example.qrhelper.domain.DeliveryPointSnapshot
+import com.example.qrhelper.domain.DeliveryPointStatus
+import com.example.qrhelper.domain.PointFilter
+import com.example.qrhelper.domain.RouteProgress
 
 @Composable
 fun OfflineMapScreen(
@@ -57,7 +61,35 @@ fun OfflineMapScreen(
 ) {
     val context = LocalContext.current
     val pointGroups = remember(routeItems) { routeItems.groupBy { it.storeName to it.address }.values.map { it.toList() } }
-    val mappedGroups = pointGroups.filter { group -> group.firstOrNull()?.let { it.latitude != null && it.longitude != null } == true }
+    var selectedFilter by remember { mutableStateOf(PointFilter.ALL) }
+    val pointSnapshots = remember(pointGroups) {
+        pointGroups.mapIndexed { index, group ->
+            val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
+            val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+            val discrepancies = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
+            val status = when {
+                discrepancies > 0 -> DeliveryPointStatus.PROBLEM
+                group.all { it.isDelivered } || (expected > 0 && scanned >= expected) -> DeliveryPointStatus.DELIVERED
+                scanned > 0 -> DeliveryPointStatus.IN_PROGRESS
+                else -> DeliveryPointStatus.PENDING
+            }
+            DeliveryPointSnapshot(
+                id = group.first().storeName + "|" + group.first().address,
+                sortOrder = index,
+                status = status,
+                expectedUnits = expected,
+                scannedUnits = scanned,
+                discrepancyUnits = discrepancies
+            )
+        }
+    }
+    val visibleIds = remember(pointSnapshots, selectedFilter) {
+        RouteProgress.filter(pointSnapshots, selectedFilter).map { it.id }.toSet()
+    }
+    val visiblePointGroups = pointGroups.filter { group ->
+        (group.first().storeName + "|" + group.first().address) in visibleIds
+    }
+    val mappedGroups = visiblePointGroups.filter { group -> group.firstOrNull()?.let { it.latitude != null && it.longitude != null } == true }
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapFile by remember { mutableStateOf(OfflineMapStore.installedMap(context)) }
     LaunchedEffect(refreshKey) {
@@ -112,7 +144,26 @@ fun OfflineMapScreen(
                     Text("Определить координаты недостающих точек (нужен интернет)")
                 }
             }
-            key(refreshKey, pointGroups, activeMapFile.absolutePath) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(
+                    PointFilter.ALL to "Все",
+                    PointFilter.ACTIVE to "Активные",
+                    PointFilter.PROBLEMS to "Проблемы",
+                    PointFilter.DELIVERED to "Сданные"
+                ).forEach { (filter, label) ->
+                    TextButton(onClick = { selectedFilter = filter }) {
+                        Text(
+                            label,
+                            color = if (selectedFilter == filter) EmeraldPrimary else TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+            key(refreshKey, visiblePointGroups, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
                     MapView(context).apply { onCreate(null) }
@@ -197,6 +248,19 @@ fun OfflineMapScreen(
                                     .zoom(10.0)
                                     .build()
                             }
+                            map.addOnMapClickListener { tapped ->
+                                val screenPoint = map.projection.toScreenLocation(tapped)
+                                val feature = map.queryRenderedFeatures(screenPoint, "route-points-layer").firstOrNull()
+                                val markerNumber = feature?.getNumberProperty("number")?.toInt()
+                                val pointIndex = mapPointIndexFromMarkerNumber(markerNumber, pointGroups.size)
+                                val selectedGroup = pointIndex?.let { pointGroups.getOrNull(it) }
+                                if (selectedGroup != null) {
+                                    onSelectPoint(selectedGroup)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
                         }
                         mapView
                     },
@@ -207,7 +271,7 @@ fun OfflineMapScreen(
                 modifier = Modifier.fillMaxWidth().height(92.dp).padding(top = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                itemsIndexed(pointGroups) { index, group ->
+                itemsIndexed(visiblePointGroups) { index, group ->
                     val first = group.first()
                     val status = when {
                         group.any { it.discrepancyQty > 0 } -> "Проблема"
@@ -227,7 +291,7 @@ fun OfflineMapScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("${index + 1}. ${first.storeName}", color = TextLight, fontSize = 12.sp, maxLines = 1)
+                            Text("${pointGroups.indexOf(group) + 1}. ${first.storeName}", color = TextLight, fontSize = 12.sp, maxLines = 1)
                             Text(first.address, color = TextMuted, fontSize = 10.sp, maxLines = 1)
                             Text(status, color = tint, fontSize = 11.sp)
                         }
