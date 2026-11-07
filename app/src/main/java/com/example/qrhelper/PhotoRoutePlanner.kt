@@ -471,10 +471,48 @@ fun PhotoRoutePlannerScreen(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                located.mapIndexed { index, stop -> "${index + 1}. ${stop.address}" }.joinToString("\n"),
+                "Порядок можно менять вручную. Стрелки перемещают остановку выше или ниже; навигатор получит именно этот порядок.",
                 color = TextMuted,
                 style = MaterialTheme.typography.bodySmall
             )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                located.forEachIndexed { index, stop ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(BgDark.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Точка ${index + 1}", color = TextLight, style = MaterialTheme.typography.labelLarge)
+                            Text(stop.address, color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            TextButton(
+                                enabled = index > 0,
+                                onClick = {
+                                    located = located.toMutableList().also { list ->
+                                        val item = list.removeAt(index)
+                                        list.add(index - 1, item)
+                                    }
+                                    status = "Порядок изменён вручную. Экспортируй маршрут заново в навигатор."
+                                }
+                            ) { Text("↑ Выше") }
+                            TextButton(
+                                enabled = index < located.lastIndex,
+                                onClick = {
+                                    located = located.toMutableList().also { list ->
+                                        val item = list.removeAt(index)
+                                        list.add(index + 1, item)
+                                    }
+                                    status = "Порядок изменён вручную. Экспортируй маршрут заново в навигатор."
+                                }
+                            ) { Text("↓ Ниже") }
+                        }
+                    }
+                }
+            }
             OutlinedButton(
                 onClick = {
                     val items = located.mapIndexed { index, stop ->
