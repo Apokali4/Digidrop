@@ -129,7 +129,11 @@ data class RouteItem(
     val isDelivered: Boolean = false,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val scannedBoxes: Int = 0
+    val scannedBoxes: Int = 0,
+    val ownerName: String = "",
+    val workingHours: String = "",
+    val cashNote: String = "",
+    val extraComment: String = ""
 )
 
 // Реальный рейс появляется только после загрузки файла накладной.
@@ -284,15 +288,19 @@ internal fun parseManifest(text: String): List<RouteItem> {
         "address" to setOf("address", "адрес", "адресдоставки", "адресполучателя"),
         "item" to setOf("item", "товар", "наименование", "наименованиетовара", "номенклатура", "груз"),
         "boxes" to setOf("boxes", "мест", "колвомест", "количествомест", "местколво", "колвоупаковок", "коробки", "количество", "шт") ,
-        "phone" to setOf("phone", "телефон", "контакт"),
-        "note" to setOf("note", "комментарий", "примечание"),
+        "phone" to setOf("phone", "телефон", "контакт", "мобильный", "номертелефона"),
+        "owner" to setOf("owner", "ип", "фио", "предприниматель", "владелец", "контактноелицо"),
+        "hours" to setOf("hours", "времяработы", "графикработы", "режимработы", "работает"),
+        "cash" to setOf("cash", "наличные", "деньги", "забратьденьги", "оплата", "инкассация"),
+        "note" to setOf("note", "комментарий", "примечание", "инструкция", "условиядоставки"),
+        "extra" to setOf("extra", "дополнительно", "допкомментарий"),
         "lat" to setOf("lat", "latitude", "широта"),
         "lon" to setOf("lon", "lng", "longitude", "долгота")
     )
     val normalized = first.map(::normalize)
     val hasHeader = normalized.any { it in aliases.values.flatten() }
     val columns = if (hasHeader) aliases.mapValues { (_, names) -> normalized.indexOfFirst { it in names } } else
-        mapOf("barcode" to 0, "store" to 1, "address" to 2, "item" to 3, "boxes" to 4, "phone" to 5, "note" to 6, "lat" to 7, "lon" to 8)
+        mapOf("barcode" to 0, "store" to 1, "address" to 2, "item" to 3, "boxes" to 4, "phone" to 5, "note" to 6, "lat" to 7, "lon" to 8, "owner" to 9, "hours" to 10, "cash" to 11, "extra" to 12)
     fun value(row: List<String>, key: String): String {
         val i = columns[key] ?: -1
         return if (i >= 0 && i < row.size) row[i].trim() else ""
@@ -312,7 +320,11 @@ internal fun parseManifest(text: String): List<RouteItem> {
             address = address, itemName = value(row, "item").ifBlank { "Груз по накладной" },
             totalBoxes = boxes, phone = value(row, "phone"),
             note = value(row, "note").ifBlank { "Разгрузка по накладной" },
-            latitude = latitude, longitude = longitude
+            latitude = latitude, longitude = longitude,
+            ownerName = value(row, "owner"),
+            workingHours = value(row, "hours"),
+            cashNote = value(row, "cash"),
+            extraComment = value(row, "extra")
         ))
     }
     return parsed
@@ -369,13 +381,14 @@ enum class AppScreen {
     PHOTO_ROUTE
 }
 
-val BgDark = Color(0xFFF1F2F4)
-val CardSurface = Color(0xFFFFFFFF)
-val CardBorder = Color(0xFFD9DEE5)
-val EmeraldPrimary = Color(0xFF2D7BFF)
-val MintAccent = Color(0xFF1767D2)
-val TextLight = Color(0xFF1F2B36)
-val TextMuted = Color(0xFF586979)
+// Тёплая песочно-бежeвая палитра DigiDrop.
+val BgDark = Color(0xFFF1EBDD)
+val CardSurface = Color(0xFFFBF7EF)
+val CardBorder = Color(0xFFD8CBB8)
+val EmeraldPrimary = Color(0xFF78866B)
+val MintAccent = Color(0xFF80664E)
+val TextLight = Color(0xFF302B25)
+val TextMuted = Color(0xFF746B60)
 
 @Composable
 fun Modifier.bounceClick(
@@ -524,7 +537,8 @@ fun DigitDropRoot() {
                 if (imported.isNotEmpty()) {
                         val content = imported.joinToString("\n") { item ->
                             listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                                item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\t") { it.replace("\t", " ") }
+                                item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
+                                item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
                         }
                         prefs.edit().putString("active_manifest", content).apply()
                         val withProgress = imported.map { item ->
@@ -597,17 +611,12 @@ fun DigitDropRoot() {
             Toast.makeText(context, "У точки нет адреса или координат", Toast.LENGTH_SHORT).show(); return
         }
         val query = if (latitude != null && longitude != null) "$latitude,$longitude" else address
-        val uriString = "geo:0,0?q=" + Uri.encode(query)
-        val mapIntent = Intent(Intent.ACTION_VIEW, uriString.toUri())
+        // Прямая ссылка Яндекс Карт: пользователь проверяет именно эту точку, не общий маршрут.
+        val yandexUrl = Uri.parse("https://yandex.ru/maps/?text=" + Uri.encode(query))
         try {
-            context.startActivity(mapIntent)
+            context.startActivity(Intent(Intent.ACTION_VIEW, yandexUrl))
         } catch (_: Exception) {
-            try {
-                val webMap = Uri.parse("https://yandex.ru/maps/?text=" + Uri.encode(query))
-                context.startActivity(Intent(Intent.ACTION_VIEW, webMap))
-            } catch (_: Exception) {
-                Toast.makeText(context, "Не найдено приложение карт или браузер", Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(context, "Не удалось открыть Яндекс Карты или браузер", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -666,7 +675,8 @@ fun DigitDropRoot() {
                 onApplyRoute = { imported ->
                     val content = imported.joinToString("\n") { item ->
                         listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\t") { it.replace("\t", " ") }
+                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
+                            item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
                     }
                     prefs.edit().putString("active_manifest", content).apply()
                     routeItems = imported
