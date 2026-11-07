@@ -46,4 +46,23 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    @Test fun extractsPointContactAndDeliveryMetadataFromNearbyOcrLines() {
+        val text = """
+            ООО Ромашка
+            г. Калуга, ул. Кирова, д. 12
+            ИП Иванов Иван Иванович
+            Телефон 8 900 123 45 67
+            Время работы 09:00-18:00
+            Наличные забрать у кассира
+            Позвонить перед въездом
+        """.trimIndent()
+        val metadata = PhotoRouteTextParser.extractMetadata(text, "г. Калуга, ул. Кирова, д. 12")
+        assertEquals("ООО Ромашка", metadata.storeName)
+        assertEquals("ИП Иванов Иван Иванович", metadata.ownerName)
+        assertEquals("8 900 123 45 67", metadata.phone)
+        assertEquals("09:00-18:00", metadata.workingHours)
+        assertEquals("Наличные забрать у кассира", metadata.cashNote)
+        assertEquals("Позвонить перед въездом", metadata.comment)
+    }
+
 }
