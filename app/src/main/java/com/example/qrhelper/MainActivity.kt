@@ -1782,8 +1782,8 @@ fun RouteListScreen(
                             }
                             Spacer(Modifier.width(6.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                TextButton(enabled = index > 0, onClick = { onMoveGroup(index, index - 1) }) { Text("↑") }
-                                TextButton(enabled = index < displayedGroups.lastIndex, onClick = { onMoveGroup(index, index + 1) }) { Text("↓") }
+                                TextButton(enabled = !hideDelivered && index > 0, onClick = { onMoveGroup(index, index - 1) }) { Text("↑") }
+                                TextButton(enabled = !hideDelivered && index < displayedGroups.lastIndex, onClick = { onMoveGroup(index, index + 1) }) { Text("↓") }
                             }
                         }
                     }
