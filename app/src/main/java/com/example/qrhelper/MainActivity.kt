@@ -804,7 +804,7 @@ fun DigitDropRoot() {
                 }
                 if (imported.isNotEmpty()) {
                     val incomingWithProgress = imported.map { item ->
-                        item.copy(
+                        if (appendInvoiceToRoute && routeItems.isNotEmpty()) item else item.copy(
                             isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
                             scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
                         )
@@ -829,6 +829,7 @@ fun DigitDropRoot() {
                     Toast.makeText(
                         context,
                         "Загружено позиций: ${ordered.size}" + when {
+                            appendInvoiceToRoute -> " • накладная объединена с текущим рейсом"
                             optimized -> " • точки упорядочены примерно по расстоянию"
                             geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
                             else -> " • порядок из накладной сохранён"
