@@ -2,8 +2,6 @@ package com.example.qrhelper
 
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -11,23 +9,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.location.Geocoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale as JavaLocale
 import com.googlecode.tesseract.android.TessBaseAPI
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.util.Locale
 
 internal object PhotoRouteTextParser {
@@ -129,6 +127,44 @@ private suspend fun runRussianOcr(
 
 private data class LocatedPhotoStop(val address: String, val latitude: Double, val longitude: Double)
 
+internal data class PhotoRouteCoordinate(val latitude: Double, val longitude: Double)
+
+internal object PhotoRouteNavigationUrls {
+    private fun encode(value: String): String =
+        java.net.URLEncoder.encode(value, "UTF-8")
+
+    private fun validate(stops: List<PhotoRouteCoordinate>) {
+        require(stops.size >= 2) { "Для навигации нужны минимум две точки" }
+    }
+
+    fun yandex(stops: List<PhotoRouteCoordinate>): String {
+        validate(stops)
+        val routeText = stops.joinToString("~") { "${it.latitude},${it.longitude}" }
+        return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
+    }
+
+    fun google(stops: List<PhotoRouteCoordinate>): String {
+        validate(stops)
+        require(stops.size <= 11) {
+            "Google Карты поддерживают не больше 9 промежуточных точек. Для полного маршрута используйте Яндекс Карты."
+        }
+        val origin = encode("${stops.first().latitude},${stops.first().longitude}")
+        val destination = encode("${stops.last().latitude},${stops.last().longitude}")
+        val waypoints = stops.drop(1).dropLast(1)
+        val waypointPart = if (waypoints.isEmpty()) "" else
+            "&waypoints=${encode(waypoints.joinToString("|") { "${it.latitude},${it.longitude}" })}"
+        return "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination$waypointPart&travelmode=driving"
+    }
+}
+
+private fun openExternalMap(context: android.content.Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: ActivityNotFoundException) {
+        android.widget.Toast.makeText(context, "Не найдено приложение для открытия карт", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
 private suspend fun geocodePhotoStops(context: android.content.Context, addresses: List<String>): Pair<List<LocatedPhotoStop>, List<String>> =
     withContext(Dispatchers.IO) {
         val geocoder = Geocoder(context, Locale("ru", "RU"))
@@ -180,7 +216,6 @@ fun PhotoRoutePlannerScreen(
     var rawText by remember { mutableStateOf("") }
     var addresses by remember { mutableStateOf(listOf<String>()) }
     var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
-    var routeGeometry by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
     var busy by remember { mutableStateOf(false) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -252,7 +287,161 @@ fun PhotoRoutePlannerScreen(
                             status = "Оптимизирую дорожный порядок точек…"
                             val optimized = optimizePhotoRoute(resolved)
                             located = optimized.stops
-                            routeGeometry = optimized.geometryJson
+                            status = "Маршрут построен: ${optimized.stops.size} точек. Порядок рассчитан по дорожной сети OSRM."
+                        }
+                    } catch (error: Exception) {
+                        status = "Не удалось построить маршрут: ${error.message ?: "ошибка сети"}"
+                    } finally { busy = false }
+                }
+            }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
+                Text(if (busy) "Подождите…" else "Оптимизировать")
+            }
+        }
+        if (located.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Text("Маршрут готов: ${located.size} точек", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Порядок точек уже оптимизирован. Открой маршрут во внешнем навигаторе: встроенная мини-карта больше не используется.",
+                color = TextMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val points = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+                    openExternalMap(context, PhotoRouteNavigationUrls.yandex(points))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Открыть весь маршрут в Яндекс Картах") }
+            Button(
+                onClick = {
+                    val points = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+                    runCatching { PhotoRouteNavigationUrls.google(points) }
+                        .onSuccess { openExternalMap(context, it) }
+                        .onFailure {
+                            android.widget.Toast.makeText(context, it.message ?: "Не удалось открыть Google Карты", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                },
+                enabled = located.size <= 11,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Открыть маршрут в Google Картах") }
+            if (located.size > 11) {
+                Text(
+                    "В Google Картах ограничено число промежуточных точек. Яндекс Карты передадут весь список.",
+                    color = TextMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                located.mapIndexed { index, stop -> "${index + 1}. ${stop.address}" }.joinToString("\n"),
+                color = TextMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+            OutlinedButton(
+                onClick = {
+                    val items = located.mapIndexed { index, stop ->
+                        RouteItem(
+                            barcode = "PHOTO-${index + 1}",
+                            storeName = "Точка ${index + 1}",
+                            address = stop.address,
+                            itemName = "Доставка по маршрутному листу",
+                            totalBoxes = 0,
+                            phone = "",
+                            note = "Импортировано из фотографии",
+                            latitude = stop.latitude,
+                            longitude = stop.longitude
+                        )
+                    }
+                    onApplyRoute(items)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Также сохранить маршрут в DigiDrop") }
+        }
+    }
+}
+
+@Composable
+fun PhotoRoutePlannerScreen(
+    onBack: () -> Unit,
+    onApplyRoute: (List<RouteItem>) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var rawText by remember { mutableStateOf("") }
+    var addresses by remember { mutableStateOf(listOf<String>()) }
+    var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
+    var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
+    var busy by remember { mutableStateOf(false) }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            busy = true
+            status = "Распознаю текст. При первом запуске загружается русская OCR-модель."
+            try {
+                rawText = runRussianOcr(context, uri) { message -> status = message }
+                addresses = PhotoRouteTextParser.extractCandidates(rawText)
+                status = if (addresses.isEmpty()) "Текст распознан, но адреса не выделены автоматически. Исправьте или вставьте адреса вручную." else "Найдено строк-кандидатов: ${addresses.size}. Проверьте их перед построением маршрута."
+            } catch (error: Exception) {
+                status = "Ошибка OCR: ${error.message ?: "неизвестная ошибка"}"
+            } finally { busy = false }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(BgDark).statusBarsPadding().padding(16.dp)) {
+        Text("‹ Главная", color = MintAccent, modifier = Modifier.clickable { onBack() })
+        Spacer(Modifier.height(10.dp))
+        Text("Маршрут по фотографии", color = TextLight, style = MaterialTheme.typography.headlineSmall)
+        Text(status, color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = { photoPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            Text(if (busy) "Обработка…" else "Сфотографировать / выбрать лист")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = rawText,
+            onValueChange = { rawText = it },
+            label = { Text("Распознанный текст (можно исправить)") },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp),
+            minLines = 4
+        )
+        OutlinedButton(onClick = {
+            addresses = PhotoRouteTextParser.extractCandidates(rawText)
+            status = "Кандидатов адресов: ${addresses.size}. Проверьте список ниже."
+        }, modifier = Modifier.fillMaxWidth()) { Text("Выделить адреса из текста") }
+        Spacer(Modifier.height(8.dp))
+        Text("Адреса для маршрута: ${addresses.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            itemsIndexed(addresses) { index, address ->
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { value -> addresses = addresses.toMutableList().also { it[index] = value } },
+                    label = { Text("Точка ${index + 1}") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        TextButton(onClick = { addresses = addresses.filterIndexed { i, _ -> i != index } }) { Text("Убрать") }
+                    }
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { addresses = addresses + "" }, modifier = Modifier.weight(1f)) { Text("+ Точка") }
+            Button(onClick = {
+                scope.launch {
+                    busy = true
+                    try {
+                        val clean = addresses.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+                        require(clean.size >= 2) { "Добавьте минимум два адреса" }
+                        status = "Ищу координаты адресов…"
+                        val (resolved, failed) = geocodePhotoStops(context, clean)
+                        located = resolved
+                        if (failed.isNotEmpty()) {
+                            status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
+                        } else if (resolved.size < 2) {
+                            status = "Найдено меньше двух координат. Проверьте адреса."
+                        } else {
+                            status = "Оптимизирую дорожный порядок точек…"
+                            val optimized = optimizePhotoRoute(resolved)
+                            located = optimized.stops
                             status = "Маршрут построен: ${optimized.stops.size} точек. Порядок рассчитан по дорожной сети OSRM."
                         }
                     } catch (error: Exception) {
