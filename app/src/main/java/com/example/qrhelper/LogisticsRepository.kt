@@ -159,6 +159,19 @@ internal class LogisticsRepository(context: Context) {
         }
     }
 
+    suspend fun closePoint(storeName: String, address: String): Boolean {
+        val dao = database.dao()
+        val route = dao.activeRouteOnce() ?: return false
+        val point = dao.pointsOnce(route.id).firstOrNull {
+            it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+        } ?: return false
+        return dao.closePoint(point.id)
+    }
+
+    suspend fun archiveActiveRoute() {
+        database.dao().deactivateRoutes()
+    }
+
     suspend fun history(): List<RouteHistorySnapshot> {
         val dao = database.dao()
         return dao.archivedRoutesOnce().map { route ->
