@@ -79,7 +79,7 @@ internal class LogisticsRepository(context: Context) {
     suspend fun activeRouteItems(): List<RouteItem> {
         val dao = database.dao()
         val route = dao.activeRouteOnce() ?: return emptyList()
-        return dao.pointsOnce(route.id).flatMap { point ->
+        val items = dao.pointsOnce(route.id).flatMap { point ->
             dao.cargoOnce(point.id).map { cargo ->
                 RouteItem(
                     barcode = cargo.barcode,
@@ -104,6 +104,20 @@ internal class LogisticsRepository(context: Context) {
                 )
             }
         }
+        val catalog = mapProductCatalog(items).map { ProductEntity(it.barcode, it.productName) }
+        if (catalog.isNotEmpty()) dao.upsertProducts(catalog)
+        return items
+    }
+
+    suspend fun restoreArchivedRoute(routeId: Long): List<RouteItem> {
+        database.withTransaction {
+            val dao = database.dao()
+            dao.deactivateRoutes()
+            check(dao.activateArchivedRoute(routeId) == 1) {
+                "Архивный рейс не найден или уже активен"
+            }
+        }
+        return activeRouteItems()
     }
 
     suspend fun savePhotoForPoint(storeName: String, address: String, path: String) {
