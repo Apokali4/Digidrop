@@ -678,6 +678,63 @@ fun DigitDropRoot() {
         }
     }
 
+    val backupExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            val snapshot = BackupSnapshot(
+                routeItems = routeItems,
+                offlineMode = settingsOffline,
+                autoSave = settingsAutoSave,
+                compactMode = settingsCompact,
+                unknownCodes = unknownCodes,
+                scanCodes = prefs.getStringSet("scan_codes", emptySet()).orEmpty().toList()
+            )
+            context.contentResolver.openOutputStream(uri)?.use {
+                BackupManager.writeBackup(it, snapshot, context.filesDir)
+            } ?: error("Не удалось открыть файл резервной копии")
+            Toast.makeText(context, "Резервная копия сохранена", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка резервного копирования: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val backupImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) importScope.launch {
+            runCatching {
+                val snapshot = context.contentResolver.openInputStream(uri)?.use {
+                    BackupManager.readBackup(it, context.filesDir)
+                } ?: error("Не удалось прочитать резервную копию")
+                routeItems = snapshot.routeItems
+                settingsOffline = snapshot.offlineMode
+                settingsAutoSave = snapshot.autoSave
+                settingsCompact = snapshot.compactMode
+                unknownCodes = snapshot.unknownCodes
+                val manifest = snapshot.routeItems.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                    ).joinToString("\t") { it.replace("\t", " ") }
+                }
+                prefs.edit()
+                    .putString("active_manifest", manifest)
+                    .putBoolean("offline_mode", snapshot.offlineMode)
+                    .putBoolean("auto_save", snapshot.autoSave)
+                    .putBoolean("compact_mode", snapshot.compactMode)
+                    .putStringSet("unknown_codes", snapshot.unknownCodes.toSet())
+                    .putStringSet("scan_codes", snapshot.scanCodes.toSet())
+                    .apply()
+                LogisticsRepository(context).replaceActiveRoute(snapshot.routeItems)
+                Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, "Не удалось восстановить копию: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -1010,7 +1067,9 @@ fun DigitDropRoot() {
                 onOfflineChange = { settingsOffline = it; prefs.edit().putBoolean("offline_mode", it).apply() },
                 onAutoSaveChange = { settingsAutoSave = it; prefs.edit().putBoolean("auto_save", it).apply() },
                 onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
-                onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() }
+                onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() },
+                onBackup = { backupExportLauncher.launch("DigiDrop_backup.zip") },
+                onRestore = { backupImportLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }
             )
         }
         AppScreen.HISTORY -> {
@@ -2681,7 +2740,9 @@ fun SettingsScreen(
     onOfflineChange: (Boolean) -> Unit,
     onAutoSaveChange: (Boolean) -> Unit,
     onCompactChange: (Boolean) -> Unit,
-    onClearUnknown: () -> Unit
+    onClearUnknown: () -> Unit,
+    onBackup: () -> Unit,
+    onRestore: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
@@ -2693,9 +2754,13 @@ fun SettingsScreen(
         SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
+        HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", CardSurface, TextLight, MintAccent, onBackup)
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", CardSurface, TextLight, MintAccent, onRestore)
+        Spacer(Modifier.height(8.dp))
         HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFFD18B26), onClearUnknown)
         Spacer(Modifier.height(14.dp))
-        Text("Тема сейчас: светлая серо-голубая. Переключение темы и резервное копирование ещё требуют отдельной реализации.", color = TextMuted, fontSize = 12.sp)
+        Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = TextMuted, fontSize = 12.sp)
     }
 }
 
