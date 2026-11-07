@@ -364,7 +364,8 @@ enum class AppScreen {
     REPORTS,
     SETTINGS,
     HISTORY,
-    UNKNOWN_CODES
+    UNKNOWN_CODES,
+    PHOTO_ROUTE
 }
 
 val BgDark = Color(0xFFF1F2F4)
@@ -618,7 +619,7 @@ fun DigitDropRoot() {
             AppScreen.ROUTE_LIST -> AppScreen.HUB
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
-            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES -> AppScreen.HUB
+            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
         }
     }
@@ -640,6 +641,7 @@ fun DigitDropRoot() {
             HubScreen(
                 routeItems = routeItems,
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
+                onOpenPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE },
                 onOpenScanner = { openScanner() },
                 onLoadFile = { currentScreen = AppScreen.INVOICE_IMPORT },
                 onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
@@ -653,6 +655,21 @@ fun DigitDropRoot() {
                     val nextItem = routeItems.firstOrNull { !it.isDelivered }
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
                     else launchNavigation(nextItem.address, nextItem.latitude, nextItem.longitude)
+                }
+            )
+        }
+        AppScreen.PHOTO_ROUTE -> {
+            PhotoRoutePlannerScreen(
+                onBack = { currentScreen = AppScreen.HUB },
+                onApplyRoute = { imported ->
+                    val content = imported.joinToString("\\n") { item ->
+                        listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
+                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\\t") { it.replace("\\t", " ") }
+                    }
+                    prefs.edit().putString("active_manifest", content).apply()
+                    routeItems = imported
+                    currentScreen = AppScreen.HUB
+                    Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек", Toast.LENGTH_LONG).show()
                 }
             )
         }
@@ -1060,6 +1077,7 @@ fun HubScreen(
     onOpenRoute: () -> Unit,
     onOpenScanner: () -> Unit,
     onLoadFile: () -> Unit,
+    onOpenPhotoRoute: () -> Unit,
     onExportReport: () -> Unit,
     onCallDispatcher: () -> Unit,
     onResetRoute: () -> Unit,
@@ -1129,6 +1147,9 @@ fun HubScreen(
         }
         item {
             Text("Рабочие инструменты", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        item {
+            HubTile("Маршрут по фото", "Снимок листа → карта и порядок", "▧", Color(0xFF168F78), Modifier.fillMaxWidth(), onOpenPhotoRoute)
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
