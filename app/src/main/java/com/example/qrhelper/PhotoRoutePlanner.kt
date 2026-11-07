@@ -6,9 +6,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -231,7 +231,16 @@ fun PhotoRoutePlannerScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(BgDark).statusBarsPadding().padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(BgDark)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Text("‹ Главная", color = MintAccent, modifier = Modifier.clickable { onBack() })
         Spacer(Modifier.height(10.dp))
         Text("Маршрут по фотографии", color = TextLight, style = MaterialTheme.typography.headlineSmall)
@@ -254,8 +263,8 @@ fun PhotoRoutePlannerScreen(
         }, modifier = Modifier.fillMaxWidth()) { Text("Выделить адреса из текста") }
         Spacer(Modifier.height(8.dp))
         Text("Адреса для маршрута: ${addresses.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            itemsIndexed(addresses) { index, address ->
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            addresses.forEachIndexed { index, address ->
                 OutlinedTextField(
                     value = address,
                     onValueChange = { value -> addresses = addresses.toMutableList().also { it[index] = value } },
