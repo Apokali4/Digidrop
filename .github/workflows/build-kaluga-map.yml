@@ -1,0 +1,67 @@
+name: Build Kaluga Offline Map
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/offline-map-yandex-navigation
+    paths:
+      - ".github/workflows/build-kaluga-map.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-kaluga-pmtiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Download Kaluga region OpenStreetMap extract
+        run: |
+          curl --fail --location --retry 3 \
+            "https://geo2day.com/russia/central_federal_district/kaluga_oblast.pbf" \
+            --output kaluga_oblast.osm.pbf
+          test "$(stat -c%s kaluga_oblast.osm.pbf)" -gt 1000000
+
+      - name: Download Planetiler
+        run: |
+          curl --fail --location --retry 3 \
+            "https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar" \
+            --output planetiler.jar
+          test -s planetiler.jar
+
+      - name: Build vector PMTiles
+        run: |
+          java -Xmx5g -jar planetiler.jar \
+            --osm-path=kaluga_oblast.osm.pbf \
+            --download \
+            --output=kaluga-region.pmtiles \
+            --force \
+            --minzoom=0 \
+            --maxzoom=15 \
+            --building-merge-z13=false \
+            --water-polygons-url=https://github.com/onthegomap/planetiler/raw/main/planetiler-core/src/test/resources/water-polygons-split-3857.zip \
+            --natural-earth-url=https://github.com/onthegomap/planetiler/raw/main/planetiler-core/src/test/resources/natural_earth_vector.sqlite.zip
+
+      - name: Verify PMTiles archive and checksum
+        run: |
+          test -s kaluga-region.pmtiles
+          test "$(head -c 7 kaluga-region.pmtiles)" = "PMTiles"
+          sha256sum kaluga-region.pmtiles | tee kaluga-region.pmtiles.sha256
+          ls -lh kaluga-region.pmtiles
+
+      - name: Upload offline map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DigiDrop-Kaluga-Offline-Map
+          path: |
+            kaluga-region.pmtiles
+            kaluga-region.pmtiles.sha256
+          retention-days: 30
+# Re-run map generation with the current OSM extract.
