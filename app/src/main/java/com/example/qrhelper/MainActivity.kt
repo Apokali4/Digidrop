@@ -2814,7 +2814,7 @@ fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange
 }
 
 @Composable
-fun HistoryScreen(routes: List<RouteHistorySnapshot>, onBack: () -> Unit) {
+internal fun HistoryScreen(routes: List<RouteHistorySnapshot>, onBack: () -> Unit) {
     val formatter = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("ru", "RU")) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
