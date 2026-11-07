@@ -233,11 +233,48 @@ private suspend fun geocodePhotoStops(
     found to failed
 }
 
-private data class OptimizedPhotoRoute(val stops: List<LocatedPhotoStop>, val geometryJson: String)
+internal object PhotoRouteOrdering {
+    fun farthestStopIndex(origin: PhotoRouteCoordinate, stops: List<PhotoRouteCoordinate>): Int {
+        require(stops.isNotEmpty()) { "Нет точек доставки" }
+        fun distanceKm(point: PhotoRouteCoordinate): Double {
+            val radius = 6371.0
+            val lat1 = Math.toRadians(origin.latitude)
+            val lat2 = Math.toRadians(point.latitude)
+            val dLat = lat2 - lat1
+            val dLon = Math.toRadians(point.longitude - origin.longitude)
+            val a = kotlin.math.sin(dLat / 2).let { it * it } +
+                kotlin.math.cos(lat1) * kotlin.math.cos(lat2) *
+                kotlin.math.sin(dLon / 2).let { it * it }
+            return 2 * radius * kotlin.math.asin(kotlin.math.sqrt(a))
+        }
+        return stops.indices.maxBy { distanceKm(stops[it]) }
+    }
+}
 
-private suspend fun optimizePhotoRoute(stops: List<LocatedPhotoStop>): OptimizedPhotoRoute = withContext(Dispatchers.IO) {
+private data class OptimizedPhotoRoute(
+    val origin: LocatedPhotoStop,
+    val stops: List<LocatedPhotoStop>,
+    val geometryJson: String
+)
+
+private suspend fun optimizePhotoRoute(
+    context: android.content.Context,
+    stops: List<LocatedPhotoStop>,
+    city: String
+): OptimizedPhotoRoute = withContext(Dispatchers.IO) {
     require(stops.size >= 2) { "Для оптимизации нужны минимум две найденные точки" }
-    val coordinates = stops.joinToString(";") { "${it.longitude},${it.latitude}" }
+    val depotAddress = PhotoRouteGeocodingQuery.build("ул. Параллельная, д. 21", city)
+    val geocoder = Geocoder(context, Locale("ru", "RU"))
+    val depotResult = geocoder.getFromLocationName(depotAddress, 3)?.firstOrNull()
+        ?: error("Не удалось определить координаты базы: $depotAddress")
+    val depot = LocatedPhotoStop("База: $depotAddress", depotResult.latitude, depotResult.longitude)
+    val farthestIndex = PhotoRouteOrdering.farthestStopIndex(
+        PhotoRouteCoordinate(depot.latitude, depot.longitude),
+        stops.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+    )
+    val farthest = stops[farthestIndex]
+    val orderedInput = listOf(depot) + stops.filterIndexed { index, _ -> index != farthestIndex } + farthest
+    val coordinates = orderedInput.joinToString(";") { "${it.longitude},${it.latitude}" }
     val endpoint = "https://router.project-osrm.org/trip/v1/driving/$coordinates?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson"
     val connection = URL(endpoint).openConnection() as HttpURLConnection
     connection.connectTimeout = 15000
@@ -248,10 +285,14 @@ private suspend fun optimizePhotoRoute(stops: List<LocatedPhotoStop>): Optimized
         check(json.optString("code") == "Ok") { "Сервис маршрутизации не смог построить маршрут" }
         val trip = json.getJSONArray("trips").getJSONObject(0)
         val waypoints = json.getJSONArray("waypoints")
-        val ordered = (0 until waypoints.length()).sortedBy { waypoints.getJSONObject(it).getInt("waypoint_index") }
-            .map { stops[it] }
-        val geometry = trip.getJSONObject("geometry").toString()
-        OptimizedPhotoRoute(ordered, geometry)
+        val ordered = (0 until waypoints.length())
+            .sortedBy { waypoints.getJSONObject(it).getInt("waypoint_index") }
+            .map { orderedInput[it] }
+        check(ordered.first() == depot) { "Оптимизатор изменил стартовую базу" }
+        check(ordered.last() == farthest) { "Оптимизатор изменил конечную точку" }
+        val deliveries = ordered.drop(1)
+        check(deliveries.size == stops.size) { "Оптимизатор потерял точки доставки" }
+        OptimizedPhotoRoute(depot, deliveries, trip.getJSONObject("geometry").toString())
     } finally {
         connection.disconnect()
     }
@@ -268,6 +309,7 @@ fun PhotoRoutePlannerScreen(
     var routeCity by remember { mutableStateOf("Калуга") }
     var addresses by remember { mutableStateOf(listOf<String>()) }
     var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
+    var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
     var busy by remember { mutableStateOf(false) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -354,16 +396,17 @@ fun PhotoRoutePlannerScreen(
                             status = "Найдено меньше двух координат. Проверьте адреса."
                         } else {
                             status = "Оптимизирую дорожный порядок точек…"
-                            val optimized = optimizePhotoRoute(resolved)
+                            val optimized = optimizePhotoRoute(context, resolved, routeCity)
                             check(optimized.stops.size == resolved.size) {
                                 "После оптимизации изменилось количество точек: было ${resolved.size}, стало ${optimized.stops.size}"
                             }
+                            routeOrigin = optimized.origin
                             located = optimized.stops
                             val duplicateGroups = optimized.stops.groupBy {
                                 "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
                             }.values.filter { it.size > 1 }
                             status = if (duplicateGroups.isEmpty()) {
-                                "Маршрут построен: ${optimized.stops.size} точек в городе «${routeCity.trim()}». Порядок рассчитан по дорожной сети OSRM."
+                                "Маршрут построен от базы: Параллельная, 21. ${optimized.stops.size} доставок; финиш — самая дальняя точка. Порядок рассчитан по дорожной сети OSRM."
                             } else {
                                 "Маршрут построен, но ${duplicateGroups.sumOf { it.size - 1 }} адрес(а) получили совпадающие координаты. Проверьте город и адреса: Яндекс может объединить такие точки."
                             }
@@ -378,16 +421,16 @@ fun PhotoRoutePlannerScreen(
         }
         if (located.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
-            Text("Маршрут готов: ${located.size} точек", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            Text("Маршрут: база → ${located.size} доставок → самая дальняя точка", color = TextLight, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Порядок точек уже оптимизирован. Открой маршрут во внешнем навигаторе: встроенная мини-карта больше не используется.",
                 color = TextMuted,
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(8.dp))
-            val yandexSegments = PhotoRouteNavigationUrls.yandexSegments(
-                located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
-            )
+            val navigationPoints = listOfNotNull(routeOrigin) + located
+            val navigationCoordinates = navigationPoints.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+            val yandexSegments = PhotoRouteNavigationUrls.yandexSegments(navigationCoordinates)
             if (yandexSegments.size == 1) {
                 Button(
                     onClick = { openExternalMap(context, PhotoRouteNavigationUrls.yandex(yandexSegments.first())) },
@@ -420,7 +463,7 @@ fun PhotoRoutePlannerScreen(
                 enabled = located.size <= 11,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Открыть маршрут в Google Картах") }
-            if (located.size > 11) {
+            if (navigationCoordinates.size > 11) {
                 Text(
                     "В Google Картах ограничено число промежуточных точек. Маршрут в Яндексе разбивается на участки по 20 точек.",
                     color = TextMuted,
