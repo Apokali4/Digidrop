@@ -59,7 +59,9 @@ internal class LogisticsRepository(context: Context) {
                             ownerName = cargo.ownerName,
                             workingHours = cargo.workingHours,
                             cashNote = cargo.cashNote,
-                            extraComment = cargo.extraComment
+                            extraComment = cargo.extraComment,
+                            discrepancyQty = cargo.discrepancyQty,
+                            discrepancyReason = cargo.discrepancyReason?.name
                         )
                     }
                 )
@@ -106,6 +108,7 @@ internal class LogisticsRepository(context: Context) {
                 } ?: return@forEach
 
                 val status = when {
+                    group.any { it.discrepancyQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
                     group.all { it.isDelivered } -> com.example.qrhelper.data.DeliveryStatus.COMPLETED
                     group.any { it.isDelivered } || group.sumOf { it.scannedBoxes.coerceAtLeast(0) } > 0 ->
                         com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
@@ -121,6 +124,10 @@ internal class LogisticsRepository(context: Context) {
                     rows.forEachIndexed { index, item ->
                         matchingCargo.getOrNull(index)?.let { cargo ->
                             dao.setScannedQty(cargo.id, item.scannedBoxes.coerceAtLeast(0))
+                            val reason = item.discrepancyReason?.let {
+                                runCatching { com.example.qrhelper.data.DiscrepancyReason.valueOf(it) }.getOrNull()
+                            }
+                            dao.updateDiscrepancy(cargo.id, item.discrepancyQty.coerceAtLeast(0), reason)
                         }
                     }
                 }
