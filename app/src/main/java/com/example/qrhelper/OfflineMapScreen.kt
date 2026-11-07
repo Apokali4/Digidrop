@@ -38,9 +38,12 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.json.JSONArray
+import org.json.JSONObject
 
 @Composable
 fun OfflineMapScreen(
+    routeItems: List<RouteItem>,
     refreshKey: Int,
     onBack: () -> Unit,
     onImportMap: () -> Unit
@@ -113,25 +116,45 @@ fun OfflineMapScreen(
                     factory = {
                         mapView.getMapAsync { map ->
                             val source = OfflineMapStore.mapLibreSource(activeMapFile)
+                            val pointFeatures = JSONArray()
+                            val routeCoordinates = JSONArray()
+                            routeItems.filter { it.latitude != null && it.longitude != null }.forEachIndexed { index, item ->
+                                val coordinates = JSONArray().put(item.longitude).put(item.latitude)
+                                routeCoordinates.put(coordinates)
+                                val properties = JSONObject()
+                                    .put("number", index + 1)
+                                    .put("name", item.storeName)
+                                    .put("address", item.address)
+                                    .put("status", if (item.isDelivered) "Сдано" else "Ожидает")
+                                    .put("color", if (item.isDelivered) "#27AE60" else "#E5A000")
+                                pointFeatures.put(JSONObject().put("type", "Feature")
+                                    .put("geometry", JSONObject().put("type", "Point").put("coordinates", coordinates))
+                                    .put("properties", properties))
+                            }
+                            val routeGeoJson = JSONObject().put("type", "FeatureCollection").put("features", pointFeatures)
+                            val lineFeature = JSONObject().put("type", "Feature")
+                                .put("geometry", JSONObject().put("type", "LineString").put("coordinates", routeCoordinates))
+                                .put("properties", JSONObject())
+                            val lineGeoJson = JSONObject().put("type", "FeatureCollection").put("features", JSONArray().put(lineFeature))
                             val styleJson = """
                                 {
                                   "version": 8,
                                   "name": "DigiDrop Offline",
                                   "sources": {
-                                    "regional": {
-                                      "type": "vector",
-                                      "url": "$source",
-                                      "minzoom": 0,
-                                      "maxzoom": 14
-                                    }
+                                    "regional": {"type":"vector","url":"$source","minzoom":0,"maxzoom":14},
+                                    "route-points": {"type":"geojson","data":${routeGeoJson}},
+                                    "route-line": {"type":"geojson","data":${lineGeoJson}}
                                   },
                                   "layers": [
                                     {"id":"background","type":"background","paint":{"background-color":"#eee9df"}},
                                     {"id":"water","type":"fill","source":"regional","source-layer":"water","paint":{"fill-color":"#a9cbd5"}},
                                     {"id":"landcover","type":"fill","source":"regional","source-layer":"landcover","paint":{"fill-color":"#dce5d0","fill-opacity":0.55}},
                                     {"id":"building","type":"fill","source":"regional","source-layer":"building","paint":{"fill-color":"#d2c8b9","fill-outline-color":"#b8aa98"}},
+                                    {"id":"road-casing","type":"line","source":"regional","source-layer":"transportation","paint":{"line-color":"#c8bba8","line-width":["interpolate",["linear"],["zoom"],8,0.8,14,5],"line-opacity":0.65}},
                                     {"id":"roads","type":"line","source":"regional","source-layer":"transportation","paint":{"line-color":"#fffdf8","line-width":["interpolate",["linear"],["zoom"],8,0.5,14,4]}},
-                                    {"id":"road-casing","type":"line","source":"regional","source-layer":"transportation","paint":{"line-color":"#c8bba8","line-width":["interpolate",["linear"],["zoom"],8,0.8,14,5],"line-opacity":0.65}}
+                                    {"id":"route-line-layer","type":"line","source":"route-line","paint":{"line-color":"#176B54","line-width":4,"line-opacity":0.9}},
+                                    {"id":"route-points-layer","type":"circle","source":"route-points","paint":{"circle-radius":8,"circle-color":["get","color"],"circle-stroke-color":"#ffffff","circle-stroke-width":2}},
+                                    {"id":"route-number-layer","type":"symbol","source":"route-points","layout":{"text-field":["to-string",["get","number"]],"text-size":11,"text-allow-overlap":true},"paint":{"text-color":"#ffffff"}}
                                   ]
                                 }
                             """.trimIndent()
