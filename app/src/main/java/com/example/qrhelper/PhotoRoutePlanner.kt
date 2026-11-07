@@ -552,7 +552,7 @@ fun PhotoRoutePlannerScreen(
                     } finally { busy = false }
                 }
             }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
-                Text(if (busy) "Подождите…" else "Найти и проверить точки")
+                Text(if (busy) "Подождите…" else "Найти точки", maxLines = 1, softWrap = false, fontSize = 12.sp)
             }
         }
         if (located.isNotEmpty()) {
@@ -579,7 +579,7 @@ fun PhotoRoutePlannerScreen(
                 },
                 enabled = !busy && located.size >= 2,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (busy) "Оптимизация…" else "Оптимизировать порядок после проверки") }
+            ) { Text(if (busy) "Оптимизация…" else "Оптимизировать", maxLines = 1, softWrap = false, fontSize = 13.sp) }
             Spacer(Modifier.height(8.dp))
             val navigationPoints = located
             val navigationCoordinates = navigationPoints.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
