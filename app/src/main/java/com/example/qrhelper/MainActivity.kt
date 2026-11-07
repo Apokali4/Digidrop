@@ -537,6 +537,22 @@ fun DigitDropRoot() {
         }
     }
 
+    val mapFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            importScope.launch {
+                try {
+                    withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }
+                    offlineMapRefresh++
+                    Toast.makeText(context, "Офлайн-карта импортирована", Toast.LENGTH_LONG).show()
+                } catch (error: Exception) {
+                    Toast.makeText(context, error.message ?: "Ошибка импорта карты", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -1695,7 +1711,6 @@ fun RouteListScreen(
     onOpenScanner: () -> Unit,
     onOpenOfflineMap: () -> Unit,
     onOpenPointMap: (String) -> Unit,
-    onOpenOfflineMap: () -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
     onToggleItem: (RouteItem) -> Unit,
