@@ -5,6 +5,19 @@ import org.junit.Test
 
 class InvoiceMergeTest {
     @Test
+    fun mergesDuplicateProductRowsFromMultipleSheetsOfOneWorkbook() {
+        val rows = listOf(
+            RouteItem("4601", "Магазин", "Адрес", "Молоко", 2, ""),
+            RouteItem("4601", "Магазин", "Адрес", "Молоко", 3, "")
+        )
+
+        val merged = mergeInvoiceRows(emptyList(), rows)
+
+        assertEquals(1, merged.size)
+        assertEquals(5, merged.single().totalBoxes)
+    }
+
+    @Test
     fun mergesMatchingProductsAtTheSameStoreAndKeepsDifferentStoresSeparate() {
         val existing = listOf(
             RouteItem("4601", "Магазин А", "Адрес А", "Молоко", 2, "", scannedBoxes = 1),

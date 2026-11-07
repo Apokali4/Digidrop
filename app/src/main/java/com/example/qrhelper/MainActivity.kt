@@ -803,15 +803,16 @@ fun DigitDropRoot() {
                     }
                 }
                 if (imported.isNotEmpty()) {
-                    val incomingWithProgress = imported.map { item ->
-                        if (appendInvoiceToRoute && routeItems.isNotEmpty()) item else item.copy(
-                            isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
-                            scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
-                        )
-                    }
                     val withProgress = if (appendInvoiceToRoute && routeItems.isNotEmpty()) {
-                        mergeInvoiceRows(routeItems, incomingWithProgress)
-                    } else incomingWithProgress
+                        mergeInvoiceRows(routeItems, imported)
+                    } else {
+                        mergeInvoiceRows(emptyList(), imported).map { item ->
+                            item.copy(
+                                isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
+                                scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
+                            )
+                        }
+                    }
                     currentScreen = AppScreen.ROUTE_LIST
                     val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
                     routeItems = ordered
