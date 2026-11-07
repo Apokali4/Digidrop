@@ -495,8 +495,10 @@ fun PhotoRoutePlannerScreen(
             minLines = 4
         )
         OutlinedButton(onClick = {
-            addresses = PhotoRouteTextParser.extractCandidates(rawText)
-            status = "Кандидатов адресов: ${addresses.size}. Проверьте список ниже."
+            addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
+            located = emptyList()
+            routeOrigin = null
+            status = "Кандидатов адресов: ${addresses.size}. Город поиска: ${routeCity.ifBlank { "не задан" }}. Проверьте список ниже."
         }, modifier = Modifier.fillMaxWidth()) { Text("Выделить адреса из текста") }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
