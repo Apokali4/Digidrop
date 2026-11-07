@@ -136,8 +136,28 @@ internal object PhotoRouteNavigationUrls {
         require(stops.size >= 2) { "Для навигации нужны минимум две точки" }
     }
 
+    const val YANDEX_MAX_STOPS = 20
+
+    fun yandexSegments(stops: List<PhotoRouteCoordinate>): List<List<PhotoRouteCoordinate>> {
+        validate(stops)
+        if (stops.size <= YANDEX_MAX_STOPS) return listOf(stops)
+        val segments = mutableListOf<List<PhotoRouteCoordinate>>()
+        var start = 0
+        while (start < stops.lastIndex) {
+            val endExclusive = minOf(start + YANDEX_MAX_STOPS, stops.size)
+            segments += stops.subList(start, endExclusive).toList()
+            if (endExclusive == stops.size) break
+            // Последняя точка участка становится начальной точкой следующего.
+            start = endExclusive - 1
+        }
+        return segments
+    }
+
     fun yandex(stops: List<PhotoRouteCoordinate>): String {
         validate(stops)
+        require(stops.size <= YANDEX_MAX_STOPS) {
+            "Яндекс Карты принимают не больше 20 точек за один участок"
+        }
         val routeText = stops.joinToString("~") { "${it.latitude},${it.longitude}" }
         return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
     }
@@ -314,13 +334,29 @@ fun PhotoRoutePlannerScreen(
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    val points = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
-                    openExternalMap(context, PhotoRouteNavigationUrls.yandex(points))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Открыть весь маршрут в Яндекс Картах") }
+            val yandexSegments = PhotoRouteNavigationUrls.yandexSegments(
+                located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+            )
+            if (yandexSegments.size == 1) {
+                Button(
+                    onClick = { openExternalMap(context, PhotoRouteNavigationUrls.yandex(yandexSegments.first())) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Открыть маршрут в Яндекс Картах") }
+            } else {
+                Text(
+                    "В Яндексе лимит 20 точек. Маршрут разбит на ${yandexSegments.size} участка с общей точкой перехода.",
+                    color = TextMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                yandexSegments.forEachIndexed { index, segment ->
+                    Button(
+                        onClick = { openExternalMap(context, PhotoRouteNavigationUrls.yandex(segment)) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Открыть участок ${index + 1}/${yandexSegments.size} (${segment.size} точек)")
+                    }
+                }
+            }
             Button(
                 onClick = {
                     val points = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
@@ -335,7 +371,7 @@ fun PhotoRoutePlannerScreen(
             ) { Text("Открыть маршрут в Google Картах") }
             if (located.size > 11) {
                 Text(
-                    "В Google Картах ограничено число промежуточных точек. Яндекс Карты передадут весь список.",
+                    "В Google Картах ограничено число промежуточных точек. Маршрут в Яндексе разбивается на участки по 20 точек.",
                     color = TextMuted,
                     style = MaterialTheme.typography.bodySmall
                 )
