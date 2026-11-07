@@ -662,9 +662,9 @@ fun DigitDropRoot() {
             PhotoRoutePlannerScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 onApplyRoute = { imported ->
-                    val content = imported.joinToString("\\n") { item ->
+                    val content = imported.joinToString("\n") { item ->
                         listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\\t") { it.replace("\\t", " ") }
+                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty()).joinToString("\t") { it.replace("\t", " ") }
                     }
                     prefs.edit().putString("active_manifest", content).apply()
                     routeItems = imported
