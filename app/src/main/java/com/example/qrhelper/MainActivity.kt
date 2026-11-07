@@ -744,6 +744,7 @@ fun DigitDropRoot() {
         }
         AppScreen.OFFLINE_MAP -> {
             OfflineMapScreen(
+                routeItems = routeItems,
                 refreshKey = offlineMapRefresh,
                 onBack = { currentScreen = AppScreen.ROUTE_LIST },
                 onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) }
