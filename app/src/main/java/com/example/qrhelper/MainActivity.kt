@@ -133,6 +133,7 @@ import java.util.Date
 import java.util.concurrent.Executors
 import java.util.zip.ZipInputStream
 import java.io.InputStream
+import java.io.File
 import java.io.StringReader
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -154,6 +155,8 @@ data class RouteItem(
     val workingHours: String = "",
     val cashNote: String = "",
     val extraComment: String = "",
+    val photoDocUri: String = "",
+    val signaturePath: String = "",
     val discrepancyQty: Int = 0,
     val discrepancyReason: String? = null
 )
@@ -613,6 +616,32 @@ fun DigitDropRoot() {
         }
     }
 
+    val photoEvidenceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        val item = selectedItem
+        if (uri != null && item != null) {
+            importScope.launch {
+                runCatching {
+                    val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
+                    val target = File(directory, "photo_${System.currentTimeMillis()}.jpg")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    } ?: error("Не удалось прочитать выбранное фото")
+                    val updated = routeItems.map {
+                        if (routeItemKey(it) == routeItemKey(item)) it.copy(photoDocUri = target.absolutePath) else it
+                    }
+                    routeItems = updated
+                    selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                    LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
+                    Toast.makeText(context, "Фото доказательства сохранено", Toast.LENGTH_SHORT).show()
+                }.onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить фото: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -875,7 +904,8 @@ fun DigitDropRoot() {
                     onNavigate = { launchNavigation(item.address, item.latitude, item.longitude) },
                     onCall = { makePhoneCall(item.phone) },
                     onToggleDelivered = { updateItemStatus(item) },
-                    onSetDiscrepancy = { quantity, reason -> updateItemDiscrepancy(item, quantity, reason) }
+                    onSetDiscrepancy = { quantity, reason -> updateItemDiscrepancy(item, quantity, reason) },
+                    onAddPhoto = { photoEvidenceLauncher.launch("image/*") }
                 )
             } ?: run {
                 currentScreen = AppScreen.ROUTE_LIST
@@ -1570,7 +1600,8 @@ fun PointDetailsScreen(
     onNavigate: () -> Unit,
     onCall: () -> Unit,
     onToggleDelivered: () -> Unit,
-    onSetDiscrepancy: (Int, String) -> Unit
+    onSetDiscrepancy: (Int, String) -> Unit,
+    onAddPhoto: () -> Unit
 ) {
     var showDiscrepancyDialog by remember(item.barcode) { mutableStateOf(false) }
     var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
@@ -1739,6 +1770,17 @@ fun PointDetailsScreen(
                 }
             }
 
+            HubActionButton(
+                if (item.photoDocUri.isNotBlank()) "Заменить фото доказательства" else "Добавить фото доказательства",
+                "Сохранить фото в памяти телефона",
+                CardSurface,
+                TextLight,
+                MintAccent,
+                onAddPhoto
+            )
+            if (item.photoDocUri.isNotBlank()) {
+                Text("Фото сохранено локально", color = MintAccent, fontSize = 12.sp)
+            }
             HubActionButton(
                 if (item.discrepancyQty > 0) "Изменить расхождение: ${item.discrepancyQty}" else "Зафиксировать расхождение",
                 "Недовоз, брак или излишек",
