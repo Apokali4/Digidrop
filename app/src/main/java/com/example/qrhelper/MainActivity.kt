@@ -647,6 +647,30 @@ fun DigitDropRoot() {
         }
     }
 
+    val reportExcelLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writeXlsx(it, routeItems) }
+                ?: error("Не удалось открыть файл для записи")
+            Toast.makeText(context, "Excel-отчёт сохранён", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка Excel-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val reportPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writePdf(it, routeItems) }
+                ?: error("Не удалось открыть файл для записи")
+            Toast.makeText(context, "PDF-отчёт сохранён", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка PDF-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -963,7 +987,13 @@ fun DigitDropRoot() {
             )
         }
         AppScreen.REPORTS -> {
-            ReportsScreen(routeItems, onBack = { currentScreen = AppScreen.HUB }, onExport = { reportLauncher.launch("DigiDrop_report.csv") })
+            ReportsScreen(
+                routeItems,
+                onBack = { currentScreen = AppScreen.HUB },
+                onExport = { reportLauncher.launch("DigiDrop_report.csv") },
+                onExportExcel = { reportExcelLauncher.launch("DigiDrop_report.xlsx") },
+                onExportPdf = { reportPdfLauncher.launch("DigiDrop_report.pdf") }
+            )
         }
         AppScreen.SETTINGS -> {
             SettingsScreen(
@@ -2578,7 +2608,13 @@ fun BottomActionButtons(
 }
 
 @Composable
-fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () -> Unit) {
+fun ReportsScreen(
+    routeItems: List<RouteItem>,
+    onBack: () -> Unit,
+    onExport: () -> Unit,
+    onExportExcel: () -> Unit,
+    onExportPdf: () -> Unit
+) {
     val points = routeItems.groupBy { it.storeName to it.address }
     val delivered = points.values.count { group -> group.all { it.isDelivered } }
     val totalBoxes = routeItems.sumOf { it.totalBoxes }
@@ -2608,9 +2644,13 @@ fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () 
             }
         }
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Экспорт CSV", "Сохранить отчёт рейса", CardSurface, TextLight, MintAccent, onExport)
+        HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
         Spacer(Modifier.height(8.dp))
-        Text("В CSV входят штрихкод, точка, адрес, товар, план, факт, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+        HubActionButton("Экспорт Excel", "Файл XLSX с отдельными колонками и статусами", CardSurface, TextLight, MintAccent, onExportExcel)
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Экспорт PDF", "Печатный отчёт по точкам и грузу", CardSurface, TextLight, MintAccent, onExportPdf)
+        Spacer(Modifier.height(8.dp))
+        Text("В отчёты входят штрихкод, точка, адрес, товар, план, факт, расхождения, остаток и статус.", color = TextMuted, fontSize = 12.sp)
     }
 }
 
