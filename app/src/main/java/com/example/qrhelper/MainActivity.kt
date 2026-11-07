@@ -9,9 +9,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.app.Activity
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.view.View
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -46,6 +48,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -106,6 +109,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -1880,6 +1884,16 @@ fun PointDetailsScreen(
     var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
     var discrepancyReason by remember(item.barcode) { mutableStateOf("НЕДОВОЗ") }
     var discrepancyError by remember(item.barcode) { mutableStateOf("") }
+    val photoPreview = remember(item.photoDocUri) {
+        item.photoDocUri.takeIf { it.isNotBlank() }?.let { path ->
+            BitmapFactory.decodeFile(path)?.asImageBitmap()
+        }
+    }
+    val signaturePreview = remember(item.signaturePath) {
+        item.signaturePath.takeIf { it.isNotBlank() }?.let { path ->
+            BitmapFactory.decodeFile(path)?.asImageBitmap()
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2050,8 +2064,15 @@ fun PointDetailsScreen(
                 TextLight,
                 MintAccent
             ) { showSignatureDialog = true }
-            if (item.signaturePath.isNotBlank()) {
-                Text("Подпись сохранена локально", color = MintAccent, fontSize = 12.sp)
+            if (signaturePreview != null) {
+                Image(
+                    bitmap = signaturePreview,
+                    contentDescription = "Подпись получателя",
+                    modifier = Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Color.White).padding(5.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text("Подпись получателя сохранена на устройстве", color = MintAccent, fontSize = 12.sp)
             }
             HubActionButton(
                 if (item.photoDocUri.isNotBlank()) "Заменить фото доказательства" else "Добавить фото доказательства",
@@ -2061,8 +2082,14 @@ fun PointDetailsScreen(
                 MintAccent,
                 onAddPhoto
             )
-            if (item.photoDocUri.isNotBlank()) {
-                Text("Фото сохранено локально", color = MintAccent, fontSize = 12.sp)
+            if (photoPreview != null) {
+                Image(
+                    bitmap = photoPreview,
+                    contentDescription = "Фото доказательства доставки",
+                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Фото доказательства хранится на устройстве", color = MintAccent, fontSize = 12.sp)
             }
             HubActionButton(
                 if (item.discrepancyQty > 0) "Изменить расхождение: ${item.discrepancyQty}" else "Зафиксировать расхождение",
