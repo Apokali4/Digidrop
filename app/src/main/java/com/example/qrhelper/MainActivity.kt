@@ -74,6 +74,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -433,7 +434,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun DigitDropRoot() {
-    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }\n    var offlineMapRefresh by remember { mutableStateOf(0) }
     val windowContext = LocalContext.current
     SideEffect {
         val activity = windowContext as? Activity
@@ -535,7 +536,7 @@ fun DigitDropRoot() {
         }
     }
 
-    val mapFileLauncher = rememberLauncherForActivityResult(\n        contract = ActivityResultContracts.OpenDocument()\n    ) { uri: Uri? ->\n        if (uri != null) {\n            importScope.launch {\n                try {\n                    val imported = withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }\n                    Toast.makeText(context, "Офлайн-карта установлена: ${imported.length() / (1024 * 1024)} МБ", Toast.LENGTH_LONG).show()\n                } catch (error: Exception) {\n                    Toast.makeText(context, error.message ?: "Не удалось импортировать карту", Toast.LENGTH_LONG).show()\n                }\n            }\n        }\n    }\n\n    val filePickerLauncher = rememberLauncherForActivityResult(
+    val mapFileLauncher = rememberLauncherForActivityResult(\n        contract = ActivityResultContracts.OpenDocument()\n    ) { uri: Uri? ->\n        if (uri != null) {\n            importScope.launch {\n                try {\n                    val imported = withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }\n                    offlineMapRefresh++\n                    Toast.makeText(context, "Офлайн-карта установлена: ${imported.length() / (1024 * 1024)} МБ", Toast.LENGTH_LONG).show()\n                } catch (error: Exception) {\n                    Toast.makeText(context, error.message ?: "Не удалось импортировать карту", Toast.LENGTH_LONG).show()\n                }\n            }\n        }\n    }\n\n    val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
