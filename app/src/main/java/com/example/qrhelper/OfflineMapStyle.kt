@@ -13,7 +13,7 @@ internal fun buildOfflineMapStyleJson(
       "version": 8,
       "name": "DigiDrop Offline",
       "sources": {
-        "regional": {"type":"vector","url":"$source","minzoom":0,"maxzoom":14},
+        "regional": {"type":"vector","url":"$source","minzoom":0,"maxzoom":15,"attribution":"© OpenStreetMap contributors"},
         "route-points": {"type":"geojson","data":$routeGeoJson},
         "route-line": {"type":"geojson","data":$lineGeoJson}
       },

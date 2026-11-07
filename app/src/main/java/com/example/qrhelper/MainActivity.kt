@@ -498,6 +498,7 @@ fun DigitDropRoot() {
     var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
+    var appendInvoiceToRoute by remember { mutableStateOf(false) }
     var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet<String>())?.toList().orEmpty()) }
 
     var cameraXCamera by remember { mutableStateOf<Camera?>(null) }
@@ -559,7 +560,7 @@ fun DigitDropRoot() {
         }
         routeItems = updatedItems
         importScope.launch {
-            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+            runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedItems) } }
                 .onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить статус в базе: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
@@ -578,7 +579,7 @@ fun DigitDropRoot() {
         routeItems = updatedItems
         selectedItem = updatedItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
         importScope.launch {
-            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+            runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedItems) } }
                 .onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить расхождение: ${error.message}", Toast.LENGTH_LONG).show()
                 }
@@ -802,12 +803,15 @@ fun DigitDropRoot() {
                     }
                 }
                 if (imported.isNotEmpty()) {
-                    val withProgress = imported.map { item ->
+                    val incomingWithProgress = imported.map { item ->
                         item.copy(
                             isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
                             scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
                         )
                     }
+                    val withProgress = if (appendInvoiceToRoute && routeItems.isNotEmpty()) {
+                        mergeInvoiceRows(routeItems, incomingWithProgress)
+                    } else incomingWithProgress
                     currentScreen = AppScreen.ROUTE_LIST
                     val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
                     routeItems = ordered
@@ -840,7 +844,11 @@ fun DigitDropRoot() {
                 }
             } catch (ex: Exception) {
                 Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_LONG).show()
+            } finally {
+                appendInvoiceToRoute = false
             }
+        } else {
+            appendInvoiceToRoute = false
         }
     }
 
@@ -940,7 +948,13 @@ fun DigitDropRoot() {
         AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
+                hasActiveRoute = routeItems.isNotEmpty(),
                 onLoadInvoice = {
+                    appendInvoiceToRoute = false
+                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                },
+                onAppendInvoice = {
+                    appendInvoiceToRoute = routeItems.isNotEmpty()
                     filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 },
                 onPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE }
@@ -1288,7 +1302,7 @@ fun DigitDropRoot() {
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
                             val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
                             routeItems = updatedRoute
-                            importScope.launch { runCatching { LogisticsRepository(context).syncProgress(updatedRoute) } }
+                            importScope.launch { runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedRoute) } } }
                             selectedItem = updated
                             try {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -1425,7 +1439,7 @@ fun SplashScreen(onFinished: () -> Unit) {
 }
 
 @Composable
-fun InvoiceLandingScreen(onBack: () -> Unit, onLoadInvoice: () -> Unit, onPhotoRoute: () -> Unit) {
+fun InvoiceLandingScreen(hasActiveRoute: Boolean, onBack: () -> Unit, onLoadInvoice: () -> Unit, onAppendInvoice: () -> Unit, onPhotoRoute: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize().background(BgDark)
     ) {
@@ -1468,6 +1482,17 @@ fun InvoiceLandingScreen(onBack: () -> Unit, onLoadInvoice: () -> Unit, onPhotoR
                     }
                     Text("›", color = Color(0xFF286BC4), fontSize = 30.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+            if (hasActiveRoute) {
+                Spacer(Modifier.height(14.dp))
+                HubActionButton(
+                    "Добавить ещё одну накладную",
+                    "Объединить с текущим рейсом по точкам и товарам",
+                    Color(0xFFEAF1FA),
+                    Color(0xFF20364F),
+                    Color(0xFF286BC4),
+                    onAppendInvoice
+                )
             }
             Spacer(Modifier.height(14.dp))
             Card(

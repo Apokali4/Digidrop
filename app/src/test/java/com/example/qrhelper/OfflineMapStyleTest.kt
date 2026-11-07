@@ -19,5 +19,7 @@ class OfflineMapStyleTest {
         )
         assertTrue(style.contains("\"route-points-layer\""))
         assertTrue(style.contains("\"route-line-layer\""))
+        assertTrue(style.contains("maxzoom"))
+        assertTrue(style.contains("© OpenStreetMap contributors"))
     }
 }
