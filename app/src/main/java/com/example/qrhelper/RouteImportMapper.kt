@@ -24,6 +24,8 @@ internal data class PointImportPlan(
     val phone: String,
     val latitude: Double?,
     val longitude: Double?,
+    val photoDocUri: String,
+    val signaturePath: String,
     val sortOrder: Int,
     val status: DeliveryStatus,
     val cargo: List<CargoImportPlan>
@@ -48,6 +50,8 @@ internal object RouteImportMapper {
                     phone = group.firstOrNull()?.phone.orEmpty(),
                     latitude = group.firstOrNull()?.latitude,
                     longitude = group.firstOrNull()?.longitude,
+                    photoDocUri = group.firstOrNull()?.photoDocUri.orEmpty(),
+                    signaturePath = group.firstOrNull()?.signaturePath.orEmpty(),
                     sortOrder = index,
                     status = status,
                     cargo = group.map { item ->
