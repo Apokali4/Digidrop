@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, feature/offline-map-yandex-navigation ]
   workflow_dispatch:
     inputs:
       build_apk:
