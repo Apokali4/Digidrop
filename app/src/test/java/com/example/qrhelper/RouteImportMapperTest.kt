@@ -69,4 +69,22 @@ class RouteImportMapperTest {
         assertEquals("Позвонить заранее", cargo.extraComment)
     }
 
+    @Test fun discrepancyReasonAndQuantityProduceProblemStatus() {
+        val item = RouteItem(
+            barcode = "4601234567890",
+            storeName = "Магазин",
+            address = "Адрес",
+            itemName = "Товар",
+            totalBoxes = 5,
+            phone = "",
+            scannedBoxes = 3,
+            discrepancyQty = 2,
+            discrepancyReason = "НЕДОВОЗ"
+        )
+        val point = RouteImportMapper.map(listOf(item)).single()
+        assertEquals(DeliveryStatus.HAS_DISCREPANCY, point.status)
+        assertEquals(2, point.cargo.single().discrepancyQty)
+        assertEquals("НЕДОВОЗ", point.cargo.single().discrepancyReason?.name)
+    }
+
 }
