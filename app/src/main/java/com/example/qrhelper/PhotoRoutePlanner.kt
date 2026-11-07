@@ -96,7 +96,7 @@ internal object PhotoRouteTextParser {
             val lower = line.lowercase(Locale("ru", "RU"))
             streetToken.isNotBlank() && lower.contains(streetToken) && houseToken.isNotBlank() && lower.contains(houseToken)
         }
-        val block = if (index >= 0) lines.subList(maxOf(0, index - 3), minOf(lines.size, index + 4)) else emptyList()
+        val block = if (index >= 0) lines.subList(maxOf(0, index - 4), minOf(lines.size, index + 7)) else emptyList()
         val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
         val hours = Regex("""(?iu)\b\d{1,2}[:.]\d{2}\s*[-–—до]+\s*\d{1,2}[:.]\d{2}\b""")
