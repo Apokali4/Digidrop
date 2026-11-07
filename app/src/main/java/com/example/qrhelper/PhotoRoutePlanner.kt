@@ -43,6 +43,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
+internal data class PhotoStopMetadata(
+    val storeName: String = "",
+    val ownerName: String = "",
+    val phone: String = "",
+    val workingHours: String = "",
+    val cashNote: String = "",
+    val comment: String = ""
+)
+
 internal object PhotoRouteTextParser {
     private val streetHint = Regex(
         """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
@@ -77,6 +86,30 @@ internal object PhotoRouteTextParser {
             .mapNotNull { cleanAddressFragment(it, city) }
             .distinctBy { it.lowercase(Locale("ru", "RU")).replace(Regex("""[^\p{L}\p{N}]"""), "") }
             .toList()
+
+    fun extractMetadata(text: String, address: String): PhotoStopMetadata {
+        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+        val streetToken = streetHint.find(address)?.value?.lowercase(Locale("ru", "RU")).orEmpty()
+        val houseToken = houseAfterStreet.find(address)?.groupValues?.getOrNull(1).orEmpty()
+        val index = lines.indexOfFirst { line ->
+            val lower = line.lowercase(Locale("ru", "RU"))
+            streetToken.isNotBlank() && lower.contains(streetToken) && houseToken.isNotBlank() && lower.contains(houseToken)
+        }
+        val block = if (index >= 0) lines.subList(maxOf(0, index - 3), minOf(lines.size, index + 4)) else emptyList()
+        val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
+            .find(block.joinToString(" "))?.value.orEmpty().trim()
+        val hours = Regex("""(?iu)\b\d{1,2}[:.]\d{2}\s*[-–—до]+\s*\d{1,2}[:.]\d{2}\b""")
+            .find(block.joinToString(" "))?.value.orEmpty()
+        val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс)""").containsMatchIn(it) }.orEmpty()
+        val owner = block.firstOrNull { Regex("""(?iu)\b(ИП|ООО|АО|ИП\s+[А-ЯЁ])""").containsMatchIn(it) }.orEmpty()
+        val shop = block.firstOrNull {
+            it != address && Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|доставка|павильон)""").containsMatchIn(it)
+        }.orEmpty()
+        val comment = block.firstOrNull {
+            it != cash && Regex("""(?iu)(коммент|подъезд|въезд|позвон|до закрыт|разгруз|ворот|забрать|передать)""").containsMatchIn(it)
+        }.orEmpty()
+        return PhotoStopMetadata(shop, owner, phone, hours, cash, comment)
+    }
 }
 
 internal object PhotoOcrImageSizing {
@@ -640,16 +673,21 @@ fun PhotoRoutePlannerScreen(
             OutlinedButton(
                 onClick = {
                     val items = located.mapIndexed { index, stop ->
+                        val metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address)
                         RouteItem(
                             barcode = "PHOTO-${index + 1}",
-                            storeName = "Точка ${index + 1}",
+                            storeName = metadata.storeName.ifBlank { "Точка ${index + 1}" },
                             address = stop.address,
                             itemName = "Доставка по маршрутному листу",
                             totalBoxes = 0,
-                            phone = "",
-                            note = "Импортировано из фотографии",
+                            phone = metadata.phone,
+                            note = metadata.comment.ifBlank { "Импортировано из фотографии" },
                             latitude = stop.latitude,
-                            longitude = stop.longitude
+                            longitude = stop.longitude,
+                            ownerName = metadata.ownerName,
+                            workingHours = metadata.workingHours,
+                            cashNote = metadata.cashNote,
+                            extraComment = metadata.comment
                         )
                     }
                     onApplyRoute(items)
