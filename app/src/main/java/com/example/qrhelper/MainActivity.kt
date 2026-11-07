@@ -608,7 +608,9 @@ fun DigitDropRoot() {
         editor.remove("scan_codes")
         editor.remove("unknown_codes")
         editor.apply()
-        val resetItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
+        val resetItems = routeItems.map {
+            it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
+        }
         routeItems = resetItems
         importScope.launch { runCatching { LogisticsRepository(context).syncProgress(resetItems) } }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
@@ -1805,7 +1807,12 @@ fun PointGroupScreen(
                         Text("Штрихкод: ${item.barcode}", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
-                            Text(if (item.isDelivered) "Сдано" else "В пути", color = if (item.isDelivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
+                                color = when { item.discrepancyQty > 0 -> Color(0xFFB3261E); item.isDelivered -> MintAccent; else -> EmeraldPrimary },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                         Text("Нажми, чтобы открыть накладную", color = TextMuted, fontSize = 11.sp)
                     }
@@ -2312,10 +2319,6 @@ fun RouteListScreen(
                     }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenOfflineMap) { Text("Офлайн-карта Калуги") }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2788,9 +2791,11 @@ fun ReportsScreen(
 ) {
     val points = routeItems.groupBy { it.storeName to it.address }
     val delivered = points.values.count { group -> group.all { it.isDelivered } }
+    val problemPoints = points.values.count { group -> group.any { it.discrepancyQty > 0 } }
     val totalBoxes = routeItems.sumOf { it.totalBoxes }
     val scanned = routeItems.sumOf { it.scannedBoxes }
-    val remaining = (totalBoxes - scanned).coerceAtLeast(0)
+    val discrepancies = routeItems.sumOf { it.discrepancyQty }
+    val remaining = (totalBoxes - scanned - discrepancies).coerceAtLeast(0)
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
@@ -2800,9 +2805,11 @@ fun ReportsScreen(
         val stats = listOf(
             "Точек всего" to points.size.toString(),
             "Точек доставлено" to "$delivered / ${points.size}",
+            "Точек с расхождениями" to problemPoints.toString(),
             "Мест по накладным" to totalBoxes.toString(),
             "Отсканировано" to scanned.toString(),
-            "Осталось по сканам" to remaining.toString(),
+            "Расхождения" to discrepancies.toString(),
+            "Осталось учесть" to remaining.toString(),
             "Строк накладных" to routeItems.size.toString()
         )
         stats.forEach { (label, value) ->
