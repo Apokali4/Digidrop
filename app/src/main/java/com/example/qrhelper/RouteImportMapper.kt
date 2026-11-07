@@ -39,8 +39,8 @@ internal object RouteImportMapper {
                 val group = entry.value
                 val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
                 val status = when {
-                    group.any { it.discrepancyQty > 0 } -> DeliveryStatus.HAS_DISCREPANCY
                     group.all { it.isDelivered } -> DeliveryStatus.COMPLETED
+                    group.any { it.discrepancyQty > 0 } -> DeliveryStatus.HAS_DISCREPANCY
                     group.any { it.isDelivered } || scanned > 0 -> DeliveryStatus.IN_PROGRESS
                     else -> DeliveryStatus.PENDING
                 }
