@@ -31,4 +31,19 @@ class PhotoRouteTextParserTest {
         assertEquals(2, PhotoOcrImageSizing.sampleSize(4800, 3200))
         assertEquals(4, PhotoOcrImageSizing.sampleSize(9600, 6400))
     }
+    @Test fun extractsAddressFromNoisyOcrRowAndDropsBusinessTextAfterHouse() {
+        val text = """47 ] 68 ТАЙДЫНОВ Расим Джалил Оглы "По |. Калуга, ул. Советская, д. 2, Шашлычная, РЦ |Нгс акции, забрать 5755,5"""
+        assertEquals(
+            listOf("Калуга, ул. Советская, д. 2"),
+            PhotoRouteTextParser.extractCandidates(text, "Калуга")
+        )
+    }
+
+    @Test fun keepsHouseBuildingSuffix() {
+        assertEquals(
+            listOf("проспект Ленина, 45к2"),
+            PhotoRouteTextParser.extractCandidates("проспект Ленина, 45к2")
+        )
+    }
+
 }
