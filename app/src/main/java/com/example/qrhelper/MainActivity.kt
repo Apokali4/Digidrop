@@ -434,7 +434,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun DigitDropRoot() {
-    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }\n    var offlineMapRefresh by remember { mutableStateOf(0) }
+    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    var offlineMapRefresh by remember { mutableStateOf(0) }
     val windowContext = LocalContext.current
     SideEffect {
         val activity = windowContext as? Activity
