@@ -133,6 +133,7 @@ fun OfflineMapScreen(
                                     .build()
                             }
                         }
+                        mapView
                     },
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
