@@ -2,6 +2,9 @@ package com.example.qrhelper
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,9 +52,12 @@ fun OfflineMapScreen(
     refreshKey: Int,
     onBack: () -> Unit,
     onImportMap: () -> Unit,
-    onGeocodeMissing: () -> Unit
+    onGeocodeMissing: () -> Unit,
+    onSelectPoint: (List<RouteItem>) -> Unit
 ) {
     val context = LocalContext.current
+    val pointGroups = remember(routeItems) { routeItems.groupBy { it.storeName to it.address }.values.map { it.toList() } }
+    val mappedGroups = pointGroups.filter { group -> group.firstOrNull()?.let { it.latitude != null && it.longitude != null } == true }
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapFile by remember { mutableStateOf(OfflineMapStore.installedMap(context)) }
     LaunchedEffect(refreshKey) {
@@ -92,8 +99,8 @@ fun OfflineMapScreen(
                 color = EmeraldPrimary,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-            val mappedCount = routeItems.count { it.latitude != null && it.longitude != null }
-            val missingCoordinates = routeItems.size - mappedCount
+            val mappedCount = mappedGroups.size
+            val missingCoordinates = pointGroups.size - mappedCount
             Text(
                 "Точек на карте: $mappedCount • без координат: $missingCoordinates",
                 color = if (missingCoordinates > 0) Color(0xFF9A5A18) else TextMuted,
@@ -105,7 +112,7 @@ fun OfflineMapScreen(
                     Text("Определить координаты недостающих точек (нужен интернет)")
                 }
             }
-            key(refreshKey, activeMapFile.absolutePath) {
+            key(refreshKey, pointGroups, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
                     MapView(context).apply { onCreate(null) }
@@ -133,17 +140,18 @@ fun OfflineMapScreen(
                             val source = OfflineMapStore.mapLibreSource(activeMapFile)
                             val pointFeatures = JSONArray()
                             val routeCoordinates = JSONArray()
-                            routeItems.filter { it.latitude != null && it.longitude != null }.forEachIndexed { index, item ->
+                            mappedGroups.forEach { group ->
+                                val item = group.first()
                                 val coordinates = JSONArray().put(item.longitude).put(item.latitude)
                                 routeCoordinates.put(coordinates)
                                 val markerStatus = when {
-                                    item.discrepancyQty > 0 -> "Проблема" to "#C62828"
-                                    item.isDelivered -> "Сдано" to "#27AE60"
-                                    item.scannedBoxes > 0 -> "В работе" to "#2878C8"
+                                    group.any { it.discrepancyQty > 0 } -> "Проблема" to "#C62828"
+                                    group.all { it.isDelivered } -> "Сдано" to "#27AE60"
+                                    group.any { it.scannedBoxes > 0 || it.isDelivered } -> "В работе" to "#2878C8"
                                     else -> "Ожидает" to "#E5A000"
                                 }
                                 val properties = JSONObject()
-                                    .put("number", index + 1)
+                                    .put("number", pointGroups.indexOf(group) + 1)
                                     .put("name", item.storeName)
                                     .put("address", item.address)
                                     .put("status", markerStatus.first)
@@ -194,6 +202,37 @@ fun OfflineMapScreen(
                     },
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
+            }
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().height(92.dp).padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(pointGroups) { index, group ->
+                    val first = group.first()
+                    val status = when {
+                        group.any { it.discrepancyQty > 0 } -> "Проблема"
+                        group.all { it.isDelivered } -> "Сдано"
+                        group.any { it.scannedBoxes > 0 || it.isDelivered } -> "В работе"
+                        else -> "Ожидает"
+                    }
+                    val tint = when (status) {
+                        "Проблема" -> Color(0xFFC62828)
+                        "Сдано" -> Color(0xFF27AE60)
+                        "В работе" -> Color(0xFF2878C8)
+                        else -> Color(0xFFE5A000)
+                    }
+                    Card(
+                        Modifier.width(190.dp).clickable { onSelectPoint(group) },
+                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("${index + 1}. ${first.storeName}", color = TextLight, fontSize = 12.sp, maxLines = 1)
+                            Text(first.address, color = TextMuted, fontSize = 10.sp, maxLines = 1)
+                            Text(status, color = tint, fontSize = 11.sp)
+                        }
+                    }
+                }
             }
             Text(
                 "Данные карты: © OpenStreetMap contributors • лицензия ODbL",
