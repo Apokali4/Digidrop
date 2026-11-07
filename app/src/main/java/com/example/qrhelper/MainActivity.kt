@@ -3001,6 +3001,11 @@ fun ReportsScreen(
     val points = routeItems.groupBy { it.storeName to it.address }
     val delivered = points.values.count { group -> group.all { it.isDelivered } }
     val problemPoints = points.values.count { group -> group.any { it.discrepancyQty > 0 } }
+    val inProgressPoints = points.values.count { group ->
+        group.none { it.discrepancyQty > 0 } && !group.all { it.isDelivered } &&
+            group.any { it.isDelivered || it.scannedBoxes > 0 }
+    }
+    val pendingPoints = (points.size - delivered - problemPoints - inProgressPoints).coerceAtLeast(0)
     val totalBoxes = routeItems.sumOf { it.totalBoxes }
     val scanned = routeItems.sumOf { it.scannedBoxes }
     val discrepancies = routeItems.sumOf { it.discrepancyQty }
@@ -3030,6 +3035,11 @@ fun ReportsScreen(
                 }
             }
         }
+        Text("Состояние точек", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        ReportStatusBar("Доставлено", delivered, points.size, Color(0xFF43875B))
+        ReportStatusBar("В работе", inProgressPoints, points.size, Color(0xFF3978A8))
+        ReportStatusBar("Ожидают", pendingPoints, points.size, Color(0xFFB18A38))
+        ReportStatusBar("Расхождения", problemPoints, points.size, Color(0xFFB45C4C))
         Spacer(Modifier.height(8.dp))
         HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
         Spacer(Modifier.height(8.dp))
@@ -3038,6 +3048,24 @@ fun ReportsScreen(
         HubActionButton("Экспорт PDF", "Печатный отчёт по точкам и грузу", CardSurface, TextLight, MintAccent, onExportPdf)
         Spacer(Modifier.height(8.dp))
         Text("В отчёты входят штрихкод, точка, адрес, товар, план, факт, расхождения, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun ReportStatusBar(label: String, value: Int, total: Int, color: Color) {
+    val fraction = if (total > 0) (value.toFloat() / total).coerceIn(0f, 1f) else 0f
+    Column(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, color = TextMuted, fontSize = 12.sp)
+            Text("$value / $total", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Box(
+            Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)).background(CardBorder)
+        ) {
+            Box(
+                Modifier.fillMaxWidth(fraction).height(8.dp).background(color, RoundedCornerShape(8.dp))
+            )
+        }
     }
 }
 
