@@ -137,6 +137,7 @@ fun OfflineMapScreen(
                                 val coordinates = JSONArray().put(item.longitude).put(item.latitude)
                                 routeCoordinates.put(coordinates)
                                 val markerStatus = when {
+                                    item.discrepancyQty > 0 -> "Проблема" to "#C62828"
                                     item.isDelivered -> "Сдано" to "#27AE60"
                                     item.scannedBoxes > 0 -> "В работе" to "#2878C8"
                                     else -> "Ожидает" to "#E5A000"
