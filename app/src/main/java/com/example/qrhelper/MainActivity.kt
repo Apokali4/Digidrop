@@ -1545,8 +1545,8 @@ fun HubScreen(
 ) {
     var confirmReset by remember { mutableStateOf(false) }
     val points = routeItems.groupBy { it.storeName to it.address }
-    val delivered = points.values.count { group -> group.all { it.isDelivered } }
-    val problems = points.values.count { group -> group.any { it.discrepancyQty > 0 } }
+    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
+    val problems = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
     val totalBoxes = routeItems.sumOf { it.totalBoxes.coerceAtLeast(0) }
     val scannedBoxes = routeItems.sumOf { it.scannedBoxes.coerceAtLeast(0) }
     Column(
@@ -2452,12 +2452,7 @@ fun RouteListScreen(
             val group = entry.second
             val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
             val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
-            val status = when {
-                group.any { it.discrepancyQty > 0 } -> DeliveryPointStatus.PROBLEM
-                group.all { it.isDelivered } -> DeliveryPointStatus.DELIVERED
-                group.any { it.isDelivered } -> DeliveryPointStatus.IN_PROGRESS
-                else -> RouteProgress.status(expected, scanned, 0)
-            }
+            val status = deliveryPointStatus(group)
             DeliveryPointSnapshot(
                 id = entry.first.first + "|" + entry.first.second,
                 sortOrder = index,
@@ -2999,12 +2994,9 @@ fun ReportsScreen(
     onExportPdf: () -> Unit
 ) {
     val points = routeItems.groupBy { it.storeName to it.address }
-    val delivered = points.values.count { group -> group.all { it.isDelivered } }
-    val problemPoints = points.values.count { group -> group.any { it.discrepancyQty > 0 } }
-    val inProgressPoints = points.values.count { group ->
-        group.none { it.discrepancyQty > 0 } && !group.all { it.isDelivered } &&
-            group.any { it.isDelivered || it.scannedBoxes > 0 }
-    }
+    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
+    val problemPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
+    val inProgressPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.IN_PROGRESS }
     val pendingPoints = (points.size - delivered - problemPoints - inProgressPoints).coerceAtLeast(0)
     val totalBoxes = routeItems.sumOf { it.totalBoxes }
     val scanned = routeItems.sumOf { it.scannedBoxes }
