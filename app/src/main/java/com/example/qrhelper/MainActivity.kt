@@ -8,9 +8,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.view.View
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -45,10 +48,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,6 +73,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -78,11 +85,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -99,6 +110,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -110,6 +123,15 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.example.qrhelper.LogisticsRepository
+import com.example.qrhelper.data.ProductEntity
+import com.example.qrhelper.RouteHistorySnapshot
+import com.example.qrhelper.domain.DeliveryPointSnapshot
+import com.example.qrhelper.domain.DeliveryPointStatus
+import com.example.qrhelper.domain.PointFilter
+import com.example.qrhelper.domain.RouteProgress
+import com.example.qrhelper.domain.RouteStop
+import com.example.qrhelper.domain.RouteOrderOptimizer
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -121,9 +143,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.concurrent.Executors
 import java.util.zip.ZipInputStream
 import java.io.InputStream
+import java.io.File
 import java.io.StringReader
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -144,7 +169,11 @@ data class RouteItem(
     val ownerName: String = "",
     val workingHours: String = "",
     val cashNote: String = "",
-    val extraComment: String = ""
+    val extraComment: String = "",
+    val photoDocUri: String = "",
+    val signaturePath: String = "",
+    val discrepancyQty: Int = 0,
+    val discrepancyReason: String? = null
 )
 
 // Реальный рейс появляется только после загрузки файла накладной.
@@ -242,7 +271,7 @@ private fun readXlsxXml(xml: String, sharedStrings: List<String> = emptyList()):
     return rows
 }
 
-private fun parseXlsx(input: InputStream): List<RouteItem> {
+internal fun parseXlsx(input: InputStream): List<RouteItem> {
     val entries = mutableMapOf<String, ByteArray>()
     ZipInputStream(input).use { zip ->
         while (true) {
@@ -271,14 +300,23 @@ private fun parseXlsx(input: InputStream): List<RouteItem> {
         }
         values
     }
-    val sheetName = entries.keys.filter { it.startsWith("xl/worksheets/sheet") }.sorted().firstOrNull()
-        ?: return emptyList()
-    val rows = readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
-    val tsv = rows.joinToString("\n") { row ->
-        row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
+    val sheetNames = entries.keys
+        .filter { it.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")) }
+        .sortedBy { Regex("sheet([0-9]+)").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
+    if (sheetNames.isEmpty()) return emptyList()
+    val sheets = sheetNames.map { sheetName ->
+        readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
     }
-    return parseManifest(tsv)
+    return parseXlsxSheets(sheets)
 }
+
+internal fun parseXlsxSheets(sheets: List<List<List<String>>>): List<RouteItem> =
+    sheets.flatMap { rows ->
+        val tsv = rows.joinToString("\n") { row ->
+            row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
+        }
+        parseManifest(tsv)
+    }
 
 internal fun parseManifest(text: String): List<RouteItem> {
     val lines = text.removePrefix("\uFEFF").lineSequence()
@@ -341,6 +379,23 @@ internal fun parseManifest(text: String): List<RouteItem> {
     return parsed
 }
 
+private fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
+    val groups = items.groupBy { it.storeName to it.address }.values.map { it.toList() }
+    if (groups.size < 3) return items
+    val stops = groups.map { group ->
+        val first = group.first()
+        RouteStop(
+            id = first.storeName + "|" + first.address,
+            latitude = first.latitude,
+            longitude = first.longitude,
+            completed = group.all { it.isDelivered }
+        )
+    }
+    val optimized = RouteOrderOptimizer.optimize(stops)
+    val byId = groups.associateBy { group -> group.first().storeName + "|" + group.first().address }
+    return optimized.flatMap { stop -> byId[stop.id].orEmpty() }
+}
+
 private fun orderRouteByCoordinates(items: List<RouteItem>): List<RouteItem> {
     if (items.size < 3 || items.any { it.latitude == null || it.longitude == null }) return items
     val remaining = items.drop(1).toMutableList()
@@ -389,6 +444,7 @@ enum class AppScreen {
     REPORTS,
     SETTINGS,
     HISTORY,
+    PRODUCTS,
     UNKNOWN_CODES,
     PHOTO_ROUTE,
     OFFLINE_MAP
@@ -477,6 +533,9 @@ fun DigitDropRoot() {
             }, ContextCompat.getMainExecutor(context))
     }
 
+    var archivedRoutes by remember { mutableStateOf(emptyList<RouteHistorySnapshot>()) }
+    var productCatalog by remember { mutableStateOf(emptyList<ProductEntity>()) }
+
     var routeItems by remember {
         mutableStateOf(
             parseManifest(prefs.getString("active_manifest", "").orEmpty()).map { item ->
@@ -487,14 +546,84 @@ fun DigitDropRoot() {
         )
     }
 
+    LaunchedEffect(Unit) {
+        runCatching {
+            val repository = LogisticsRepository(context)
+            val restored = repository.activeRouteItems()
+            if (restored.isNotEmpty()) {
+                routeItems = restored
+                val manifest = restored.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                    ).joinToString("\t") { it.replace("\t", " ") }
+                }
+                prefs.edit().putString("active_manifest", manifest).apply()
+            } else if (routeItems.isNotEmpty()) {
+                repository.replaceActiveRoute(routeItems)
+            }
+        }.onFailure { error ->
+            Toast.makeText(context, "Локальная база пока недоступна: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun updateItemStatus(item: RouteItem) {
         val nextStatus = !item.isDelivered
         if (settingsAutoSave) prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
-        routeItems = routeItems.map { current ->
+        val updatedItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
+        }
+        routeItems = updatedItems
+        importScope.launch {
+            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+                .onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить статус в базе: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
         }
         if (selectedItem?.let(::routeItemKey) == routeItemKey(item)) {
             selectedItem = selectedItem?.copy(isDelivered = nextStatus)
+        }
+    }
+
+    fun updateItemDiscrepancy(item: RouteItem, quantity: Int, reason: String) {
+        val updatedItems = routeItems.map { current ->
+            if (routeItemKey(current) == routeItemKey(item)) {
+                current.copy(discrepancyQty = quantity.coerceAtLeast(0), discrepancyReason = reason)
+            } else current
+        }
+        routeItems = updatedItems
+        selectedItem = updatedItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+        importScope.launch {
+            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+                .onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить расхождение: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+        }
+    }
+
+    fun archiveCurrentRoute() {
+        if (routeItems.isEmpty()) {
+            Toast.makeText(context, "Нет активного рейса для архивации", Toast.LENGTH_SHORT).show()
+            return
+        }
+        importScope.launch {
+            runCatching {
+                LogisticsRepository(context).archiveActiveRoute()
+                val editor = prefs.edit().remove("active_manifest").remove("scan_codes")
+                routeItems.forEach { item ->
+                    editor.remove("delivered_" + routeItemKey(item))
+                    editor.remove("scanned_" + routeItemKey(item))
+                }
+                editor.apply()
+                routeItems = emptyList()
+                selectedItem = null
+                selectedPointItems = emptyList()
+                currentScreen = AppScreen.HUB
+                Toast.makeText(context, "Рейс отправлен в историю", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, "Не удалось архивировать рейс: ${error.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -507,7 +636,11 @@ fun DigitDropRoot() {
         editor.remove("scan_codes")
         editor.remove("unknown_codes")
         editor.apply()
-        routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
+        val resetItems = routeItems.map {
+            it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
+        }
+        routeItems = resetItems
+        importScope.launch { runCatching { LogisticsRepository(context).syncProgress(resetItems) } }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
@@ -516,13 +649,19 @@ fun DigitDropRoot() {
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Осталось;Статус\n"
+                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Расхождение;Причина;Осталось;Статус\n"
                 val rows = routeItems.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName,
                         item.totalBoxes.toString(), item.scannedBoxes.toString(),
-                        (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0).toString(),
-                        if (item.isDelivered) "Доставлено" else "В пути"
+                        item.discrepancyQty.toString(), item.discrepancyReason.orEmpty(),
+                        (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0).toString(),
+                        when {
+                            item.discrepancyQty > 0 -> "Расхождение"
+                            item.isDelivered -> "Доставлено"
+                            item.scannedBoxes > 0 -> "В работе"
+                            else -> "Ожидает"
+                        }
                     ).joinToString(";") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
                 }
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
@@ -553,52 +692,171 @@ fun DigitDropRoot() {
         }
     }
 
+    val photoEvidenceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        val item = selectedItem
+        if (uri != null && item != null) {
+            importScope.launch {
+                runCatching {
+                    val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
+                    val target = File(directory, "photo_${System.currentTimeMillis()}.jpg")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    } ?: error("Не удалось прочитать выбранное фото")
+                    val updated = routeItems.map {
+                        if (routeItemKey(it) == routeItemKey(item)) it.copy(photoDocUri = target.absolutePath) else it
+                    }
+                    routeItems = updated
+                    selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                    LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
+                    Toast.makeText(context, "Фото доказательства сохранено", Toast.LENGTH_SHORT).show()
+                }.onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить фото: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    val reportExcelLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writeXlsx(it, routeItems) }
+                ?: error("Не удалось открыть файл для записи")
+            Toast.makeText(context, "Excel-отчёт сохранён", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка Excel-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val reportPdfLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writePdf(it, routeItems) }
+                ?: error("Не удалось открыть файл для записи")
+            Toast.makeText(context, "PDF-отчёт сохранён", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка PDF-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val backupExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri: Uri? ->
+        if (uri != null) runCatching {
+            val snapshot = BackupSnapshot(
+                routeItems = routeItems,
+                offlineMode = settingsOffline,
+                autoSave = settingsAutoSave,
+                compactMode = settingsCompact,
+                unknownCodes = unknownCodes,
+                scanCodes = prefs.getStringSet("scan_codes", emptySet()).orEmpty().toList()
+            )
+            context.contentResolver.openOutputStream(uri)?.use {
+                BackupManager.writeBackup(it, snapshot, context.filesDir)
+            } ?: error("Не удалось открыть файл резервной копии")
+            Toast.makeText(context, "Резервная копия сохранена", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(context, "Ошибка резервного копирования: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val backupImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) importScope.launch {
+            runCatching {
+                val snapshot = context.contentResolver.openInputStream(uri)?.use {
+                    BackupManager.readBackup(it, context.filesDir)
+                } ?: error("Не удалось прочитать резервную копию")
+                routeItems = snapshot.routeItems
+                settingsOffline = snapshot.offlineMode
+                settingsAutoSave = snapshot.autoSave
+                settingsCompact = snapshot.compactMode
+                unknownCodes = snapshot.unknownCodes
+                val manifest = snapshot.routeItems.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                    ).joinToString("\t") { it.replace("\t", " ") }
+                }
+                prefs.edit()
+                    .putString("active_manifest", manifest)
+                    .putBoolean("offline_mode", snapshot.offlineMode)
+                    .putBoolean("auto_save", snapshot.autoSave)
+                    .putBoolean("compact_mode", snapshot.compactMode)
+                    .putStringSet("unknown_codes", snapshot.unknownCodes.toSet())
+                    .putStringSet("scan_codes", snapshot.scanCodes.toSet())
+                    .apply()
+                LogisticsRepository(context).replaceActiveRoute(snapshot.routeItems)
+                Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, "Не удалось восстановить копию: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri != null) {
+        if (uri != null) importScope.launch {
             try {
                 val mime = context.contentResolver.getType(uri).orEmpty()
-                val isExcel = mime.contains("spreadsheet") || uri.toString().lowercase().endsWith(".xlsx")
-                val imported = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    if (isExcel) parseXlsx(inputStream)
-                    else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
-                }.orEmpty()
+                val uriText = uri.toString().lowercase()
+                val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
+                val isExcel = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
+                val imported = withContext(Dispatchers.IO) {
+                    if (isPdf) {
+                        PdfInvoiceImporter.parse(context, uri)
+                    } else {
+                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            if (isExcel) parseXlsx(inputStream)
+                            else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        }.orEmpty()
+                    }
+                }
                 if (imported.isNotEmpty()) {
-                        val content = imported.joinToString("\n") { item ->
-                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                                item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
-                                item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", content).apply()
-                        val withProgress = imported.map { item ->
-                            item.copy(
-                                isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
-                                scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
-                            )
-                        }
-                        routeItems = withProgress
-                        currentScreen = AppScreen.ROUTE_LIST
-                        importScope.launch {
-                            val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
-                            routeItems = ordered
-                            val optimized = ordered.map { it.barcode } != withProgress.map { it.barcode }
-                            val geocoded = ordered.count { it.latitude != null && it.longitude != null }
-                            Toast.makeText(
-                                context,
-                                "Загружено позиций: ${ordered.size}" + when {
-                                    optimized -> " • точки упорядочены примерно по расстоянию"
-                                    geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
-                                    else -> " • порядок из накладной сохранён"
-                                },
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                    val withProgress = imported.map { item ->
+                        item.copy(
+                            isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
+                            scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
+                        )
+                    }
+                    currentScreen = AppScreen.ROUTE_LIST
+                    val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
+                    routeItems = ordered
+                    val manifest = ordered.joinToString("\n") { item ->
+                        listOf(
+                            item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                            item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                            item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                        ).joinToString("\t") { it.replace("\t", " ") }
+                    }
+                    prefs.edit().putString("active_manifest", manifest).apply()
+                    LogisticsRepository(context).replaceActiveRoute(ordered)
+                    val optimized = ordered.map(::routeItemKey) != withProgress.map(::routeItemKey)
+                    val geocoded = ordered.count { it.latitude != null && it.longitude != null }
+                    Toast.makeText(
+                        context,
+                        "Загружено позиций: ${ordered.size}" + when {
+                            optimized -> " • точки упорядочены примерно по расстоянию"
+                            geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
+                            else -> " • порядок из накладной сохранён"
+                        },
+                        Toast.LENGTH_LONG
+                    ).show()
                 } else {
-                    Toast.makeText(context, "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        context,
+                        "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             } catch (ex: Exception) {
-                Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -686,7 +944,7 @@ fun DigitDropRoot() {
             AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
-            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
+            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.PRODUCTS, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
         }
     }
@@ -700,7 +958,7 @@ fun DigitDropRoot() {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 onLoadInvoice = {
-                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 },
                 onPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE }
             )
@@ -717,8 +975,23 @@ fun DigitDropRoot() {
                 onResetRoute = { resetRouteProgress() },
                 onOpenReports = { currentScreen = AppScreen.REPORTS },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
-                onOpenHistory = { currentScreen = AppScreen.HISTORY },
+                onOpenHistory = {
+                    importScope.launch {
+                        archivedRoutes = runCatching { LogisticsRepository(context).history() }
+                            .getOrElse { error ->
+                                Toast.makeText(context, "Не удалось загрузить историю: ${error.message}", Toast.LENGTH_LONG).show()
+                                emptyList()
+                            }
+                        currentScreen = AppScreen.HISTORY
+                    }
+                },
                 onOpenUnknown = { unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty(); currentScreen = AppScreen.UNKNOWN_CODES },
+                onOpenProducts = {
+                    importScope.launch {
+                        productCatalog = runCatching { LogisticsRepository(context).searchProducts("") }.getOrElse { emptyList() }
+                        currentScreen = AppScreen.PRODUCTS
+                    }
+                },
                 onNavigateNext = {
                     val nextItem = routeItems.firstOrNull { !it.isDelivered }
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
@@ -737,6 +1010,12 @@ fun DigitDropRoot() {
                     }
                     prefs.edit().putString("active_manifest", content).apply()
                     routeItems = imported
+                    importScope.launch {
+                        runCatching { LogisticsRepository(context).replaceActiveRoute(imported) }
+                            .onFailure { error ->
+                                Toast.makeText(context, "Маршрут добавлен, но база не обновлена: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
                     currentScreen = AppScreen.ROUTE_LIST
                     Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек", Toast.LENGTH_LONG).show()
                 }
@@ -763,15 +1042,38 @@ fun DigitDropRoot() {
                         val found = resolved.count { it.latitude != null && it.longitude != null }
                         Toast.makeText(context, "Координаты определены: $found из ${resolved.size}", Toast.LENGTH_LONG).show()
                     }
+                },
+                onSelectPoint = { items ->
+                    selectedPointItems = items
+                    currentScreen = AppScreen.POINT_DETAILS
                 }
             )
         }
         AppScreen.ROUTE_LIST -> {
             RouteListScreen(
                 routeItems = routeItems,
+                compactMode = settingsCompact,
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
+                onRebuildRoute = {
+                    val reordered = rebuildRemainingRoute(routeItems)
+                    if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
+                        Toast.makeText(context, "Маршрут уже оптимален или не хватает координат точек", Toast.LENGTH_LONG).show()
+                    } else {
+                        routeItems = reordered
+                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
+                        val saved = reordered.joinToString("\n") { item ->
+                            listOf(
+                                item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                            ).joinToString("\t") { it.replace("\t", " ") }
+                        }
+                        prefs.edit().putString("active_manifest", saved).apply()
+                        Toast.makeText(context, "Оставшийся маршрут перестроен", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onOpenPointMap = { address -> launchNavigation(address) },
                 onCallClient = { phone -> makePhoneCall(phone) },
                 onPointClick = { pointItems ->
@@ -784,7 +1086,9 @@ fun DigitDropRoot() {
                     if (from in groups.indices && to in groups.indices) {
                         val moved = groups.removeAt(from)
                         groups.add(to, moved)
-                        routeItems = groups.flatMap { it.second }
+                        val reorderedItems = groups.flatMap { it.second }
+                        routeItems = reorderedItems
+                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reorderedItems) } }
                         val saved = routeItems.joinToString("\n") { item ->
                             listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                                 item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
@@ -803,7 +1107,29 @@ fun DigitDropRoot() {
                     onBack = { currentScreen = AppScreen.ROUTE_LIST },
                     onNavigate = { launchNavigation(item.address, item.latitude, item.longitude) },
                     onCall = { makePhoneCall(item.phone) },
-                    onToggleDelivered = { updateItemStatus(item) }
+                    onToggleDelivered = { updateItemStatus(item) },
+                    onSetDiscrepancy = { quantity, reason -> updateItemDiscrepancy(item, quantity, reason) },
+                    onAddPhoto = { photoEvidenceLauncher.launch("image/*") },
+                    onCaptureSignature = { bitmap ->
+                        importScope.launch {
+                            runCatching {
+                                val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
+                                val target = File(directory, "signature_${System.currentTimeMillis()}.png")
+                                target.outputStream().use { output ->
+                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                                }
+                                val updated = routeItems.map {
+                                    if (routeItemKey(it) == routeItemKey(item)) it.copy(signaturePath = target.absolutePath) else it
+                                }
+                                routeItems = updated
+                                selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                                LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
+                                Toast.makeText(context, "Подпись получателя сохранена", Toast.LENGTH_SHORT).show()
+                            }.onFailure { error ->
+                                Toast.makeText(context, "Не удалось сохранить подпись: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 )
             } ?: run {
                 currentScreen = AppScreen.ROUTE_LIST
@@ -821,7 +1147,31 @@ fun DigitDropRoot() {
                     val item = selectedPointItems.firstOrNull()
                     if (item != null) launchNavigation(item.address, item.latitude, item.longitude)
                 },
-                onCall = { makePhoneCall(selectedPointItems.firstOrNull()?.phone.orEmpty()) }
+                onCall = { makePhoneCall(selectedPointItems.firstOrNull()?.phone.orEmpty()) },
+                onClosePoint = {
+                    val point = selectedPointItems.firstOrNull()
+                    if (point != null) importScope.launch {
+                        val closed = runCatching {
+                            LogisticsRepository(context).closePoint(point.storeName, point.address)
+                        }.getOrElse { error ->
+                            Toast.makeText(context, "Ошибка проверки точки: ${error.message}", Toast.LENGTH_LONG).show()
+                            false
+                        }
+                        if (closed) {
+                            val updated = routeItems.map {
+                                if (it.storeName == point.storeName && it.address == point.address) it.copy(isDelivered = true) else it
+                            }
+                            routeItems = updated
+                            selectedPointItems = updated.filter { it.storeName == point.storeName && it.address == point.address }
+                            val editor = prefs.edit()
+                            selectedPointItems.forEach { editor.putBoolean("delivered_" + routeItemKey(it), true) }
+                            editor.apply()
+                            Toast.makeText(context, "Точка закрыта и отмечена как сданная", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Точку нельзя закрыть: проверь сканы и причины расхождений", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             )
         }
         AppScreen.SCAN_RESULTS -> {
@@ -836,7 +1186,13 @@ fun DigitDropRoot() {
             )
         }
         AppScreen.REPORTS -> {
-            ReportsScreen(routeItems, onBack = { currentScreen = AppScreen.HUB }, onExport = { reportLauncher.launch("DigiDrop_report.csv") })
+            ReportsScreen(
+                routeItems,
+                onBack = { currentScreen = AppScreen.HUB },
+                onExport = { reportLauncher.launch("DigiDrop_report.csv") },
+                onExportExcel = { reportExcelLauncher.launch("DigiDrop_report.xlsx") },
+                onExportPdf = { reportPdfLauncher.launch("DigiDrop_report.pdf") }
+            )
         }
         AppScreen.SETTINGS -> {
             SettingsScreen(
@@ -845,11 +1201,53 @@ fun DigitDropRoot() {
                 onOfflineChange = { settingsOffline = it; prefs.edit().putBoolean("offline_mode", it).apply() },
                 onAutoSaveChange = { settingsAutoSave = it; prefs.edit().putBoolean("auto_save", it).apply() },
                 onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
-                onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() }
+                onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() },
+                onBackup = { backupExportLauncher.launch("DigiDrop_backup.zip") },
+                onRestore = { backupImportLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                onArchiveRoute = { archiveCurrentRoute() }
             )
         }
         AppScreen.HISTORY -> {
-            HistoryScreen(routeItems, onBack = { currentScreen = AppScreen.HUB })
+            HistoryScreen(
+                routes = archivedRoutes,
+                onBack = { currentScreen = AppScreen.HUB },
+                onRestoreRoute = { routeId ->
+                    importScope.launch {
+                        runCatching { LogisticsRepository(context).restoreArchivedRoute(routeId) }
+                            .onSuccess { restored ->
+                                routeItems = restored
+                                val manifest = restored.joinToString("\n") { item ->
+                                    listOf(
+                                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                                    ).joinToString("\t") { it.replace("\t", " ") }
+                                }
+                                prefs.edit().putString("active_manifest", manifest).apply()
+                                currentScreen = AppScreen.ROUTE_LIST
+                                Toast.makeText(context, "Архивный рейс восстановлен", Toast.LENGTH_LONG).show()
+                            }
+                            .onFailure { error ->
+                                Toast.makeText(context, "Не удалось восстановить рейс: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
+                }
+            )
+        }
+        AppScreen.PRODUCTS -> {
+            ProductCatalogScreen(
+                products = productCatalog,
+                onBack = { currentScreen = AppScreen.HUB },
+                onSearch = { query ->
+                    importScope.launch {
+                        productCatalog = runCatching { LogisticsRepository(context).searchProducts(query) }
+                            .getOrElse { error ->
+                                Toast.makeText(context, "Ошибка каталога: ${error.message}", Toast.LENGTH_SHORT).show()
+                                emptyList()
+                            }
+                    }
+                }
+            )
         }
         AppScreen.UNKNOWN_CODES -> {
             UnknownCodesScreen(unknownCodes, onBack = { currentScreen = AppScreen.HUB }, onClear = {
@@ -905,7 +1303,9 @@ fun DigitDropRoot() {
                                 ).apply()
                             }
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
-                            routeItems = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
+                            val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
+                            routeItems = updatedRoute
+                            importScope.launch { runCatching { LogisticsRepository(context).syncProgress(updatedRoute) } }
                             selectedItem = updated
                             try {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -957,18 +1357,50 @@ fun SplashScreen(onFinished: () -> Unit) {
                 radius = w * 0.72f,
                 center = Offset(w * 0.5f, h * 0.43f)
             )
-            // Тонкая маршрутная линия с контрольными точками на фоне.
-            val path = Path().apply {
+            // Лесные силуэты по краям, дорога и небольшой фургон.
+            fun tree(centerX: Float, baseY: Float, height: Float, tint: Color) {
+                val treePath = Path().apply {
+                    moveTo(centerX, baseY - height)
+                    lineTo(centerX - height * 0.34f, baseY - height * 0.46f)
+                    lineTo(centerX - height * 0.19f, baseY - height * 0.46f)
+                    lineTo(centerX - height * 0.42f, baseY - height * 0.12f)
+                    lineTo(centerX + height * 0.42f, baseY - height * 0.12f)
+                    lineTo(centerX + height * 0.19f, baseY - height * 0.46f)
+                    lineTo(centerX + height * 0.34f, baseY - height * 0.46f)
+                    close()
+                }
+                drawPath(treePath, tint)
+                drawLine(tint, Offset(centerX, baseY - height * 0.12f), Offset(centerX, baseY), height * 0.08f)
+            }
+            val forest = Color(0x55708065)
+            listOf(0.04f to 0.76f, 0.14f to 0.82f, 0.25f to 0.77f, 0.83f to 0.82f, 0.94f to 0.76f)
+                .forEach { (x, y) -> tree(w * x, h * y, h * 0.18f, forest) }
+            val road = Path().apply {
+                moveTo(w * 0.47f, h * 1.04f)
+                cubicTo(w * 0.42f, h * 0.88f, w * 0.64f, h * 0.80f, w * 0.54f, h * 0.67f)
+                cubicTo(w * 0.48f, h * 0.59f, w * 0.53f, h * 0.54f, w * 0.56f, h * 0.50f)
+            }
+            drawPath(road, Color(0x66847F73), style = Stroke(width = w * 0.13f, cap = StrokeCap.Round))
+            drawPath(road, Color(0x99F5F0E7), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+            val truckX = w * 0.58f
+            val truckY = h * 0.70f
+            drawRoundRect(Color(0xFF667B68), Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
+            drawRoundRect(Color(0xFF536B5C), Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
+            drawRoundRect(Color(0xFFB9C9BE), Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+            drawCircle(Color(0xFF3F4942), w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
+            drawCircle(Color(0xFF3F4942), w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
+            // Тонкая маршрутная линия с контрольными точками.
+            val routePath = Path().apply {
                 moveTo(w * 0.12f, h * 0.78f)
                 cubicTo(w * 0.34f, h * 0.66f, w * 0.25f, h * 0.48f, w * 0.52f, h * 0.50f)
                 cubicTo(w * 0.76f, h * 0.52f, w * 0.64f, h * 0.30f, w * 0.88f, h * 0.22f)
             }
-            drawPath(path, Color(0x557B6A52), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(routePath, Color(0x557B6A52), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
             listOf(Offset(w * 0.12f, h * 0.78f), Offset(w * 0.52f, h * 0.50f), Offset(w * 0.88f, h * 0.22f))
                 .forEach { drawCircle(Color(0xFF8A765D), radius = 6.dp.toPx(), center = it) }
         }
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp).padding(top = 22.dp)
                 .graphicsLayer { alpha = appear; scaleX = 0.96f + appear * 0.04f; scaleY = 0.96f + appear * 0.04f },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -995,7 +1427,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             }
             Spacer(Modifier.height(26.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = Color(0xFF342D25), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = Color(0xFF342D25), fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Drop", color = Color(0xFF80664E), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
             }
             Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = Color(0xFF746756), fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1108,22 +1540,85 @@ fun HubScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenUnknown: () -> Unit,
+    onOpenProducts: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
+    var confirmReset by remember { mutableStateOf(false) }
+    val points = routeItems.groupBy { it.storeName to it.address }
+    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
+    val problems = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
+    val totalBoxes = routeItems.sumOf { it.totalBoxes.coerceAtLeast(0) }
+    val scannedBoxes = routeItems.sumOf { it.scannedBoxes.coerceAtLeast(0) }
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
-            .statusBarsPadding().navigationBarsPadding().padding(22.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("Два инструмента. Ничего лишнего.", color = TextMuted, fontSize = 14.sp)
-        Spacer(Modifier.height(34.dp))
-        HubTile("Маршрут", "Из файла накладной или по фотографии", "⌖",
-            Color(0xFF168F78), Modifier.fillMaxWidth(), onLoadFile)
-        Spacer(Modifier.height(14.dp))
-        HubTile("QR-сканер", "Открыть камеру и сканировать код", "▣",
-            Color(0xFF286BC4), Modifier.fillMaxWidth(), onOpenScanner)
+        Text("Рабочая панель доставки", color = TextMuted, fontSize = 14.sp)
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Текущий маршрут", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (routeItems.isEmpty()) "Накладная ещё не загружена"
+                    else "Точек: ${points.size} • доставлено: $delivered • проблемных: $problems",
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
+                if (routeItems.isNotEmpty()) {
+                    Text("Мест: $scannedBoxes / $totalBoxes", color = MintAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Точки маршрута", "Список, статусы и порядок", "⌖", EmeraldPrimary, Modifier.weight(1f), onOpenRoute)
+            HubTile("Сканер", "Камера и штрихкоды", "▣", Color(0xFF286BC4), Modifier.weight(1f), onOpenScanner)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Загрузить накладную", "CSV, XLSX и PDF", "⇧", Color(0xFF168F78), Modifier.weight(1f), onLoadFile)
+            HubTile("Фото маршрута", "Распознать адреса", "▧", Color(0xFFB27A35), Modifier.weight(1f), onOpenPhotoRoute)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Отчёты", "Сводка, CSV, Excel, PDF", "▤", Color(0xFF3978A8), Modifier.weight(1f), onOpenReports)
+            HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF6E69A8), Modifier.weight(1f), onOpenProducts)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("История", "Архив завершённых рейсов", "◷", Color(0xFF8A745B), Modifier.weight(1f), onOpenHistory)
+            HubTile("Настройки и копия", "Автосохранение и резерв", "⚙", Color(0xFF687C70), Modifier.weight(1f), onOpenSettings)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", Color(0xFF168F78), Modifier.weight(1f), onNavigateNext)
+            HubTile("Неизвестные коды", "Коды вне накладных", "?", Color(0xFFB27A35), Modifier.weight(1f), onOpenUnknown)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4), Modifier.weight(1f), onCallDispatcher)
+            HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF3978A8), Modifier.weight(1f), onExportReport)
+        }
+        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C), Modifier.fillMaxWidth()) {
+            confirmReset = true
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Сбросить прогресс рейса?") },
+            text = { Text("Будут очищены отметки сканирования, доставки и расхождения. Сам маршрут останется.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReset = false
+                    onResetRoute()
+                }) { Text("Сбросить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReset = false }) { Text("Отмена") }
+            }
+        )
     }
 }
 
@@ -1394,6 +1889,7 @@ fun ScanResultsScreen(
 @Composable
 fun StoreGroupCard(
     items: List<RouteItem>,
+    compactMode: Boolean = false,
     onClick: () -> Unit,
     onMapClick: () -> Unit,
     onCallClick: () -> Unit
@@ -1402,23 +1898,29 @@ fun StoreGroupCard(
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
     val delivered = items.all { it.isDelivered }
+    val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, if (delivered) CardBorder else EmeraldPrimary.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
+        modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> Color(0xFFB3261E); delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
             .bounceClick(scaleDown = 0.98f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
         shape = RoundedCornerShape(18.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(if (compactMode) 10.dp else 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(if (delivered) "Доставлено" else "В пути", color = if (delivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    when { hasProblem -> "Проблема / расхождение"; delivered -> "Доставлено"; else -> "В пути" },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> MintAccent; else -> EmeraldPrimary },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(first.address, color = TextMuted, fontSize = 13.sp)
                 if (first.ownerName.isNotBlank()) Text(first.ownerName, color = TextLight, fontSize = 12.sp, maxLines = 1)
                 if (first.workingHours.isNotBlank()) Text("Работа: ${first.workingHours}", color = TextMuted, fontSize = 12.sp, maxLines = 1)
                 if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = Color(0xFF8A5A24), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 if (first.note.isNotBlank()) Text(first.note, color = TextMuted, fontSize = 12.sp, maxLines = 2)
-                Spacer(Modifier.height(8.dp))
-                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(if (compactMode) 4.dp else 8.dp))
+                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = if (compactMode) 12.sp else 14.sp, fontWeight = FontWeight.SemiBold)
                 Text("Позиций: ${items.map { it.itemName }.distinct().size} • Учтено сканов: $scanned", color = TextMuted, fontSize = 11.sp)
                 Text(items.take(2).joinToString(" · ") { it.itemName }, color = MintAccent, fontSize = 12.sp, maxLines = 1)
             }
@@ -1437,7 +1939,8 @@ fun PointGroupScreen(
     onBack: () -> Unit,
     onOpenInvoice: (RouteItem) -> Unit,
     onNavigate: () -> Unit,
-    onCall: () -> Unit
+    onCall: () -> Unit,
+    onClosePoint: () -> Unit
 ) {
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
@@ -1462,6 +1965,8 @@ fun PointGroupScreen(
         }
         Text("Учтено уникальных сканов: $scanned", color = TextMuted, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
+        HubActionButton("Проверить и закрыть точку", "Все места должны быть учтены сканами или расхождениями с причиной", CardSurface, TextLight, MintAccent, onClosePoint)
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             HubActionButton("Навигатор", "Открыть точку", CardSurface, TextLight, MintAccent, onNavigate)
             HubActionButton("Позвонить", "Связаться с точкой", CardSurface, TextLight, MintAccent, onCall)
@@ -1478,7 +1983,12 @@ fun PointGroupScreen(
                         Text("Штрихкод: ${item.barcode}", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
-                            Text(if (item.isDelivered) "Сдано" else "В пути", color = if (item.isDelivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
+                                color = when { item.discrepancyQty > 0 -> Color(0xFFB3261E); item.isDelivered -> MintAccent; else -> EmeraldPrimary },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                         Text("Нажми, чтобы открыть накладную", color = TextMuted, fontSize = 11.sp)
                     }
@@ -1489,14 +1999,38 @@ fun PointGroupScreen(
 }
 
 // --- ЭКРАН ДЕТАЛЬНОЙ НАКЛАДНОЙ (ЧТО ВНУТРИ) ---
+private fun decodeEvidencePreview(path: String): androidx.compose.ui.graphics.ImageBitmap? {
+    if (path.isBlank()) return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1200) sample *= 2
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    return BitmapFactory.decodeFile(path, options)?.asImageBitmap()
+}
+
 @Composable
 fun PointDetailsScreen(
     item: RouteItem,
     onBack: () -> Unit,
     onNavigate: () -> Unit,
     onCall: () -> Unit,
-    onToggleDelivered: () -> Unit
+    onToggleDelivered: () -> Unit,
+    onSetDiscrepancy: (Int, String) -> Unit,
+    onAddPhoto: () -> Unit,
+    onCaptureSignature: (Bitmap) -> Unit
 ) {
+    var showSignatureDialog by remember(item.barcode) { mutableStateOf(false) }
+    var showDiscrepancyDialog by remember(item.barcode) { mutableStateOf(false) }
+    var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
+    var discrepancyReason by remember(item.barcode) { mutableStateOf("НЕДОВОЗ") }
+    var discrepancyError by remember(item.barcode) { mutableStateOf("") }
+    val photoPreview = remember(item.photoDocUri) { decodeEvidencePreview(item.photoDocUri) }
+    val signaturePreview = remember(item.signaturePath) { decodeEvidencePreview(item.signaturePath) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1530,8 +2064,8 @@ fun PointDetailsScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (item.isDelivered) "Сдано" else "В пути",
-                        color = if (item.isDelivered) BgDark else MintAccent,
+                        text = when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
+                        color = if (item.discrepancyQty > 0) Color(0xFFB3261E) else if (item.isDelivered) BgDark else MintAccent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1660,6 +2194,55 @@ fun PointDetailsScreen(
                 }
             }
 
+            HubActionButton(
+                if (item.signaturePath.isNotBlank()) "Обновить подпись получателя" else "Подпись получателя",
+                "Подтверждение передачи груза",
+                CardSurface,
+                TextLight,
+                MintAccent
+            ) { showSignatureDialog = true }
+            if (signaturePreview != null) {
+                Image(
+                    bitmap = signaturePreview,
+                    contentDescription = "Подпись получателя",
+                    modifier = Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Color.White).padding(5.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text("Подпись получателя сохранена на устройстве", color = MintAccent, fontSize = 12.sp)
+            }
+            HubActionButton(
+                if (item.photoDocUri.isNotBlank()) "Заменить фото доказательства" else "Добавить фото доказательства",
+                "Сохранить фото в памяти телефона",
+                CardSurface,
+                TextLight,
+                MintAccent,
+                onAddPhoto
+            )
+            if (photoPreview != null) {
+                Image(
+                    bitmap = photoPreview,
+                    contentDescription = "Фото доказательства доставки",
+                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Фото доказательства хранится на устройстве", color = MintAccent, fontSize = 12.sp)
+            }
+            HubActionButton(
+                if (item.discrepancyQty > 0) "Изменить расхождение: ${item.discrepancyQty}" else "Зафиксировать расхождение",
+                "Недовоз, брак или излишек",
+                CardSurface,
+                TextLight,
+                Color(0xFFD18B26)
+            ) { showDiscrepancyDialog = true }
+            if (item.discrepancyQty > 0) {
+                Text(
+                    "Текущее расхождение: ${item.discrepancyReason ?: "причина не указана"} • ${item.discrepancyQty} мест",
+                    color = Color(0xFFD18B26),
+                    fontSize = 12.sp
+                )
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             Row(
@@ -1717,28 +2300,170 @@ fun PointDetailsScreen(
                 )
             }
         }
+        if (showSignatureDialog) {
+            SignatureCaptureDialog(
+                onDismiss = { showSignatureDialog = false },
+                onSave = { bitmap ->
+                    onCaptureSignature(bitmap)
+                    showSignatureDialog = false
+                }
+            )
+        }
+        if (showDiscrepancyDialog) {
+            AlertDialog(
+                onDismissRequest = { showDiscrepancyDialog = false },
+                title = { Text("Расхождение по накладной") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = discrepancyQtyText,
+                            onValueChange = { discrepancyQtyText = it.filter(Char::isDigit).take(5); discrepancyError = "" },
+                            label = { Text("Количество мест") },
+                            singleLine = true
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("НЕДОВОЗ", "БРАК", "ИЗЛИШЕК").forEach { value ->
+                                TextButton(onClick = { discrepancyReason = value; discrepancyError = "" }) {
+                                    Text(value, color = if (discrepancyReason == value) MintAccent else TextMuted)
+                                }
+                            }
+                        }
+                        if (discrepancyError.isNotBlank()) {
+                            Text(discrepancyError, color = Color(0xFFB3261E), fontSize = 12.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val quantity = discrepancyQtyText.toIntOrNull()
+                        val maxAllowed = if (discrepancyReason == "ИЗЛИШЕК") Int.MAX_VALUE
+                            else (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0)
+                        when {
+                            quantity == null || quantity <= 0 -> discrepancyError = "Укажи количество больше нуля"
+                            quantity > maxAllowed -> discrepancyError = "Количество превышает остаток по накладной ($maxAllowed)"
+                            else -> {
+                                onSetDiscrepancy(quantity, discrepancyReason)
+                                showDiscrepancyDialog = false
+                            }
+                        }
+                    }) { Text("Сохранить") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDiscrepancyDialog = false }) { Text("Отмена") }
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun SignatureCaptureDialog(
+    onDismiss: () -> Unit,
+    onSave: (Bitmap) -> Unit
+) {
+    val strokes = remember { mutableStateListOf<MutableList<Offset>>() }
+    var padSize by remember { mutableStateOf(IntSize(1, 1)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Подпись получателя") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Попроси получателя расписаться пальцем в поле ниже.", color = TextMuted, fontSize = 12.sp)
+                Canvas(
+                    Modifier.fillMaxWidth().height(180.dp)
+                        .background(Color.White, RoundedCornerShape(10.dp))
+                        .onSizeChanged { padSize = it }
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = { point -> strokes.add(mutableStateListOf(point)) },
+                                onDrag = { change, _ ->
+                                    change.consume()
+                                    strokes.lastOrNull()?.add(change.position)
+                                }
+                            )
+                        }
+                ) {
+                    strokes.forEach { points ->
+                        if (points.size == 1) {
+                            drawCircle(Color.Black, radius = 2.dp.toPx(), center = points.first())
+                        } else {
+                            for (index in 1 until points.size) {
+                                drawLine(Color.Black, points[index - 1], points[index], strokeWidth = 3.dp.toPx())
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = { strokes.clear() }) { Text("Очистить поле") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (strokes.isNotEmpty() && padSize.width > 1 && padSize.height > 1) {
+                    val bitmap = Bitmap.createBitmap(padSize.width, padSize.height, Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    canvas.drawColor(android.graphics.Color.WHITE)
+                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.BLACK
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 6f
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        strokeJoin = android.graphics.Paint.Join.ROUND
+                    }
+                    strokes.forEach { points ->
+                        if (points.isNotEmpty()) {
+                            val path = android.graphics.Path().apply {
+                                moveTo(points.first().x, points.first().y)
+                                points.drop(1).forEach { lineTo(it.x, it.y) }
+                            }
+                            canvas.drawPath(path, paint)
+                        }
+                    }
+                    onSave(bitmap)
+                }
+            }) { Text("Сохранить подпись") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
 }
 
 // --- СПИСОК ТОЧЕК ---
 @Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
+    compactMode: Boolean,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenOfflineMap: () -> Unit,
+    onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
     onToggleItem: (RouteItem) -> Unit,
     onMoveGroup: (Int, Int) -> Unit
 ) {
-    var hideDelivered by remember { mutableStateOf(false) }
+    var pointFilter by remember { mutableStateOf(PointFilter.ALL) }
     var manualDestination by remember { mutableStateOf("") }
 
-    val displayedGroups = remember(routeItems, hideDelivered) {
-        (if (hideDelivered) routeItems.filter { !it.isDelivered } else routeItems)
-            .groupBy { it.storeName to it.address }.toList()
+    val allGroups = remember(routeItems) {
+        routeItems.groupBy { it.storeName to it.address }.toList()
+    }
+    val displayedGroups = remember(allGroups, pointFilter) {
+        val snapshots = allGroups.mapIndexed { index, entry ->
+            val group = entry.second
+            val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
+            val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+            val status = deliveryPointStatus(group)
+            DeliveryPointSnapshot(
+                id = entry.first.first + "|" + entry.first.second,
+                sortOrder = index,
+                status = status,
+                expectedUnits = expected,
+                scannedUnits = scanned,
+                discrepancyUnits = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
+            )
+        }
+        val visibleIds = RouteProgress.filter(snapshots, pointFilter).map { it.id }.toSet()
+        allGroups.filter { (key, _) -> key.first + "|" + key.second in visibleIds }
     }
 
     Box(
@@ -1777,27 +2502,24 @@ fun RouteListScreen(
                     )
                 }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (hideDelivered) EmeraldPrimary else CardSurface)
-                            .border(1.dp, if (hideDelivered) MintAccent else CardBorder, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .bounceClick { hideDelivered = !hideDelivered }
-                    ) {
-                        Text(
-                            text = if (hideDelivered) "Только в пути" else "Все точки",
-                            color = if (hideDelivered) BgDark else TextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        listOf(
+                            PointFilter.ALL to "Все",
+                            PointFilter.ACTIVE to "В пути",
+                            PointFilter.DELIVERED to "Сданы",
+                            PointFilter.PROBLEMS to "Проблемы"
+                        ).forEach { (filter, label) ->
+                            TextButton(onClick = { pointFilter = filter }) {
+                                Text(
+                                    label,
+                                    color = if (pointFilter == filter) MintAccent else TextMuted,
+                                    fontWeight = if (pointFilter == filter) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenOfflineMap) { Text("Офлайн-карта Калуги") }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1818,7 +2540,10 @@ fun RouteListScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onRebuildRoute) {
+                    Text("Перестроить оставшийся маршрут")
+                }
                 TextButton(onClick = onOpenOfflineMap) {
                     Text("ОФЛАЙН-КАРТА КАЛУГИ И ОБЛАСТИ")
                 }
@@ -1829,7 +2554,7 @@ fun RouteListScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(if (compactMode) 7.dp else 14.dp)
             ) {
                 if (displayedGroups.isEmpty()) {
                     item {
@@ -1846,12 +2571,12 @@ fun RouteListScreen(
                                 Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    if (hideDelivered && routeItems.isNotEmpty()) "Все точки уже сданы" else "Рейс пока пуст",
+                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
                                     color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    if (hideDelivered && routeItems.isNotEmpty()) "Переключите фильтр, чтобы увидеть завершённые точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
+                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
                                     color = TextMuted, fontSize = 13.sp
                                 )
                             }
@@ -1859,10 +2584,12 @@ fun RouteListScreen(
                     }
                 } else {
                     itemsIndexed(displayedGroups, key = { _, group -> group.first.first + "|" + group.first.second }) { index, group ->
+                        val originalIndex = allGroups.indexOfFirst { it.first == group.first }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 StoreGroupCard(
                                     items = group.second,
+                                    compactMode = compactMode,
                                     onClick = { onPointClick(group.second) },
                                     onMapClick = { onOpenPointMap(group.second.first().address) },
                                     onCallClick = { onCallClient(group.second.first().phone) }
@@ -1870,8 +2597,8 @@ fun RouteListScreen(
                             }
                             Spacer(Modifier.width(6.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                TextButton(enabled = !hideDelivered && index > 0, onClick = { onMoveGroup(index, index - 1) }) { Text("↑") }
-                                TextButton(enabled = !hideDelivered && index < displayedGroups.lastIndex, onClick = { onMoveGroup(index, index + 1) }) { Text("↓") }
+                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex > 0, onClick = { onMoveGroup(originalIndex, originalIndex - 1) }) { Text("↑") }
+                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex in 0 until allGroups.lastIndex, onClick = { onMoveGroup(originalIndex, originalIndex + 1) }) { Text("↓") }
                             }
                         }
                     }
@@ -2259,13 +2986,23 @@ fun BottomActionButtons(
 }
 
 @Composable
-fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () -> Unit) {
+fun ReportsScreen(
+    routeItems: List<RouteItem>,
+    onBack: () -> Unit,
+    onExport: () -> Unit,
+    onExportExcel: () -> Unit,
+    onExportPdf: () -> Unit
+) {
     val points = routeItems.groupBy { it.storeName to it.address }
-    val delivered = points.values.count { group -> group.all { it.isDelivered } }
+    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
+    val problemPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
+    val inProgressPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.IN_PROGRESS }
+    val pendingPoints = (points.size - delivered - problemPoints - inProgressPoints).coerceAtLeast(0)
     val totalBoxes = routeItems.sumOf { it.totalBoxes }
     val scanned = routeItems.sumOf { it.scannedBoxes }
-    val remaining = (totalBoxes - scanned).coerceAtLeast(0)
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+    val discrepancies = routeItems.sumOf { it.discrepancyQty }
+    val remaining = (totalBoxes - scanned - discrepancies).coerceAtLeast(0)
+    Column(Modifier.fillMaxSize().background(BgDark).verticalScroll(rememberScrollState()).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
@@ -2274,9 +3011,11 @@ fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () 
         val stats = listOf(
             "Точек всего" to points.size.toString(),
             "Точек доставлено" to "$delivered / ${points.size}",
+            "Точек с расхождениями" to problemPoints.toString(),
             "Мест по накладным" to totalBoxes.toString(),
             "Отсканировано" to scanned.toString(),
-            "Осталось по сканам" to remaining.toString(),
+            "Расхождения" to discrepancies.toString(),
+            "Осталось учесть" to remaining.toString(),
             "Строк накладных" to routeItems.size.toString()
         )
         stats.forEach { (label, value) ->
@@ -2288,10 +3027,37 @@ fun ReportsScreen(routeItems: List<RouteItem>, onBack: () -> Unit, onExport: () 
                 }
             }
         }
+        Text("Состояние точек", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        ReportStatusBar("Доставлено", delivered, points.size, Color(0xFF43875B))
+        ReportStatusBar("В работе", inProgressPoints, points.size, Color(0xFF3978A8))
+        ReportStatusBar("Ожидают", pendingPoints, points.size, Color(0xFFB18A38))
+        ReportStatusBar("Расхождения", problemPoints, points.size, Color(0xFFB45C4C))
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Экспорт CSV", "Сохранить отчёт рейса", CardSurface, TextLight, MintAccent, onExport)
+        HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
         Spacer(Modifier.height(8.dp))
-        Text("В CSV входят штрихкод, точка, адрес, товар, план, факт, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+        HubActionButton("Экспорт Excel", "Файл XLSX с отдельными колонками и статусами", CardSurface, TextLight, MintAccent, onExportExcel)
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Экспорт PDF", "Печатный отчёт по точкам и грузу", CardSurface, TextLight, MintAccent, onExportPdf)
+        Spacer(Modifier.height(8.dp))
+        Text("В отчёты входят штрихкод, точка, адрес, товар, план, факт, расхождения, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun ReportStatusBar(label: String, value: Int, total: Int, color: Color) {
+    val fraction = if (total > 0) (value.toFloat() / total).coerceIn(0f, 1f) else 0f
+    Column(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, color = TextMuted, fontSize = 12.sp)
+            Text("$value / $total", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Box(
+            Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)).background(CardBorder)
+        ) {
+            Box(
+                Modifier.fillMaxWidth(fraction).height(8.dp).background(color, RoundedCornerShape(8.dp))
+            )
+        }
     }
 }
 
@@ -2304,8 +3070,12 @@ fun SettingsScreen(
     onOfflineChange: (Boolean) -> Unit,
     onAutoSaveChange: (Boolean) -> Unit,
     onCompactChange: (Boolean) -> Unit,
-    onClearUnknown: () -> Unit
+    onClearUnknown: () -> Unit,
+    onBackup: () -> Unit,
+    onRestore: () -> Unit,
+    onArchiveRoute: () -> Unit
 ) {
+    var showArchiveConfirmation by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
@@ -2314,11 +3084,35 @@ fun SettingsScreen(
         Spacer(Modifier.height(14.dp))
         SettingToggleRow("Офлайн-режим", "Не требует учётной записи или сервера; карты могут требовать интернет", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
-        SettingToggleRow("Компактный режим", "Настройка сохранена; плотность экранов будет применена в следующих UI-экранах", compactMode, onCompactChange)
+        SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
+        HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", CardSurface, TextLight, MintAccent, onBackup)
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", CardSurface, TextLight, MintAccent, onRestore)
+        Spacer(Modifier.height(8.dp))
+        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", CardSurface, TextLight, Color(0xFFD18B26)) {
+            showArchiveConfirmation = true
+        }
+        Spacer(Modifier.height(8.dp))
         HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFFD18B26), onClearUnknown)
         Spacer(Modifier.height(14.dp))
-        Text("Тема сейчас: светлая серо-голубая. Переключение темы и резервное копирование ещё требуют отдельной реализации.", color = TextMuted, fontSize = 12.sp)
+        Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = TextMuted, fontSize = 12.sp)
+    }
+    if (showArchiveConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirmation = false },
+            title = { Text("Отправить рейс в архив?") },
+            text = { Text("Текущий маршрут исчезнет из активного списка, но останется в истории на этом устройстве.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveConfirmation = false
+                    onArchiveRoute()
+                }) { Text("Архивировать") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveConfirmation = false }) { Text("Отмена") }
+            }
+        )
     }
 }
 
@@ -2340,26 +3134,43 @@ fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange
 }
 
 @Composable
-fun HistoryScreen(routeItems: List<RouteItem>, onBack: () -> Unit) {
-    val points = routeItems.groupBy { it.storeName to it.address }
+internal fun HistoryScreen(
+    routes: List<RouteHistorySnapshot>,
+    onBack: () -> Unit,
+    onRestoreRoute: (Long) -> Unit
+) {
+    val formatter = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("ru", "RU")) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Текущий рейс", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text("История завершённых рейсов пока не ведётся. Здесь показано текущее состояние.", color = TextMuted, fontSize = 12.sp)
+        Text("История рейсов", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Архив хранится локально на этом устройстве.", color = TextMuted, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(points.toList()) { entry ->
-                val group = entry.second
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(group.first().storeName, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text(group.first().address, color = TextMuted, fontSize = 12.sp)
-                        Text("${group.sumOf { it.scannedBoxes }} / ${group.sumOf { it.totalBoxes }} мест • " +
-                            if (group.all { it.isDelivered }) "Доставлено" else "В работе",
-                            color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        if (routes.isEmpty()) {
+            Text("Завершённых или заменённых рейсов пока нет.", color = TextMuted, fontSize = 14.sp)
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(routes, key = { it.routeId }) { route ->
+                    val percent = if (route.expectedQty > 0) {
+                        (route.scannedQty * 100 / route.expectedQty).coerceIn(0, 100)
+                    } else 0
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(14.dp)) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(route.routeNumber, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(formatter.format(Date(route.createdAt)), color = TextMuted, fontSize = 12.sp)
+                            Spacer(Modifier.height(7.dp))
+                            Text(
+                                "${route.completedPointCount} / ${route.pointCount} точек завершено • ${route.scannedQty} / ${route.expectedQty} мест",
+                                color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                            )
+                            Text("Выполнение по сканам: $percent%", color = TextMuted, fontSize = 12.sp)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { onRestoreRoute(route.routeId) }) {
+                                Text("Восстановить этот рейс", color = MintAccent)
+                            }
+                        }
                     }
                 }
             }
