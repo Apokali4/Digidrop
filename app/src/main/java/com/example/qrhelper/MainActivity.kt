@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.app.Activity
+import android.graphics.Bitmap
 import android.view.View
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
@@ -49,6 +50,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,6 +86,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -100,6 +104,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -905,7 +910,27 @@ fun DigitDropRoot() {
                     onCall = { makePhoneCall(item.phone) },
                     onToggleDelivered = { updateItemStatus(item) },
                     onSetDiscrepancy = { quantity, reason -> updateItemDiscrepancy(item, quantity, reason) },
-                    onAddPhoto = { photoEvidenceLauncher.launch("image/*") }
+                    onAddPhoto = { photoEvidenceLauncher.launch("image/*") },
+                    onCaptureSignature = { bitmap ->
+                        importScope.launch {
+                            runCatching {
+                                val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
+                                val target = File(directory, "signature_${System.currentTimeMillis()}.png")
+                                target.outputStream().use { output ->
+                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                                }
+                                val updated = routeItems.map {
+                                    if (routeItemKey(it) == routeItemKey(item)) it.copy(signaturePath = target.absolutePath) else it
+                                }
+                                routeItems = updated
+                                selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                                LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
+                                Toast.makeText(context, "Подпись получателя сохранена", Toast.LENGTH_SHORT).show()
+                            }.onFailure { error ->
+                                Toast.makeText(context, "Не удалось сохранить подпись: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 )
             } ?: run {
                 currentScreen = AppScreen.ROUTE_LIST
@@ -1601,8 +1626,10 @@ fun PointDetailsScreen(
     onCall: () -> Unit,
     onToggleDelivered: () -> Unit,
     onSetDiscrepancy: (Int, String) -> Unit,
-    onAddPhoto: () -> Unit
+    onAddPhoto: () -> Unit,
+    onCaptureSignature: (Bitmap) -> Unit
 ) {
+    var showSignatureDialog by remember(item.barcode) { mutableStateOf(false) }
     var showDiscrepancyDialog by remember(item.barcode) { mutableStateOf(false) }
     var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
     var discrepancyReason by remember(item.barcode) { mutableStateOf("НЕДОВОЗ") }
@@ -1771,6 +1798,16 @@ fun PointDetailsScreen(
             }
 
             HubActionButton(
+                if (item.signaturePath.isNotBlank()) "Обновить подпись получателя" else "Подпись получателя",
+                "Подтверждение передачи груза",
+                CardSurface,
+                TextLight,
+                MintAccent
+            ) { showSignatureDialog = true }
+            if (item.signaturePath.isNotBlank()) {
+                Text("Подпись сохранена локально", color = MintAccent, fontSize = 12.sp)
+            }
+            HubActionButton(
                 if (item.photoDocUri.isNotBlank()) "Заменить фото доказательства" else "Добавить фото доказательства",
                 "Сохранить фото в памяти телефона",
                 CardSurface,
@@ -1853,6 +1890,15 @@ fun PointDetailsScreen(
                 )
             }
         }
+        if (showSignatureDialog) {
+            SignatureCaptureDialog(
+                onDismiss = { showSignatureDialog = false },
+                onSave = { bitmap ->
+                    onCaptureSignature(bitmap)
+                    showSignatureDialog = false
+                }
+            )
+        }
         if (showDiscrepancyDialog) {
             AlertDialog(
                 onDismissRequest = { showDiscrepancyDialog = false },
@@ -1898,6 +1944,76 @@ fun PointDetailsScreen(
             )
         }
     }
+}
+
+@Composable
+fun SignatureCaptureDialog(
+    onDismiss: () -> Unit,
+    onSave: (Bitmap) -> Unit
+) {
+    val strokes = remember { mutableStateListOf<MutableList<Offset>>() }
+    var padSize by remember { mutableStateOf(IntSize(1, 1)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Подпись получателя") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Попроси получателя расписаться пальцем в поле ниже.", color = TextMuted, fontSize = 12.sp)
+                Canvas(
+                    Modifier.fillMaxWidth().height(180.dp)
+                        .background(Color.White, RoundedCornerShape(10.dp))
+                        .onSizeChanged { padSize = it }
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = { point -> strokes.add(mutableStateListOf(point)) },
+                                onDrag = { change, _ ->
+                                    change.consume()
+                                    strokes.lastOrNull()?.add(change.position)
+                                }
+                            )
+                        }
+                ) {
+                    strokes.forEach { points ->
+                        if (points.size == 1) {
+                            drawCircle(Color.Black, radius = 2.dp.toPx(), center = points.first())
+                        } else {
+                            for (index in 1 until points.size) {
+                                drawLine(Color.Black, points[index - 1], points[index], strokeWidth = 3.dp.toPx())
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = { strokes.clear() }) { Text("Очистить поле") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (strokes.isNotEmpty() && padSize.width > 1 && padSize.height > 1) {
+                    val bitmap = Bitmap.createBitmap(padSize.width, padSize.height, Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    canvas.drawColor(android.graphics.Color.WHITE)
+                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.BLACK
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 6f
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        strokeJoin = android.graphics.Paint.Join.ROUND
+                    }
+                    strokes.forEach { points ->
+                        if (points.isNotEmpty()) {
+                            val path = android.graphics.Path().apply {
+                                moveTo(points.first().x, points.first().y)
+                                points.drop(1).forEach { lineTo(it.x, it.y) }
+                            }
+                            canvas.drawPath(path, paint)
+                        }
+                    }
+                    onSave(bitmap)
+                }
+            }) { Text("Сохранить подпись") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
 }
 
 // --- СПИСОК ТОЧЕК ---
