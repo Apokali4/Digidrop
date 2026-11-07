@@ -999,6 +999,12 @@ fun DigitDropRoot() {
                     }
                     prefs.edit().putString("active_manifest", content).apply()
                     routeItems = imported
+                    importScope.launch {
+                        runCatching { LogisticsRepository(context).replaceActiveRoute(imported) }
+                            .onFailure { error ->
+                                Toast.makeText(context, "Маршрут добавлен, но база не обновлена: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
                     currentScreen = AppScreen.ROUTE_LIST
                     Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек", Toast.LENGTH_LONG).show()
                 }
