@@ -81,6 +81,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -1569,15 +1570,21 @@ fun StoreGroupCard(
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
     val delivered = items.all { it.isDelivered }
+    val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, if (delivered) CardBorder else EmeraldPrimary.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
+        modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> Color(0xFFB3261E); delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
             .bounceClick(scaleDown = 0.98f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
         shape = RoundedCornerShape(18.dp)
     ) {
         Row(Modifier.fillMaxWidth().padding(if (compactMode) 10.dp else 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(if (delivered) "Доставлено" else "В пути", color = if (delivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    when { hasProblem -> "Проблема / расхождение"; delivered -> "Доставлено"; else -> "В пути" },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> MintAccent; else -> EmeraldPrimary },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(first.address, color = TextMuted, fontSize = 13.sp)
                 if (first.ownerName.isNotBlank()) Text(first.ownerName, color = TextLight, fontSize = 12.sp, maxLines = 1)
@@ -1705,8 +1712,8 @@ fun PointDetailsScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (item.isDelivered) "Сдано" else "В пути",
-                        color = if (item.isDelivered) BgDark else MintAccent,
+                        text = when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
+                        color = if (item.discrepancyQty > 0) Color(0xFFB3261E) else if (item.isDelivered) BgDark else MintAccent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2080,9 +2087,10 @@ fun RouteListScreen(
             val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
             val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
             val status = when {
+                group.any { it.discrepancyQty > 0 } -> DeliveryPointStatus.PROBLEM
                 group.all { it.isDelivered } -> DeliveryPointStatus.DELIVERED
                 group.any { it.isDelivered } -> DeliveryPointStatus.IN_PROGRESS
-                else -> RouteProgress.status(expected, scanned, group.sumOf { it.discrepancyQty.coerceAtLeast(0) })
+                else -> RouteProgress.status(expected, scanned, 0)
             }
             DeliveryPointSnapshot(
                 id = entry.first.first + "|" + entry.first.second,
