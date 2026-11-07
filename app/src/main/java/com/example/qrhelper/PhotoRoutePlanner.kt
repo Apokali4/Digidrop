@@ -453,8 +453,7 @@ fun PhotoRoutePlannerScreen(
             }
             Button(
                 onClick = {
-                    val points = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
-                    runCatching { PhotoRouteNavigationUrls.google(points) }
+                    runCatching { PhotoRouteNavigationUrls.google(navigationCoordinates) }
                         .onSuccess { openExternalMap(context, it) }
                         .onFailure {
                             android.widget.Toast.makeText(context, it.message ?: "Не удалось открыть Google Карты", android.widget.Toast.LENGTH_LONG).show()
