@@ -48,4 +48,12 @@ class PhotoRouteNavigationUrlsTest {
         assertEquals(1, PhotoRouteNavigationUrls.yandexSegments(stops).size)
     }
 
+    @Test fun geocodingQueryAddsSelectedCityToAmbiguousStreetAddress() {
+        assertEquals("Советская, 2, Калуга, Россия", PhotoRouteGeocodingQuery.build("Советская, 2", "Калуга"))
+    }
+
+    @Test fun geocodingQueryLeavesCityOptional() {
+        assertEquals("Советская, 2", PhotoRouteGeocodingQuery.build("Советская, 2", " "))
+    }
+
 }
