@@ -797,49 +797,61 @@ fun DigitDropRoot() {
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri != null) {
+        if (uri != null) importScope.launch {
             try {
                 val mime = context.contentResolver.getType(uri).orEmpty()
-                val isExcel = mime.contains("spreadsheet") || uri.toString().lowercase().endsWith(".xlsx")
-                val imported = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    if (isExcel) parseXlsx(inputStream)
-                    else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
-                }.orEmpty()
+                val uriText = uri.toString().lowercase()
+                val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
+                val isExcel = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
+                val imported = withContext(Dispatchers.IO) {
+                    if (isPdf) {
+                        PdfInvoiceImporter.parse(context, uri)
+                    } else {
+                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            if (isExcel) parseXlsx(inputStream)
+                            else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                        }.orEmpty()
+                    }
+                }
                 if (imported.isNotEmpty()) {
-                        val content = imported.joinToString("\n") { item ->
-                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                                item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
-                                item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", content).apply()
-                        val withProgress = imported.map { item ->
-                            item.copy(
-                                isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
-                                scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
-                            )
-                        }
-                        routeItems = withProgress
-                        currentScreen = AppScreen.ROUTE_LIST
-                        importScope.launch {
-                            val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
-                            routeItems = ordered
-                            val optimized = ordered.map { it.barcode } != withProgress.map { it.barcode }
-                            val geocoded = ordered.count { it.latitude != null && it.longitude != null }
-                            Toast.makeText(
-                                context,
-                                "Загружено позиций: ${ordered.size}" + when {
-                                    optimized -> " • точки упорядочены примерно по расстоянию"
-                                    geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
-                                    else -> " • порядок из накладной сохранён"
-                                },
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                    val withProgress = imported.map { item ->
+                        item.copy(
+                            isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
+                            scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
+                        )
+                    }
+                    currentScreen = AppScreen.ROUTE_LIST
+                    val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
+                    routeItems = ordered
+                    val manifest = ordered.joinToString("\n") { item ->
+                        listOf(
+                            item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                            item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                            item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                        ).joinToString("\t") { it.replace("\t", " ") }
+                    }
+                    prefs.edit().putString("active_manifest", manifest).apply()
+                    LogisticsRepository(context).replaceActiveRoute(ordered)
+                    val optimized = ordered.map(::routeItemKey) != withProgress.map(::routeItemKey)
+                    val geocoded = ordered.count { it.latitude != null && it.longitude != null }
+                    Toast.makeText(
+                        context,
+                        "Загружено позиций: ${ordered.size}" + when {
+                            optimized -> " • точки упорядочены примерно по расстоянию"
+                            geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
+                            else -> " • порядок из накладной сохранён"
+                        },
+                        Toast.LENGTH_LONG
+                    ).show()
                 } else {
-                    Toast.makeText(context, "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        context,
+                        "Не удалось найти строки накладной. Нужны штрихкод, точка/адрес и количество мест.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             } catch (ex: Exception) {
-                Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -941,7 +953,7 @@ fun DigitDropRoot() {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 onLoadInvoice = {
-                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 },
                 onPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE }
             )
