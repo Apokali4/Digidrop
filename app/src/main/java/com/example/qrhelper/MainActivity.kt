@@ -584,13 +584,19 @@ fun DigitDropRoot() {
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Осталось;Статус\n"
+                val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Расхождение;Причина;Осталось;Статус\n"
                 val rows = routeItems.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName,
                         item.totalBoxes.toString(), item.scannedBoxes.toString(),
-                        (item.totalBoxes - item.scannedBoxes).coerceAtLeast(0).toString(),
-                        if (item.isDelivered) "Доставлено" else "В пути"
+                        item.discrepancyQty.toString(), item.discrepancyReason.orEmpty(),
+                        (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0).toString(),
+                        when {
+                            item.discrepancyQty > 0 -> "Расхождение"
+                            item.isDelivered -> "Доставлено"
+                            item.scannedBoxes > 0 -> "В работе"
+                            else -> "Ожидает"
+                        }
                     ).joinToString(";") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
                 }
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
