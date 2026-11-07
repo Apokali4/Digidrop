@@ -110,6 +110,12 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.example.qrhelper.LogisticsRepository
+import com.example.qrhelper.RouteHistorySnapshot
+import com.example.qrhelper.domain.DeliveryPointSnapshot
+import com.example.qrhelper.domain.DeliveryPointStatus
+import com.example.qrhelper.domain.PointFilter
+import com.example.qrhelper.domain.RouteProgress
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -121,6 +127,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.concurrent.Executors
 import java.util.zip.ZipInputStream
 import java.io.InputStream
@@ -477,6 +485,8 @@ fun DigitDropRoot() {
             }, ContextCompat.getMainExecutor(context))
     }
 
+    var archivedRoutes by remember { mutableStateOf(emptyList<RouteHistorySnapshot>()) }
+
     var routeItems by remember {
         mutableStateOf(
             parseManifest(prefs.getString("active_manifest", "").orEmpty()).map { item ->
@@ -487,11 +497,40 @@ fun DigitDropRoot() {
         )
     }
 
+    LaunchedEffect(Unit) {
+        runCatching {
+            val repository = LogisticsRepository(context)
+            val restored = repository.activeRouteItems()
+            if (restored.isNotEmpty()) {
+                routeItems = restored
+                val manifest = restored.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                    ).joinToString("\t") { it.replace("\t", " ") }
+                }
+                prefs.edit().putString("active_manifest", manifest).apply()
+            } else if (routeItems.isNotEmpty()) {
+                repository.replaceActiveRoute(routeItems)
+            }
+        }.onFailure { error ->
+            Toast.makeText(context, "Локальная база пока недоступна: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun updateItemStatus(item: RouteItem) {
         val nextStatus = !item.isDelivered
         if (settingsAutoSave) prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
-        routeItems = routeItems.map { current ->
+        val updatedItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
+        }
+        routeItems = updatedItems
+        importScope.launch {
+            runCatching { LogisticsRepository(context).syncProgress(updatedItems) }
+                .onFailure { error ->
+                    Toast.makeText(context, "Не удалось сохранить статус в базе: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
         }
         if (selectedItem?.let(::routeItemKey) == routeItemKey(item)) {
             selectedItem = selectedItem?.copy(isDelivered = nextStatus)
@@ -507,7 +546,9 @@ fun DigitDropRoot() {
         editor.remove("scan_codes")
         editor.remove("unknown_codes")
         editor.apply()
-        routeItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
+        val resetItems = routeItems.map { it.copy(isDelivered = false, scannedBoxes = 0) }
+        routeItems = resetItems
+        importScope.launch { runCatching { LogisticsRepository(context).syncProgress(resetItems) } }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
@@ -717,7 +758,16 @@ fun DigitDropRoot() {
                 onResetRoute = { resetRouteProgress() },
                 onOpenReports = { currentScreen = AppScreen.REPORTS },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
-                onOpenHistory = { currentScreen = AppScreen.HISTORY },
+                onOpenHistory = {
+                    importScope.launch {
+                        archivedRoutes = runCatching { LogisticsRepository(context).history() }
+                            .getOrElse { error ->
+                                Toast.makeText(context, "Не удалось загрузить историю: ${error.message}", Toast.LENGTH_LONG).show()
+                                emptyList()
+                            }
+                        currentScreen = AppScreen.HISTORY
+                    }
+                },
                 onOpenUnknown = { unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty(); currentScreen = AppScreen.UNKNOWN_CODES },
                 onNavigateNext = {
                     val nextItem = routeItems.firstOrNull { !it.isDelivered }
@@ -784,7 +834,9 @@ fun DigitDropRoot() {
                     if (from in groups.indices && to in groups.indices) {
                         val moved = groups.removeAt(from)
                         groups.add(to, moved)
-                        routeItems = groups.flatMap { it.second }
+                        val reorderedItems = groups.flatMap { it.second }
+                        routeItems = reorderedItems
+                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reorderedItems) } }
                         val saved = routeItems.joinToString("\n") { item ->
                             listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                                 item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
@@ -849,7 +901,7 @@ fun DigitDropRoot() {
             )
         }
         AppScreen.HISTORY -> {
-            HistoryScreen(routeItems, onBack = { currentScreen = AppScreen.HUB })
+            HistoryScreen(archivedRoutes, onBack = { currentScreen = AppScreen.HUB })
         }
         AppScreen.UNKNOWN_CODES -> {
             UnknownCodesScreen(unknownCodes, onBack = { currentScreen = AppScreen.HUB }, onClear = {
@@ -905,7 +957,9 @@ fun DigitDropRoot() {
                                 ).apply()
                             }
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
-                            routeItems = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
+                            val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
+                            routeItems = updatedRoute
+                            importScope.launch { runCatching { LogisticsRepository(context).syncProgress(updatedRoute) } }
                             selectedItem = updated
                             try {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -1733,12 +1787,33 @@ fun RouteListScreen(
     onToggleItem: (RouteItem) -> Unit,
     onMoveGroup: (Int, Int) -> Unit
 ) {
-    var hideDelivered by remember { mutableStateOf(false) }
+    var pointFilter by remember { mutableStateOf(PointFilter.ALL) }
     var manualDestination by remember { mutableStateOf("") }
 
-    val displayedGroups = remember(routeItems, hideDelivered) {
-        (if (hideDelivered) routeItems.filter { !it.isDelivered } else routeItems)
-            .groupBy { it.storeName to it.address }.toList()
+    val allGroups = remember(routeItems) {
+        routeItems.groupBy { it.storeName to it.address }.toList()
+    }
+    val displayedGroups = remember(allGroups, pointFilter) {
+        val snapshots = allGroups.mapIndexed { index, entry ->
+            val group = entry.second
+            val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
+            val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+            val status = when {
+                group.all { it.isDelivered } -> DeliveryPointStatus.DELIVERED
+                group.any { it.isDelivered } -> DeliveryPointStatus.IN_PROGRESS
+                else -> RouteProgress.status(expected, scanned, 0)
+            }
+            DeliveryPointSnapshot(
+                id = entry.first.first + "|" + entry.first.second,
+                sortOrder = index,
+                status = status,
+                expectedUnits = expected,
+                scannedUnits = scanned,
+                discrepancyUnits = 0
+            )
+        }
+        val visibleIds = RouteProgress.filter(snapshots, pointFilter).map { it.id }.toSet()
+        allGroups.filter { (key, _) -> key.first + "|" + key.second in visibleIds }
     }
 
     Box(
@@ -1777,20 +1852,21 @@ fun RouteListScreen(
                     )
                 }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (hideDelivered) EmeraldPrimary else CardSurface)
-                            .border(1.dp, if (hideDelivered) MintAccent else CardBorder, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .bounceClick { hideDelivered = !hideDelivered }
-                    ) {
-                        Text(
-                            text = if (hideDelivered) "Только в пути" else "Все точки",
-                            color = if (hideDelivered) BgDark else TextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        listOf(
+                            PointFilter.ALL to "Все",
+                            PointFilter.ACTIVE to "В пути",
+                            PointFilter.DELIVERED to "Сданы",
+                            PointFilter.PROBLEMS to "Проблемы"
+                        ).forEach { (filter, label) ->
+                            TextButton(onClick = { pointFilter = filter }) {
+                                Text(
+                                    label,
+                                    color = if (pointFilter == filter) MintAccent else TextMuted,
+                                    fontWeight = if (pointFilter == filter) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
             }
 
@@ -1846,12 +1922,12 @@ fun RouteListScreen(
                                 Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    if (hideDelivered && routeItems.isNotEmpty()) "Все точки уже сданы" else "Рейс пока пуст",
+                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
                                     color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    if (hideDelivered && routeItems.isNotEmpty()) "Переключите фильтр, чтобы увидеть завершённые точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
+                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
                                     color = TextMuted, fontSize = 13.sp
                                 )
                             }
@@ -1859,6 +1935,7 @@ fun RouteListScreen(
                     }
                 } else {
                     itemsIndexed(displayedGroups, key = { _, group -> group.first.first + "|" + group.first.second }) { index, group ->
+                        val originalIndex = allGroups.indexOfFirst { it.first == group.first }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 StoreGroupCard(
@@ -1870,8 +1947,8 @@ fun RouteListScreen(
                             }
                             Spacer(Modifier.width(6.dp))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                TextButton(enabled = !hideDelivered && index > 0, onClick = { onMoveGroup(index, index - 1) }) { Text("↑") }
-                                TextButton(enabled = !hideDelivered && index < displayedGroups.lastIndex, onClick = { onMoveGroup(index, index + 1) }) { Text("↓") }
+                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex > 0, onClick = { onMoveGroup(originalIndex, originalIndex - 1) }) { Text("↑") }
+                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex in 0 until allGroups.lastIndex, onClick = { onMoveGroup(originalIndex, originalIndex + 1) }) { Text("↓") }
                             }
                         }
                     }
@@ -2340,26 +2417,35 @@ fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange
 }
 
 @Composable
-fun HistoryScreen(routeItems: List<RouteItem>, onBack: () -> Unit) {
-    val points = routeItems.groupBy { it.storeName to it.address }
+fun HistoryScreen(routes: List<RouteHistorySnapshot>, onBack: () -> Unit) {
+    val formatter = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("ru", "RU")) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Текущий рейс", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text("История завершённых рейсов пока не ведётся. Здесь показано текущее состояние.", color = TextMuted, fontSize = 12.sp)
+        Text("История рейсов", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Архив хранится локально на этом устройстве.", color = TextMuted, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(points.toList()) { entry ->
-                val group = entry.second
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(group.first().storeName, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text(group.first().address, color = TextMuted, fontSize = 12.sp)
-                        Text("${group.sumOf { it.scannedBoxes }} / ${group.sumOf { it.totalBoxes }} мест • " +
-                            if (group.all { it.isDelivered }) "Доставлено" else "В работе",
-                            color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        if (routes.isEmpty()) {
+            Text("Завершённых или заменённых рейсов пока нет.", color = TextMuted, fontSize = 14.sp)
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(routes, key = { it.routeId }) { route ->
+                    val percent = if (route.expectedQty > 0) {
+                        (route.scannedQty * 100 / route.expectedQty).coerceIn(0, 100)
+                    } else 0
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(14.dp)) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(route.routeNumber, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(formatter.format(Date(route.createdAt)), color = TextMuted, fontSize = 12.sp)
+                            Spacer(Modifier.height(7.dp))
+                            Text(
+                                "${route.completedPointCount} / ${route.pointCount} точек завершено • ${route.scannedQty} / ${route.expectedQty} мест",
+                                color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                            )
+                            Text("Выполнение по сканам: $percent%", color = TextMuted, fontSize = 12.sp)
+                        }
                     }
                 }
             }
