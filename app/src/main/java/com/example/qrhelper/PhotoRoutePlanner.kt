@@ -104,7 +104,7 @@ internal object PhotoRouteTextParser {
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс)""").containsMatchIn(it) }.orEmpty()
         val owner = block.firstOrNull { Regex("""(?iu)\b(ИП|ООО|АО|ИП\s+[А-ЯЁ])""").containsMatchIn(it) }.orEmpty()
         val shop = block.firstOrNull {
-            it != address && Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|доставка|павильон)""").containsMatchIn(it)
+            it != address && Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|доставка|павильон|ООО|АО)""").containsMatchIn(it)
         }.orEmpty()
         val comment = block.firstOrNull {
             it != cash && Regex("""(?iu)(коммент|подъезд|въезд|позвон|до закрыт|разгруз|ворот|забрать|передать)""").containsMatchIn(it)
