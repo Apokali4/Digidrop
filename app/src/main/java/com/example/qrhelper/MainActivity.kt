@@ -50,6 +50,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -87,6 +88,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,6 +124,7 @@ import org.maplibre.android.maps.Style
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.example.qrhelper.LogisticsRepository
+import com.example.qrhelper.data.ProductEntity
 import com.example.qrhelper.RouteHistorySnapshot
 import com.example.qrhelper.domain.DeliveryPointSnapshot
 import com.example.qrhelper.domain.DeliveryPointStatus
@@ -441,6 +444,7 @@ enum class AppScreen {
     REPORTS,
     SETTINGS,
     HISTORY,
+    PRODUCTS,
     UNKNOWN_CODES,
     PHOTO_ROUTE,
     OFFLINE_MAP
@@ -530,6 +534,7 @@ fun DigitDropRoot() {
     }
 
     var archivedRoutes by remember { mutableStateOf(emptyList<RouteHistorySnapshot>()) }
+    var productCatalog by remember { mutableStateOf(emptyList<ProductEntity>()) }
 
     var routeItems by remember {
         mutableStateOf(
@@ -939,7 +944,7 @@ fun DigitDropRoot() {
             AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
-            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
+            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.PRODUCTS, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
         }
     }
@@ -981,6 +986,12 @@ fun DigitDropRoot() {
                     }
                 },
                 onOpenUnknown = { unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty(); currentScreen = AppScreen.UNKNOWN_CODES },
+                onOpenProducts = {
+                    importScope.launch {
+                        productCatalog = runCatching { LogisticsRepository(context).searchProducts("") }.getOrElse { emptyList() }
+                        currentScreen = AppScreen.PRODUCTS
+                    }
+                },
                 onNavigateNext = {
                     val nextItem = routeItems.firstOrNull { !it.isDelivered }
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
@@ -1198,6 +1209,21 @@ fun DigitDropRoot() {
         }
         AppScreen.HISTORY -> {
             HistoryScreen(archivedRoutes, onBack = { currentScreen = AppScreen.HUB })
+        }
+        AppScreen.PRODUCTS -> {
+            ProductCatalogScreen(
+                products = productCatalog,
+                onBack = { currentScreen = AppScreen.HUB },
+                onSearch = { query ->
+                    importScope.launch {
+                        productCatalog = runCatching { LogisticsRepository(context).searchProducts(query) }
+                            .getOrElse { error ->
+                                Toast.makeText(context, "Ошибка каталога: ${error.message}", Toast.LENGTH_SHORT).show()
+                                emptyList()
+                            }
+                    }
+                }
+            )
         }
         AppScreen.UNKNOWN_CODES -> {
             UnknownCodesScreen(unknownCodes, onBack = { currentScreen = AppScreen.HUB }, onClear = {
@@ -1490,22 +1516,85 @@ fun HubScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenUnknown: () -> Unit,
+    onOpenProducts: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
+    var confirmReset by remember { mutableStateOf(false) }
+    val points = routeItems.groupBy { it.storeName to it.address }
+    val delivered = points.values.count { group -> group.all { it.isDelivered } }
+    val problems = points.values.count { group -> group.any { it.discrepancyQty > 0 } }
+    val totalBoxes = routeItems.sumOf { it.totalBoxes.coerceAtLeast(0) }
+    val scannedBoxes = routeItems.sumOf { it.scannedBoxes.coerceAtLeast(0) }
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
-            .statusBarsPadding().navigationBarsPadding().padding(22.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("Два инструмента. Ничего лишнего.", color = TextMuted, fontSize = 14.sp)
-        Spacer(Modifier.height(34.dp))
-        HubTile("Маршрут", "Из файла накладной или по фотографии", "⌖",
-            Color(0xFF168F78), Modifier.fillMaxWidth(), onLoadFile)
-        Spacer(Modifier.height(14.dp))
-        HubTile("QR-сканер", "Открыть камеру и сканировать код", "▣",
-            Color(0xFF286BC4), Modifier.fillMaxWidth(), onOpenScanner)
+        Text("Рабочая панель доставки", color = TextMuted, fontSize = 14.sp)
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Текущий маршрут", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (routeItems.isEmpty()) "Накладная ещё не загружена"
+                    else "Точек: ${points.size} • доставлено: $delivered • проблемных: $problems",
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
+                if (routeItems.isNotEmpty()) {
+                    Text("Мест: $scannedBoxes / $totalBoxes", color = MintAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Точки маршрута", "Список, статусы и порядок", "⌖", EmeraldPrimary, Modifier.weight(1f), onOpenRoute)
+            HubTile("Сканер", "Камера и штрихкоды", "▣", Color(0xFF286BC4), Modifier.weight(1f), onOpenScanner)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Загрузить накладную", "CSV, XLSX и PDF", "⇧", Color(0xFF168F78), Modifier.weight(1f), onLoadFile)
+            HubTile("Фото маршрута", "Распознать адреса", "▧", Color(0xFFB27A35), Modifier.weight(1f), onOpenPhotoRoute)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Отчёты", "Сводка, CSV, Excel, PDF", "▤", Color(0xFF3978A8), Modifier.weight(1f), onOpenReports)
+            HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF6E69A8), Modifier.weight(1f), onOpenProducts)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("История", "Архив завершённых рейсов", "◷", Color(0xFF8A745B), Modifier.weight(1f), onOpenHistory)
+            HubTile("Настройки и копия", "Автосохранение и резерв", "⚙", Color(0xFF687C70), Modifier.weight(1f), onOpenSettings)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", Color(0xFF168F78), Modifier.weight(1f), onNavigateNext)
+            HubTile("Неизвестные коды", "Коды вне накладных", "?", Color(0xFFB27A35), Modifier.weight(1f), onOpenUnknown)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4), Modifier.weight(1f), onCallDispatcher)
+            HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF3978A8), Modifier.weight(1f), onExportReport)
+        }
+        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C), Modifier.fillMaxWidth()) {
+            confirmReset = true
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Сбросить прогресс рейса?") },
+            text = { Text("Будут очищены отметки сканирования, доставки и расхождения. Сам маршрут останется.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReset = false
+                    onResetRoute()
+                }) { Text("Сбросить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReset = false }) { Text("Отмена") }
+            }
+        )
     }
 }
 
