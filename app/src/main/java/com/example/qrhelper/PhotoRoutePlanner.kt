@@ -1,9 +1,23 @@
 package com.example.qrhelper
 
 import android.graphics.BitmapFactory
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.Manifest
+import android.widget.Toast
+import android.view.ViewGroup
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
@@ -300,6 +314,81 @@ private suspend fun optimizePhotoRoute(
     }
 }
 
+
+@Composable
+private fun RouteCameraCaptureScreen(
+    onPhotoCaptured: (Uri) -> Unit,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var message by remember { mutableStateOf("Сфотографируйте лист целиком, затем добавьте следующий кадр при необходимости.") }
+    Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+        AndroidView(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            factory = { ctx ->
+                val previewView = PreviewView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
+                val providerFuture = ProcessCameraProvider.getInstance(ctx)
+                providerFuture.addListener({
+                    try {
+                        val provider = providerFuture.get()
+                        val preview = Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+                        val capture = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .build()
+                        provider.unbindAll()
+                        provider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview,
+                            capture
+                        )
+                        imageCapture = capture
+                    } catch (error: Exception) {
+                        message = "Камера недоступна: ${error.message}"
+                    }
+                }, ContextCompat.getMainExecutor(ctx))
+                previewView
+            }
+        )
+        Text(message, color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.padding(12.dp))
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(onClick = onClose, modifier = Modifier.weight(1f)) { Text("Готово") }
+            Button(
+                onClick = {
+                    val capture = imageCapture
+                    if (capture == null) {
+                        message = "Камера ещё запускается"
+                    } else {
+                        val file = File(context.cacheDir, "route_photo_${System.currentTimeMillis()}.jpg")
+                        val options = ImageCapture.OutputFileOptions.Builder(file).build()
+                        capture.takePicture(options, ContextCompat.getMainExecutor(context),
+                            object : ImageCapture.OnImageSavedCallback {
+                                override fun onImageSaved(result: ImageCapture.OutputFileResults) {
+                                    onPhotoCaptured(Uri.fromFile(file))
+                                    message = "Фото сохранено. Можно сделать следующий снимок."
+                                }
+                                override fun onError(exception: ImageCaptureException) {
+                                    message = "Не удалось сохранить фото: ${exception.message}"
+                                }
+                            })
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text("Снять фото") }
+        }
+    }
+}
+
 @Composable
 fun PhotoRoutePlannerScreen(
     onBack: () -> Unit,
@@ -314,7 +403,9 @@ fun PhotoRoutePlannerScreen(
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
     var busy by remember { mutableStateOf(false) }
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+    var cameraOpen by remember { mutableStateOf(false) }
+    var capturedUris by remember { mutableStateOf(listOf<Uri>()) }
+    fun processPhotoUris(uris: List<Uri>) {
         if (uris.isNotEmpty()) scope.launch {
             busy = true
             status = "Распознаю ${uris.size} фотографий. Тексты будут объединены в один маршрут."
@@ -339,6 +430,20 @@ fun PhotoRoutePlannerScreen(
             } finally { busy = false }
         }
     }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        processPhotoUris(uris)
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) cameraOpen = true
+        else Toast.makeText(context, "Для съёмки маршрутника нужно разрешение камеры", Toast.LENGTH_LONG).show()
+    }
+    if (cameraOpen) {
+        RouteCameraCaptureScreen(
+            onPhotoCaptured = { uri -> capturedUris = capturedUris + uri },
+            onClose = { cameraOpen = false }
+        )
+        return
+    }
 
     Column(
         Modifier
@@ -355,8 +460,20 @@ fun PhotoRoutePlannerScreen(
         Text("Маршрут по фотографии", color = TextLight, style = MaterialTheme.typography.headlineSmall)
         Text(status, color = TextMuted, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(12.dp))
-        Button(onClick = { photoPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text(if (busy) "Обработка…" else "Выбрать фотографии маршрутного листа")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }, enabled = !busy, modifier = Modifier.weight(1f)) {
+                Text("Сфотографировать")
+            }
+            OutlinedButton(onClick = { photoPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.weight(1f)) {
+                Text("Из галереи")
+            }
+        }
+        if (capturedUris.isNotEmpty()) {
+            Text("Снимков с камеры: ${capturedUris.size}", color = TextLight, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = { processPhotoUris(capturedUris); capturedUris = emptyList() },
+                enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                Text("Распознать снятые фотографии")
+            }
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
