@@ -27,3 +27,9 @@ class PhotoRouteTextParserTest {
         assertEquals(emptyList<String>(), PhotoRouteTextParser.extractCandidates("Маршрут № 5\nИванов И.И.\n8 900 000 00 00"))
     }
 }
+
+    @Test fun downsamplesLargePhotosToSafeOcrSize() {
+        assertEquals(1, PhotoOcrImageSizing.sampleSize(1600, 1200))
+        assertEquals(2, PhotoOcrImageSizing.sampleSize(4800, 3200))
+        assertEquals(4, PhotoOcrImageSizing.sampleSize(9600, 6400))
+    }
