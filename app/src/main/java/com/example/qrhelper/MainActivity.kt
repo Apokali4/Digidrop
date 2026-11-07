@@ -741,11 +741,19 @@ fun DigitDropRoot() {
                 }
             )
         }
+        AppScreen.OFFLINE_MAP -> {
+            OfflineMapScreen(
+                refreshKey = offlineMapRefresh,
+                onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) }
+            )
+        }
         AppScreen.ROUTE_LIST -> {
             RouteListScreen(
                 routeItems = routeItems,
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
+                onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
                 onOpenPointMap = { address -> launchNavigation(address) },
                 onCallClient = { phone -> makePhoneCall(phone) },
                 onPointClick = { pointItems ->
@@ -1700,6 +1708,7 @@ fun RouteListScreen(
     routeItems: List<RouteItem>,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
+    onOpenOfflineMap: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
@@ -1767,7 +1776,10 @@ fun RouteListScreen(
                     }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onOpenOfflineMap) { Text("Офлайн-карта Калуги") }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
