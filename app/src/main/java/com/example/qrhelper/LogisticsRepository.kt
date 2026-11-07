@@ -132,8 +132,8 @@ internal class LogisticsRepository(context: Context) {
                 } ?: return@forEach
 
                 val status = when {
-                    group.any { it.discrepancyQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
                     group.all { it.isDelivered } -> com.example.qrhelper.data.DeliveryStatus.COMPLETED
+                    group.any { it.discrepancyQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
                     group.any { it.isDelivered } || group.sumOf { it.scannedBoxes.coerceAtLeast(0) } > 0 ->
                         com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
                     else -> com.example.qrhelper.data.DeliveryStatus.PENDING
