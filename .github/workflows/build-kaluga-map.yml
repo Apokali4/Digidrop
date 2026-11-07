@@ -40,6 +40,7 @@ jobs:
         run: |
           java -Xmx5g -jar planetiler.jar \
             --osm-path=kaluga_oblast.osm.pbf \
+            --download \
             --output=kaluga-region.pmtiles \
             --force \
             --minzoom=0 \
