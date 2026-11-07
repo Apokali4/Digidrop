@@ -267,53 +267,29 @@ internal object PhotoRouteOrdering {
     }
 }
 
-private data class OptimizedPhotoRoute(
-    val origin: LocatedPhotoStop,
-    val stops: List<LocatedPhotoStop>,
-    val geometryJson: String
-)
-
-private suspend fun optimizePhotoRoute(
-    context: android.content.Context,
-    stops: List<LocatedPhotoStop>,
-    city: String
-): OptimizedPhotoRoute = withContext(Dispatchers.IO) {
-    require(stops.size >= 2) { "Для оптимизации нужны минимум две найденные точки" }
-    val depotAddress = PhotoRouteGeocodingQuery.build("ул. Параллельная, д. 21", city)
-    val geocoder = Geocoder(context, Locale("ru", "RU"))
-    val depotResult = geocoder.getFromLocationName(depotAddress, 3)?.firstOrNull()
-        ?: error("Не удалось определить координаты базы: $depotAddress")
-    val depot = LocatedPhotoStop("База: $depotAddress", depotResult.latitude, depotResult.longitude)
-    val farthestIndex = PhotoRouteOrdering.farthestStopIndex(
-        PhotoRouteCoordinate(depot.latitude, depot.longitude),
-        stops.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
-    )
-    val farthest = stops[farthestIndex]
-    val orderedInput = listOf(depot) + stops.filterIndexed { index, _ -> index != farthestIndex } + farthest
-    val coordinates = orderedInput.joinToString(";") { "${it.longitude},${it.latitude}" }
-    val endpoint = "https://router.project-osrm.org/trip/v1/driving/$coordinates?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson"
+private suspend fun optimizeStopsOnly(stops: List<LocatedPhotoStop>): List<LocatedPhotoStop> = withContext(Dispatchers.IO) {
+    require(stops.size >= 2) { "Для оптимизации нужны минимум две точки" }
+    val coordinates = stops.joinToString(";") { "${it.longitude},${it.latitude}" }
+    val endpoint = "https://router.project-osrm.org/trip/v1/driving/$coordinates?source=any&destination=any&roundtrip=false&overview=false"
     val connection = URL(endpoint).openConnection() as HttpURLConnection
     connection.connectTimeout = 15000
     connection.readTimeout = 30000
     try {
         val response = connection.inputStream.bufferedReader().use { it.readText() }
         val json = JSONObject(response)
-        check(json.optString("code") == "Ok") { "Сервис маршрутизации не смог построить маршрут" }
-        val trip = json.getJSONArray("trips").getJSONObject(0)
+        check(json.optString("code") == "Ok") { "Сервис маршрутизации не смог построить порядок точек" }
         val waypoints = json.getJSONArray("waypoints")
         val ordered = (0 until waypoints.length())
             .sortedBy { waypoints.getJSONObject(it).getInt("waypoint_index") }
-            .map { orderedInput[it] }
-        check(ordered.first() == depot) { "Оптимизатор изменил стартовую базу" }
-        check(ordered.last() == farthest) { "Оптимизатор изменил конечную точку" }
-        val deliveries = ordered.drop(1)
-        check(deliveries.size == stops.size) { "Оптимизатор потерял точки доставки" }
-        OptimizedPhotoRoute(depot, deliveries, trip.getJSONObject("geometry").toString())
+            .map { stops[it] }
+        check(ordered.size == stops.size && ordered.toSet().size == stops.size) {
+            "Оптимизатор вернул неполный список точек"
+        }
+        ordered
     } finally {
         connection.disconnect()
     }
 }
-
 
 @Composable
 private fun RouteCameraCaptureScreen(
@@ -555,7 +531,24 @@ fun PhotoRoutePlannerScreen(
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(8.dp))
-            val navigationPoints = listOfNotNull(routeOrigin) + located
+            Button(
+                onClick = {
+                    scope.launch {
+                        busy = true
+                        status = "Оптимизирую порядок только после проверки точек…"
+                        try {
+                            located = optimizeStopsOnly(located)
+                            status = "Порядок оптимизирован по дорожной сети. Все ${located.size} точек сохранены."
+                        } catch (error: Exception) {
+                            status = "Не удалось оптимизировать: ${error.message ?: "ошибка сети"}"
+                        } finally { busy = false }
+                    }
+                },
+                enabled = !busy && located.size >= 2,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (busy) "Оптимизация…" else "Оптимизировать порядок после проверки") }
+            Spacer(Modifier.height(8.dp))
+            val navigationPoints = located
             val navigationCoordinates = navigationPoints.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
             val yandexSegments = PhotoRouteNavigationUrls.yandexSegments(navigationCoordinates)
             if (yandexSegments.size == 1) {
