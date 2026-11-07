@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.qrhelper"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -54,7 +54,10 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.0")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
+    // Native offline map renderer; local PMTiles sources require MapLibre 11.7.0+.
+    implementation("org.maplibre.gl:android-sdk:11.7.0")
     ksp("androidx.room:room-compiler:2.7.2")
 }

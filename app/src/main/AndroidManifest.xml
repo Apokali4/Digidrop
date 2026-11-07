@@ -18,6 +18,7 @@
 
     <!-- Разрешение Android 11+ на вызов внешних навигаторов -->
     <queries>
+        <package android:name="ru.yandex.yandexnavi" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="geo" />
