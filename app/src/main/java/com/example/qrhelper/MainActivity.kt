@@ -3002,7 +3002,7 @@ fun ReportsScreen(
     val scanned = routeItems.sumOf { it.scannedBoxes }
     val discrepancies = routeItems.sumOf { it.discrepancyQty }
     val remaining = (totalBoxes - scanned - discrepancies).coerceAtLeast(0)
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
+    Column(Modifier.fillMaxSize().background(BgDark).verticalScroll(rememberScrollState()).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
