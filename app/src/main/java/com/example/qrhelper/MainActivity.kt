@@ -1868,6 +1868,20 @@ fun PointGroupScreen(
 }
 
 // --- ЭКРАН ДЕТАЛЬНОЙ НАКЛАДНОЙ (ЧТО ВНУТРИ) ---
+private fun decodeEvidencePreview(path: String): androidx.compose.ui.graphics.ImageBitmap? {
+    if (path.isBlank()) return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1200) sample *= 2
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sample
+        inPreferredConfig = Bitmap.Config.ARGB_8888
+    }
+    return BitmapFactory.decodeFile(path, options)?.asImageBitmap()
+}
+
 @Composable
 fun PointDetailsScreen(
     item: RouteItem,
@@ -1884,16 +1898,8 @@ fun PointDetailsScreen(
     var discrepancyQtyText by remember(item.barcode) { mutableStateOf("1") }
     var discrepancyReason by remember(item.barcode) { mutableStateOf("НЕДОВОЗ") }
     var discrepancyError by remember(item.barcode) { mutableStateOf("") }
-    val photoPreview = remember(item.photoDocUri) {
-        item.photoDocUri.takeIf { it.isNotBlank() }?.let { path ->
-            BitmapFactory.decodeFile(path)?.asImageBitmap()
-        }
-    }
-    val signaturePreview = remember(item.signaturePath) {
-        item.signaturePath.takeIf { it.isNotBlank() }?.let { path ->
-            BitmapFactory.decodeFile(path)?.asImageBitmap()
-        }
-    }
+    val photoPreview = remember(item.photoDocUri) { decodeEvidencePreview(item.photoDocUri) }
+    val signaturePreview = remember(item.signaturePath) { decodeEvidencePreview(item.signaturePath) }
     Box(
         modifier = Modifier
             .fillMaxSize()
