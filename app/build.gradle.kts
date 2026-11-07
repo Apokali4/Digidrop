@@ -56,5 +56,7 @@ dependencies {
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
+    // Native offline map renderer; local PMTiles sources require MapLibre 11.7.0+.
+    implementation("org.maplibre.gl:android-sdk:11.7.0")
     ksp("androidx.room:room-compiler:2.7.2")
 }
