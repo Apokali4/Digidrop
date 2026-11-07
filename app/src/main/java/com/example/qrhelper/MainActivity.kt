@@ -1711,6 +1711,7 @@ fun RouteListScreen(
     onOpenScanner: () -> Unit,
     onOpenOfflineMap: () -> Unit,
     onOpenPointMap: (String) -> Unit,
+    onOpenOfflineMap: () -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
     onToggleItem: (RouteItem) -> Unit,
@@ -1800,9 +1801,7 @@ fun RouteListScreen(
                 ) { Text("Маршрут") }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LazyColumn(
+            Spacer(modifier = Modifier.height(8.dp))\n            TextButton(onClick = onOpenOfflineMap, modifier = Modifier.fillMaxWidth()) { Text("ОФЛАЙН-КАРТА КАЛУГИ И ОБЛАСТИ") }\n            Spacer(modifier = Modifier.height(8.dp))\n\n            LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
