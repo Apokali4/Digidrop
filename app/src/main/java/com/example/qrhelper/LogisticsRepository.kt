@@ -61,7 +61,7 @@ internal class LogisticsRepository(context: Context) {
                             cashNote = cargo.cashNote,
                             extraComment = cargo.extraComment,
                             discrepancyQty = cargo.discrepancyQty,
-                            discrepancyReason = cargo.discrepancyReason?.name
+                            discrepancyReason = cargo.discrepancyReason
                         )
                     }
                 )
@@ -89,7 +89,9 @@ internal class LogisticsRepository(context: Context) {
                     ownerName = cargo.ownerName,
                     workingHours = cargo.workingHours,
                     cashNote = cargo.cashNote,
-                    extraComment = cargo.extraComment
+                    extraComment = cargo.extraComment,
+                    discrepancyQty = cargo.discrepancyQty,
+                    discrepancyReason = cargo.discrepancyReason?.name
                 )
             }
         }
