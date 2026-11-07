@@ -612,15 +612,38 @@ fun DigitDropRoot() {
 
     fun launchNavigation(address: String, latitude: Double? = null, longitude: Double? = null) {
         if (address.isBlank() && (latitude == null || longitude == null)) {
-            Toast.makeText(context, "У точки нет адреса или координат", Toast.LENGTH_SHORT).show(); return
+            Toast.makeText(context, "У точки нет адреса или координат", Toast.LENGTH_SHORT).show()
+            return
         }
-        val query = if (latitude != null && longitude != null) "$latitude,$longitude" else address
-        // Прямая ссылка Яндекс Карт: пользователь проверяет именно эту точку, не общий маршрут.
-        val yandexUrl = Uri.parse("https://yandex.ru/maps/?text=" + Uri.encode(query))
+
+        // DigiDrop хранит и управляет маршрутом. Яндекс Навигатор получает только
+        // назначение текущей точки и отвечает за голосовое ведение до неё.
+        val navigatorIntent = if (latitude != null && longitude != null) {
+            Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("yandexnavi://build_route_on_map?lat_to=$latitude&lon_to=$longitude")
+            ).setPackage("ru.yandex.yandexnavi")
+        } else {
+            Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://yandex.ru/maps/?rtext=~" + Uri.encode(address) + "&rtt=auto")
+            )
+        }
+
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, yandexUrl))
+            context.startActivity(navigatorIntent)
         } catch (_: Exception) {
-            Toast.makeText(context, "Не удалось открыть Яндекс Карты или браузер", Toast.LENGTH_SHORT).show()
+            // Если Навигатор не установлен/не доступен, пробуем универсальную ссылку Яндекса.
+            try {
+                val fallback = if (latitude != null && longitude != null) {
+                    "https://yandex.ru/maps/?rtext=~$latitude,$longitude&rtt=auto"
+                } else {
+                    "https://yandex.ru/maps/?rtext=~" + Uri.encode(address) + "&rtt=auto"
+                }
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(fallback)))
+            } catch (_: Exception) {
+                Toast.makeText(context, "Яндекс Навигатор недоступен. Точка сохранена в DigiDrop.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
