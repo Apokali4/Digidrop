@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: "Build and upload the final APK after all feature work is complete"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -37,16 +43,17 @@ jobs:
           run_id: 42376599076
           name: DigiDrop-Kaluga-Offline-Map
           path: app/src/main/assets
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
       - name: Run unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
-      - name: Build debug APK
+      - name: Build debug APK (explicit final build only)
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true
         run: ./gradlew --no-daemon --stacktrace assembleDebug
-      - name: Upload APK
+      - name: Upload APK (explicit final build only)
+        if: github.event_name == 'workflow_dispatch' && inputs.build_apk == true
         uses: actions/upload-artifact@v4
         with:
           name: DigiDrop-debug-apk
