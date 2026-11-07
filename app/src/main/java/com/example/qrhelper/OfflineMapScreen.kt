@@ -175,6 +175,12 @@ fun OfflineMapScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 )
             }
+            Text(
+                "Данные карты: © OpenStreetMap contributors • лицензия ODbL",
+                color = TextMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 5.dp)
+            )
         }
     }
 }
