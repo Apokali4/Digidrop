@@ -902,6 +902,7 @@ fun DigitDropRoot() {
         AppScreen.ROUTE_LIST -> {
             RouteListScreen(
                 routeItems = routeItems,
+                compactMode = settingsCompact,
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
@@ -1559,6 +1560,7 @@ fun ScanResultsScreen(
 @Composable
 fun StoreGroupCard(
     items: List<RouteItem>,
+    compactMode: Boolean = false,
     onClick: () -> Unit,
     onMapClick: () -> Unit,
     onCallClick: () -> Unit
@@ -1573,7 +1575,7 @@ fun StoreGroupCard(
         colors = CardDefaults.cardColors(containerColor = CardSurface),
         shape = RoundedCornerShape(18.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(if (compactMode) 10.dp else 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(if (delivered) "Доставлено" else "В пути", color = if (delivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -1582,8 +1584,8 @@ fun StoreGroupCard(
                 if (first.workingHours.isNotBlank()) Text("Работа: ${first.workingHours}", color = TextMuted, fontSize = 12.sp, maxLines = 1)
                 if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = Color(0xFF8A5A24), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 if (first.note.isNotBlank()) Text(first.note, color = TextMuted, fontSize = 12.sp, maxLines = 2)
-                Spacer(Modifier.height(8.dp))
-                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(if (compactMode) 4.dp else 8.dp))
+                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = if (compactMode) 12.sp else 14.sp, fontWeight = FontWeight.SemiBold)
                 Text("Позиций: ${items.map { it.itemName }.distinct().size} • Учтено сканов: $scanned", color = TextMuted, fontSize = 11.sp)
                 Text(items.take(2).joinToString(" · ") { it.itemName }, color = MintAccent, fontSize = 12.sp, maxLines = 1)
             }
@@ -2056,6 +2058,7 @@ fun SignatureCaptureDialog(
 @Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
+    compactMode: Boolean,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenOfflineMap: () -> Unit,
@@ -2183,7 +2186,7 @@ fun RouteListScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(if (compactMode) 7.dp else 14.dp)
             ) {
                 if (displayedGroups.isEmpty()) {
                     item {
@@ -2218,6 +2221,7 @@ fun RouteListScreen(
                             Column(Modifier.weight(1f)) {
                                 StoreGroupCard(
                                     items = group.second,
+                                    compactMode = compactMode,
                                     onClick = { onPointClick(group.second) },
                                     onMapClick = { onOpenPointMap(group.second.first().address) },
                                     onCallClick = { onCallClient(group.second.first().phone) }
@@ -2679,7 +2683,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(14.dp))
         SettingToggleRow("Офлайн-режим", "Не требует учётной записи или сервера; карты могут требовать интернет", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
-        SettingToggleRow("Компактный режим", "Настройка сохранена; плотность экранов будет применена в следующих UI-экранах", compactMode, onCompactChange)
+        SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
         HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFFD18B26), onClearUnknown)
         Spacer(Modifier.height(14.dp))
