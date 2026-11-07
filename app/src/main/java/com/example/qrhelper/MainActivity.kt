@@ -747,7 +747,23 @@ fun DigitDropRoot() {
                 routeItems = routeItems,
                 refreshKey = offlineMapRefresh,
                 onBack = { currentScreen = AppScreen.ROUTE_LIST },
-                onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) }
+                onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) },
+                onGeocodeMissing = {
+                    importScope.launch {
+                        val resolved = geocodeRoute(context, routeItems)
+                        routeItems = resolved
+                        val saved = resolved.joinToString("\n") { item ->
+                            listOf(
+                                item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                            ).joinToString("\t") { it.replace("\t", " ") }
+                        }
+                        prefs.edit().putString("active_manifest", saved).apply()
+                        val found = resolved.count { it.latitude != null && it.longitude != null }
+                        Toast.makeText(context, "Координаты определены: $found из ${resolved.size}", Toast.LENGTH_LONG).show()
+                    }
+                }
             )
         }
         AppScreen.ROUTE_LIST -> {
