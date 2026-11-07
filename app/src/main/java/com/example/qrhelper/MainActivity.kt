@@ -362,7 +362,8 @@ private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List
                 if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude) else item
             } catch (_: Exception) { item }
         }
-        orderRouteByCoordinates(resolved)
+        // На этапе проверки сохраняем исходную последовательность из маршрутного листа.
+        resolved
     }
 
 const val DISPATCHER_PHONE = "+74842998877"
@@ -1583,6 +1584,23 @@ fun PointDetailsScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(18.dp)),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("ДАННЫЕ ТОЧКИ", color = MintAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (item.ownerName.isNotBlank()) Text("ИП / контакт: ${item.ownerName}", color = TextLight, fontSize = 15.sp)
+                    if (item.phone.isNotBlank()) Text("Телефон: ${item.phone}", color = TextLight, fontSize = 15.sp)
+                    if (item.workingHours.isNotBlank()) Text("Время работы: ${item.workingHours}", color = TextLight, fontSize = 15.sp)
+                    if (item.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${item.cashNote}", color = Color(0xFF8A5A24), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    if (item.extraComment.isNotBlank()) Text("Дополнительно: ${item.extraComment}", color = TextLight, fontSize = 14.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Card(
                 modifier = Modifier
