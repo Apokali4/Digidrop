@@ -34,4 +34,18 @@ class PhotoRouteNavigationUrlsTest {
         val error = runCatching { PhotoRouteNavigationUrls.yandex(stops.take(1)) }.exceptionOrNull()
         assertEquals("Для навигации нужны минимум две точки", error?.message)
     }
+    @Test fun yandexSplitsLongRouteIntoTwentyStopSegmentsWithSharedBoundary() {
+        val manyStops = (0..32).map { PhotoRouteCoordinate(55.0 + it / 1000.0, 37.0 + it / 1000.0) }
+        val segments = PhotoRouteNavigationUrls.yandexSegments(manyStops)
+        assertEquals(listOf(20, 14), segments.map { it.size })
+        assertEquals(segments[0].last(), segments[1].first())
+        assertEquals(manyStops.first(), segments.first().first())
+        assertEquals(manyStops.last(), segments.last().last())
+        segments.forEach { assertTrue(it.size <= PhotoRouteNavigationUrls.YANDEX_MAX_STOPS) }
+    }
+
+    @Test fun yandexKeepsShortRoutesAsSingleSegment() {
+        assertEquals(1, PhotoRouteNavigationUrls.yandexSegments(stops).size)
+    }
+
 }
