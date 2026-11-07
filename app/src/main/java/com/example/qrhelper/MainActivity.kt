@@ -574,6 +574,31 @@ fun DigitDropRoot() {
         }
     }
 
+    fun archiveCurrentRoute() {
+        if (routeItems.isEmpty()) {
+            Toast.makeText(context, "Нет активного рейса для архивации", Toast.LENGTH_SHORT).show()
+            return
+        }
+        importScope.launch {
+            runCatching {
+                LogisticsRepository(context).archiveActiveRoute()
+                val editor = prefs.edit().remove("active_manifest").remove("scan_codes")
+                routeItems.forEach { item ->
+                    editor.remove("delivered_" + routeItemKey(item))
+                    editor.remove("scanned_" + routeItemKey(item))
+                }
+                editor.apply()
+                routeItems = emptyList()
+                selectedItem = null
+                selectedPointItems = emptyList()
+                currentScreen = AppScreen.HUB
+                Toast.makeText(context, "Рейс отправлен в историю", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(context, "Не удалось архивировать рейс: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun resetRouteProgress() {
         val editor = prefs.edit()
         routeItems.forEach { item ->
@@ -1046,7 +1071,31 @@ fun DigitDropRoot() {
                     val item = selectedPointItems.firstOrNull()
                     if (item != null) launchNavigation(item.address, item.latitude, item.longitude)
                 },
-                onCall = { makePhoneCall(selectedPointItems.firstOrNull()?.phone.orEmpty()) }
+                onCall = { makePhoneCall(selectedPointItems.firstOrNull()?.phone.orEmpty()) },
+                onClosePoint = {
+                    val point = selectedPointItems.firstOrNull()
+                    if (point != null) importScope.launch {
+                        val closed = runCatching {
+                            LogisticsRepository(context).closePoint(point.storeName, point.address)
+                        }.getOrElse { error ->
+                            Toast.makeText(context, "Ошибка проверки точки: ${error.message}", Toast.LENGTH_LONG).show()
+                            false
+                        }
+                        if (closed) {
+                            val updated = routeItems.map {
+                                if (it.storeName == point.storeName && it.address == point.address) it.copy(isDelivered = true) else it
+                            }
+                            routeItems = updated
+                            selectedPointItems = updated.filter { it.storeName == point.storeName && it.address == point.address }
+                            val editor = prefs.edit()
+                            selectedPointItems.forEach { editor.putBoolean("delivered_" + routeItemKey(it), true) }
+                            editor.apply()
+                            Toast.makeText(context, "Точка закрыта и отмечена как сданная", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Точку нельзя закрыть: проверь сканы и причины расхождений", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             )
         }
         AppScreen.SCAN_RESULTS -> {
@@ -1078,7 +1127,8 @@ fun DigitDropRoot() {
                 onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
                 onClearUnknown = { prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList() },
                 onBackup = { backupExportLauncher.launch("DigiDrop_backup.zip") },
-                onRestore = { backupImportLauncher.launch(arrayOf("application/zip", "application/octet-stream")) }
+                onRestore = { backupImportLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                onArchiveRoute = { archiveCurrentRoute() }
             )
         }
         AppScreen.HISTORY -> {
@@ -1711,7 +1761,8 @@ fun PointGroupScreen(
     onBack: () -> Unit,
     onOpenInvoice: (RouteItem) -> Unit,
     onNavigate: () -> Unit,
-    onCall: () -> Unit
+    onCall: () -> Unit,
+    onClosePoint: () -> Unit
 ) {
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
@@ -1735,6 +1786,8 @@ fun PointGroupScreen(
             Text("Всего мест: $total", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         Text("Учтено уникальных сканов: $scanned", color = TextMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(12.dp))
+        HubActionButton("Проверить и закрыть точку", "Все места должны быть учтены сканами или расхождениями с причиной", CardSurface, TextLight, MintAccent, onClosePoint)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             HubActionButton("Навигатор", "Открыть точку", CardSurface, TextLight, MintAccent, onNavigate)
@@ -2783,8 +2836,10 @@ fun SettingsScreen(
     onCompactChange: (Boolean) -> Unit,
     onClearUnknown: () -> Unit,
     onBackup: () -> Unit,
-    onRestore: () -> Unit
+    onRestore: () -> Unit,
+    onArchiveRoute: () -> Unit
 ) {
+    var showArchiveConfirmation by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
         Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
@@ -2799,9 +2854,29 @@ fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
         HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", CardSurface, TextLight, MintAccent, onRestore)
         Spacer(Modifier.height(8.dp))
+        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", CardSurface, TextLight, Color(0xFFD18B26)) {
+            showArchiveConfirmation = true
+        }
+        Spacer(Modifier.height(8.dp))
         HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFFD18B26), onClearUnknown)
         Spacer(Modifier.height(14.dp))
         Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = TextMuted, fontSize = 12.sp)
+    }
+    if (showArchiveConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirmation = false },
+            title = { Text("Отправить рейс в архив?") },
+            text = { Text("Текущий маршрут исчезнет из активного списка, но останется в истории на этом устройстве.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveConfirmation = false
+                    onArchiveRoute()
+                }) { Text("Архивировать") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveConfirmation = false }) { Text("Отмена") }
+            }
+        )
     }
 }
 
