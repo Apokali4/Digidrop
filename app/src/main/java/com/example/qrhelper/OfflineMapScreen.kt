@@ -1,6 +1,10 @@
 package com.example.qrhelper
 
 import android.widget.Toast
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
@@ -43,12 +47,42 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.annotations.IconFactory
+import org.maplibre.android.annotations.MarkerOptions
 import org.json.JSONArray
 import org.json.JSONObject
 import com.example.qrhelper.domain.DeliveryPointSnapshot
 import com.example.qrhelper.domain.DeliveryPointStatus
 import com.example.qrhelper.domain.PointFilter
 import com.example.qrhelper.domain.RouteProgress
+
+private fun createNumberedPointMarker(number: Int, fillColor: Int): Bitmap {
+    val size = 88
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val center = size / 2f
+    val radius = size * 0.36f
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = fillColor
+        style = Paint.Style.FILL
+    }
+    val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+    }
+    val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        textSize = 31f
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    canvas.drawCircle(center, center, radius, fill)
+    canvas.drawCircle(center, center, radius, outline)
+    val baseline = center - (text.ascent() + text.descent()) / 2f
+    canvas.drawText(number.toString(), center, baseline, text)
+    return bitmap
+}
 
 @Composable
 fun OfflineMapScreen(
@@ -233,7 +267,6 @@ fun OfflineMapScreen(
                                     {"id":"roads","type":"line","source":"regional","source-layer":"transportation","paint":{"line-color":"#fffdf8","line-width":["interpolate",["linear"],["zoom"],8,0.5,14,4]}},
                                     {"id":"route-line-layer","type":"line","source":"route-line","paint":{"line-color":"#176B54","line-width":4,"line-opacity":0.9}},
                                     {"id":"route-points-layer","type":"circle","source":"route-points","paint":{"circle-radius":8,"circle-color":["get","color"],"circle-stroke-color":"#ffffff","circle-stroke-width":2}},
-                                    {"id":"route-number-layer","type":"symbol","source":"route-points","layout":{"text-field":["to-string",["get","number"]],"text-size":11,"text-allow-overlap":true},"paint":{"text-color":"#ffffff"}}
                                   ]
                                 }
                             """.trimIndent()
@@ -242,6 +275,34 @@ fun OfflineMapScreen(
                                     .target(LatLng(54.5138, 36.2612))
                                     .zoom(10.0)
                                     .build()
+                                mappedGroups.forEach { group ->
+                                    val item = group.first()
+                                    val markerNumber = pointGroups.indexOf(group) + 1
+                                    val markerColor = when (deliveryPointStatus(group)) {
+                                        DeliveryPointStatus.PROBLEM -> 0xFFC62828.toInt()
+                                        DeliveryPointStatus.DELIVERED -> 0xFF27AE60.toInt()
+                                        DeliveryPointStatus.IN_PROGRESS -> 0xFF2878C8.toInt()
+                                        DeliveryPointStatus.PENDING -> 0xFFE5A000.toInt()
+                                    }
+                                    val icon = IconFactory.getInstance(context)
+                                        .fromBitmap(createNumberedPointMarker(markerNumber, markerColor))
+                                    map.addMarker(
+                                        MarkerOptions()
+                                            .position(LatLng(item.latitude!!, item.longitude!!))
+                                            .title(item.storeName)
+                                            .snippet(markerNumber.toString())
+                                            .icon(icon)
+                                    )
+                                }
+                                map.setOnMarkerClickListener { marker ->
+                                    val markerNumber = marker.snippet.toIntOrNull()
+                                    val pointIndex = mapPointIndexFromMarkerNumber(markerNumber, pointGroups.size)
+                                    val selectedGroup = pointIndex?.let { pointGroups.getOrNull(it) }
+                                    if (selectedGroup != null) {
+                                        onSelectPoint(selectedGroup)
+                                        true
+                                    } else false
+                                }
                             }
                             map.addOnMapClickListener { tapped ->
                                 val screenPoint = map.projection.toScreenLocation(tapped)
