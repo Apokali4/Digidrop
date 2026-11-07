@@ -314,14 +314,26 @@ fun PhotoRoutePlannerScreen(
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
     var busy by remember { mutableStateOf(false) }
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) scope.launch {
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) scope.launch {
             busy = true
-            status = "Распознаю текст. При первом запуске загружается русская OCR-модель."
+            status = "Распознаю ${uris.size} фотографий. Тексты будут объединены в один маршрут."
             try {
-                rawText = runRussianOcr(context, uri) { message -> status = message }
+                val recognizedTexts = mutableListOf<String>()
+                uris.forEachIndexed { index, uri ->
+                    recognizedTexts += runRussianOcr(context, uri) { message ->
+                        status = "Фото ${index + 1} из ${uris.size}: $message"
+                    }
+                }
+                rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
                 addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
-                status = if (addresses.isEmpty()) "Текст распознан, но адреса не выделены автоматически. Исправьте или вставьте адреса вручную." else "Найдено строк-кандидатов: ${addresses.size}. Проверьте их перед построением маршрута."
+                located = emptyList()
+                routeOrigin = null
+                status = if (addresses.isEmpty()) {
+                    "Распознано фотографий: ${uris.size}, но адреса не выделены автоматически. Исправьте текст или добавьте адреса вручную."
+                } else {
+                    "Распознано фотографий: ${uris.size}. Найдено строк-кандидатов: ${addresses.size}. Проверьте общий список перед построением маршрута."
+                }
             } catch (error: Exception) {
                 status = "Ошибка OCR: ${error.message ?: "неизвестная ошибка"}"
             } finally { busy = false }
@@ -344,7 +356,7 @@ fun PhotoRoutePlannerScreen(
         Text(status, color = TextMuted, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(12.dp))
         Button(onClick = { photoPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text(if (busy) "Обработка…" else "Сфотографировать / выбрать лист")
+            Text(if (busy) "Обработка…" else "Выбрать фотографии маршрутного листа")
         }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
