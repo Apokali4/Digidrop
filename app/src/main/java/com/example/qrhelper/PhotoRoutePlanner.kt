@@ -28,25 +28,39 @@ import java.net.URL
 import java.util.Locale
 
 internal object PhotoRouteTextParser {
-    private val addressHint = Regex(
-        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?|дер\.?|д\.?|корп\.?|стр\.?|кв\.?|г\.?|город|пос\.?|село|деревня)(?![А-Яа-яЁёA-Za-z])"""
+    private val streetHint = Regex(
+        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
     )
-    private val houseNumber = Regex("""\b\d{1,4}[А-Яа-яA-Za-z]?([/-]\d{1,4})?\b""")
+    private val houseAfterStreet = Regex(
+        """(?iu)(?:,?\s*(?:д\.?|дом)\s*№?\s*)?\b(\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4}[А-Яа-яA-Za-z]?)?)\b"""
+    )
     private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|получатель|водитель|заказ)""")
 
-    fun extractCandidates(text: String): List<String> {
-        val cleaned = text.lineSequence()
+    private fun cleanAddressFragment(line: String, city: String): String? {
+        val street = streetHint.find(line) ?: return null
+        val house = houseAfterStreet.find(line, street.range.last + 1) ?: return null
+        val cityMatch = if (city.isNotBlank()) {
+            Regex(Regex.escape(city.trim()), RegexOption.IGNORE_CASE).find(line)
+                ?.takeIf { it.range.first <= street.range.first }
+        } else {
+            Regex("""(?iu)\bг\.?\s*[А-ЯЁ][А-Яа-яЁё-]+""").find(line)
+                ?.takeIf { it.range.first <= street.range.first }
+        }
+        val start = cityMatch?.range?.first ?: street.range.first
+        return line.substring(start, house.range.last + 1)
+            .replace(Regex("""\s*,\s*"""), ", ")
+            .replace(Regex("""\s+"""), " ")
+            .trim(' ', ',', ';', '|', '.', ':')
+            .takeIf { it.length >= 8 }
+    }
+
+    fun extractCandidates(text: String, city: String = ""): List<String> =
+        text.lineSequence()
             .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
-            .filter { line ->
-                line.length >= 8 && !metadataHint.containsMatchIn(line) &&
-                    (addressHint.containsMatchIn(line) ||
-                        (houseNumber.containsMatchIn(line) && line.any { it.isLetter() }))
-            }
-            .map { it.replace(Regex("""\s{2,}"""), " ") }
+            .filter { it.length >= 8 && !metadataHint.containsMatchIn(it) }
+            .mapNotNull { cleanAddressFragment(it, city) }
             .distinctBy { it.lowercase(Locale("ru", "RU")).replace(Regex("""[^\p{L}\p{N}]"""), "") }
             .toList()
-        return cleaned
-    }
 }
 
 internal object PhotoOcrImageSizing {
@@ -262,7 +276,7 @@ fun PhotoRoutePlannerScreen(
             status = "Распознаю текст. При первом запуске загружается русская OCR-модель."
             try {
                 rawText = runRussianOcr(context, uri) { message -> status = message }
-                addresses = PhotoRouteTextParser.extractCandidates(rawText)
+                addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
                 status = if (addresses.isEmpty()) "Текст распознан, но адреса не выделены автоматически. Исправьте или вставьте адреса вручную." else "Найдено строк-кандидатов: ${addresses.size}. Проверьте их перед построением маршрута."
             } catch (error: Exception) {
                 status = "Ошибка OCR: ${error.message ?: "неизвестная ошибка"}"
