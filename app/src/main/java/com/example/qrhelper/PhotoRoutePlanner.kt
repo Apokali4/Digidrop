@@ -35,7 +35,7 @@ internal object PhotoRouteTextParser {
         """(?i)(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?|дер\.?|д\.?|корп\.?|стр\.?|кв\.?|г\.?|город|пос\.?|село|деревня)"""
     )
     private val houseNumber = Regex("""\b\d{1,4}[А-Яа-яA-Za-z]?([/-]\d{1,4})?\b""")
-    private val metadataHint = Regex("""(?i)(маршрут|накладная|телефон|тел\\.?|диспетчер|итого|всего|получатель|водитель|заказ)""")
+    private val metadataHint = Regex("""(?i)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|получатель|водитель|заказ)""")
 
     fun extractCandidates(text: String): List<String> {
         val cleaned = text.lineSequence()
