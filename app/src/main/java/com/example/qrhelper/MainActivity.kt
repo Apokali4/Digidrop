@@ -152,7 +152,9 @@ data class RouteItem(
     val ownerName: String = "",
     val workingHours: String = "",
     val cashNote: String = "",
-    val extraComment: String = ""
+    val extraComment: String = "",
+    val discrepancyQty: Int = 0,
+    val discrepancyReason: String? = null
 )
 
 // Реальный рейс появляется только после загрузки файла накладной.
