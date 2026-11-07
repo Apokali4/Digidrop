@@ -43,7 +43,9 @@ internal class LogisticsRepository(context: Context) {
                         sortOrder = point.sortOrder,
                         status = point.status,
                         latitude = point.latitude,
-                        longitude = point.longitude
+                        longitude = point.longitude,
+                        photoDocUri = point.photoDocUri,
+                        signaturePath = point.signaturePath
                     )
                 )
                 dao.insertCargo(
@@ -85,6 +87,8 @@ internal class LogisticsRepository(context: Context) {
                     isDelivered = point.status == com.example.qrhelper.data.DeliveryStatus.COMPLETED,
                     latitude = point.latitude,
                     longitude = point.longitude,
+                    photoDocUri = point.photoDocUri,
+                    signaturePath = point.signaturePath,
                     scannedBoxes = cargo.scannedQty,
                     ownerName = cargo.ownerName,
                     workingHours = cargo.workingHours,
@@ -95,6 +99,24 @@ internal class LogisticsRepository(context: Context) {
                 )
             }
         }
+    }
+
+    suspend fun savePhotoForPoint(storeName: String, address: String, path: String) {
+        val dao = database.dao()
+        val route = dao.activeRouteOnce() ?: return
+        val point = dao.pointsOnce(route.id).firstOrNull {
+            it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+        } ?: return
+        dao.savePhoto(point.id, path)
+    }
+
+    suspend fun saveSignatureForPoint(storeName: String, address: String, path: String) {
+        val dao = database.dao()
+        val route = dao.activeRouteOnce() ?: return
+        val point = dao.pointsOnce(route.id).firstOrNull {
+            it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+        } ?: return
+        dao.saveSignature(point.id, path)
     }
 
     suspend fun syncProgress(items: List<RouteItem>) {
