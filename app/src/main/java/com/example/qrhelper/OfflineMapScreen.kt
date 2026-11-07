@@ -132,7 +132,7 @@ fun OfflineMapScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             val mappedCount = mappedGroups.size
-            val missingCoordinates = pointGroups.size - mappedCount
+            val missingCoordinates = visiblePointGroups.size - mappedCount
             Text(
                 "Точек на карте: $mappedCount • без координат: $missingCoordinates",
                 color = if (missingCoordinates > 0) Color(0xFF9A5A18) else TextMuted,
