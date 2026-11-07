@@ -63,6 +63,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -70,6 +71,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -696,7 +698,22 @@ fun DigitDropRoot() {
                     selectedPointItems = pointItems
                     currentScreen = AppScreen.POINT_DETAILS
                 },
-                onToggleItem = { item -> updateItemStatus(item) }
+                onToggleItem = { item -> updateItemStatus(item) },
+                onMoveGroup = { from, to ->
+                    val groups = routeItems.groupBy { it.storeName to it.address }.toList().toMutableList()
+                    if (from in groups.indices && to in groups.indices) {
+                        val moved = groups.removeAt(from)
+                        groups.add(to, moved)
+                        routeItems = groups.flatMap { it.second }
+                        val saved = routeItems.joinToString("\n") { item ->
+                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                                .joinToString("\t") { it.replace("\t", " ") }
+                        }
+                        prefs.edit().putString("active_manifest", saved).apply()
+                    }
+                }
             )
         }
         AppScreen.DETAILS -> {
@@ -1424,7 +1441,11 @@ fun StoreGroupCard(
             Column(Modifier.weight(1f)) {
                 Text(if (delivered) "Доставлено" else "В пути", color = if (delivered) MintAccent else EmeraldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(first.address, color = TextMuted, fontSize = 12.sp)
+                Text(first.address, color = TextMuted, fontSize = 13.sp)
+                if (first.ownerName.isNotBlank()) Text(first.ownerName, color = TextLight, fontSize = 12.sp, maxLines = 1)
+                if (first.workingHours.isNotBlank()) Text("Работа: ${first.workingHours}", color = TextMuted, fontSize = 12.sp, maxLines = 1)
+                if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = Color(0xFF8A5A24), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                if (first.note.isNotBlank()) Text(first.note, color = TextMuted, fontSize = 12.sp, maxLines = 2)
                 Spacer(Modifier.height(8.dp))
                 Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text("Позиций: ${items.map { it.itemName }.distinct().size} • Учтено сканов: $scanned", color = TextMuted, fontSize = 11.sp)
@@ -1454,7 +1475,15 @@ fun PointGroupScreen(
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(16.dp))
         Text(items.firstOrNull()?.storeName.orEmpty(), color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text(items.firstOrNull()?.address.orEmpty(), color = TextMuted, fontSize = 13.sp)
+        Text(items.firstOrNull()?.address.orEmpty(), color = TextMuted, fontSize = 14.sp)
+        items.firstOrNull()?.let { point ->
+            if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = TextLight, fontSize = 14.sp)
+            if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = TextLight, fontSize = 14.sp)
+            if (point.workingHours.isNotBlank()) Text("Время работы: ${point.workingHours}", color = TextLight, fontSize = 14.sp)
+            if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = Color(0xFF8A5A24), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = TextMuted, fontSize = 13.sp)
+            if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = TextMuted, fontSize = 13.sp)
+        }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Накладных/строк: ${items.size}", color = TextLight, fontSize = 14.sp)
@@ -1712,7 +1741,8 @@ fun RouteListScreen(
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
-    onToggleItem: (RouteItem) -> Unit
+    onToggleItem: (RouteItem) -> Unit,
+    onMoveGroup: (Int, Int) -> Unit
 ) {
     var hideDelivered by remember { mutableStateOf(false) }
     var manualDestination by remember { mutableStateOf("") }
@@ -1830,13 +1860,22 @@ fun RouteListScreen(
                         }
                     }
                 } else {
-                    items(displayedGroups, key = { it.first.first + "|" + it.first.second }) { group ->
-                        StoreGroupCard(
-                            items = group.second,
-                            onClick = { onPointClick(group.second) },
-                            onMapClick = { onOpenPointMap(group.second.first().address) },
-                            onCallClick = { onCallClient(group.second.first().phone) }
-                        )
+                    itemsIndexed(displayedGroups, key = { _, group -> group.first.first + "|" + group.first.second }) { index, group ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                StoreGroupCard(
+                                    items = group.second,
+                                    onClick = { onPointClick(group.second) },
+                                    onMapClick = { onOpenPointMap(group.second.first().address) },
+                                    onCallClick = { onCallClient(group.second.first().phone) }
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                TextButton(enabled = index > 0, onClick = { onMoveGroup(index, index - 1) }) { Text("↑") }
+                                TextButton(enabled = index < displayedGroups.lastIndex, onClick = { onMoveGroup(index, index + 1) }) { Text("↓") }
+                            }
+                        }
                     }
                 }
             }
