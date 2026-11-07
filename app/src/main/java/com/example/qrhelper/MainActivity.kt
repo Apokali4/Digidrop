@@ -1885,7 +1885,7 @@ fun RouteListScreen(
             val status = when {
                 group.all { it.isDelivered } -> DeliveryPointStatus.DELIVERED
                 group.any { it.isDelivered } -> DeliveryPointStatus.IN_PROGRESS
-                else -> RouteProgress.status(expected, scanned, 0)
+                else -> RouteProgress.status(expected, scanned, group.sumOf { it.discrepancyQty.coerceAtLeast(0) })
             }
             DeliveryPointSnapshot(
                 id = entry.first.first + "|" + entry.first.second,
@@ -1893,7 +1893,7 @@ fun RouteListScreen(
                 status = status,
                 expectedUnits = expected,
                 scannedUnits = scanned,
-                discrepancyUnits = 0
+                discrepancyUnits = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
             )
         }
         val visibleIds = RouteProgress.filter(snapshots, pointFilter).map { it.id }.toSet()
