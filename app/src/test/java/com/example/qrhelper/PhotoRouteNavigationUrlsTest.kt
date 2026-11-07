@@ -56,4 +56,14 @@ class PhotoRouteNavigationUrlsTest {
         assertEquals("Советская, 2", PhotoRouteGeocodingQuery.build("Советская, 2", " "))
     }
 
+    @Test fun routeOptimizerChoosesFarthestDeliveryAsFinalStop() {
+        val depot = PhotoRouteCoordinate(54.51, 36.25)
+        val points = listOf(
+            PhotoRouteCoordinate(54.52, 36.26),
+            PhotoRouteCoordinate(54.70, 36.40),
+            PhotoRouteCoordinate(54.55, 36.30)
+        )
+        assertEquals(1, PhotoRouteOrdering.farthestStopIndex(depot, points))
+    }
+
 }
