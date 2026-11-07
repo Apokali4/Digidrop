@@ -64,3 +64,4 @@ jobs:
             kaluga-region.pmtiles
             kaluga-region.pmtiles.sha256
           retention-days: 30
+# Re-run map generation with the current OSM extract.
