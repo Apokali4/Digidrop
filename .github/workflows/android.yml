@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -38,6 +39,14 @@ jobs:
           packages: platform-tools
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Download bundled Kaluga PMTiles
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: build-kaluga-map.yml
+          run_id: 42376599076
+          name: DigiDrop-Kaluga-Offline-Map
+          path: app/src/main/assets
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Make Gradle wrapper executable
