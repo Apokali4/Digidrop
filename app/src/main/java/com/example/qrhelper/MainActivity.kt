@@ -262,7 +262,7 @@ private fun readXlsxXml(xml: String, sharedStrings: List<String> = emptyList()):
     return rows
 }
 
-private fun parseXlsx(input: InputStream): List<RouteItem> {
+internal fun parseXlsx(input: InputStream): List<RouteItem> {
     val entries = mutableMapOf<String, ByteArray>()
     ZipInputStream(input).use { zip ->
         while (true) {
@@ -291,13 +291,17 @@ private fun parseXlsx(input: InputStream): List<RouteItem> {
         }
         values
     }
-    val sheetName = entries.keys.filter { it.startsWith("xl/worksheets/sheet") }.sorted().firstOrNull()
-        ?: return emptyList()
-    val rows = readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
-    val tsv = rows.joinToString("\n") { row ->
-        row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
+    val sheetNames = entries.keys
+        .filter { it.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")) }
+        .sortedBy { Regex("sheet([0-9]+)").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
+    if (sheetNames.isEmpty()) return emptyList()
+    return sheetNames.flatMap { sheetName ->
+        val rows = readXlsxXml(entries.getValue(sheetName).toString(Charsets.UTF_8), shared)
+        val tsv = rows.joinToString("\n") { row ->
+            row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
+        }
+        parseManifest(tsv)
     }
-    return parseManifest(tsv)
 }
 
 internal fun parseManifest(text: String): List<RouteItem> {
