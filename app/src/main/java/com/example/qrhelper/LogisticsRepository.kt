@@ -6,6 +6,7 @@ import com.example.qrhelper.data.CargoItemEntity
 import com.example.qrhelper.data.DeliveryPointEntity
 import com.example.qrhelper.data.DeliveryRouteEntity
 import com.example.qrhelper.data.LogisticsDatabase
+import com.example.qrhelper.data.ProductEntity
 
 /**
  * Mirrors an imported manifest into the local Room database.
@@ -30,6 +31,10 @@ internal class LogisticsRepository(context: Context) {
         database.withTransaction {
             val dao = database.dao()
             dao.deactivateRoutes()
+            val catalog = mapProductCatalog(items).map { product ->
+                ProductEntity(barcode = product.barcode, productName = product.productName)
+            }
+            if (catalog.isNotEmpty()) dao.upsertProducts(catalog)
             val routeId = dao.insertRoute(
                 DeliveryRouteEntity(routeNumber = "Импорт ${System.currentTimeMillis()}")
             )
@@ -171,6 +176,9 @@ internal class LogisticsRepository(context: Context) {
     suspend fun archiveActiveRoute() {
         database.dao().deactivateRoutes()
     }
+
+    suspend fun searchProducts(query: String): List<ProductEntity> =
+        database.dao().searchProducts(query.trim())
 
     suspend fun history(): List<RouteHistorySnapshot> {
         val dao = database.dao()
