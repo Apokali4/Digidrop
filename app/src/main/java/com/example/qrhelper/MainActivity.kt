@@ -100,6 +100,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -382,7 +389,8 @@ enum class AppScreen {
     SETTINGS,
     HISTORY,
     UNKNOWN_CODES,
-    PHOTO_ROUTE
+    PHOTO_ROUTE,
+    OFFLINE_MAP
 }
 
 // Тёплая песочно-бежeвая палитра DigiDrop.
@@ -527,7 +535,7 @@ fun DigitDropRoot() {
         }
     }
 
-    val filePickerLauncher = rememberLauncherForActivityResult(
+    val mapFileLauncher = rememberLauncherForActivityResult(\n        contract = ActivityResultContracts.OpenDocument()\n    ) { uri: Uri? ->\n        if (uri != null) {\n            importScope.launch {\n                try {\n                    val imported = withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }\n                    Toast.makeText(context, "Офлайн-карта установлена: ${imported.length() / (1024 * 1024)} МБ", Toast.LENGTH_LONG).show()\n                } catch (error: Exception) {\n                    Toast.makeText(context, error.message ?: "Не удалось импортировать карту", Toast.LENGTH_LONG).show()\n                }\n            }\n        }\n    }\n\n    val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
@@ -657,6 +665,7 @@ fun DigitDropRoot() {
             AppScreen.POINT_DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
+            AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
             AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
