@@ -90,6 +90,14 @@ fun OfflineMapScreen(
                 color = EmeraldPrimary,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
+            val mappedCount = routeItems.count { it.latitude != null && it.longitude != null }
+            val missingCoordinates = routeItems.size - mappedCount
+            Text(
+                "Точек на карте: $mappedCount • без координат: $missingCoordinates",
+                color = if (missingCoordinates > 0) Color(0xFF9A5A18) else TextMuted,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
             key(refreshKey, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
@@ -137,10 +145,14 @@ fun OfflineMapScreen(
                                     .put("properties", properties))
                             }
                             val routeGeoJson = JSONObject().put("type", "FeatureCollection").put("features", pointFeatures)
-                            val lineFeature = JSONObject().put("type", "Feature")
-                                .put("geometry", JSONObject().put("type", "LineString").put("coordinates", routeCoordinates))
-                                .put("properties", JSONObject())
-                            val lineGeoJson = JSONObject().put("type", "FeatureCollection").put("features", JSONArray().put(lineFeature))
+                            val lineFeatures = JSONArray()
+                            if (routeCoordinates.length() >= 2) {
+                                val lineFeature = JSONObject().put("type", "Feature")
+                                    .put("geometry", JSONObject().put("type", "LineString").put("coordinates", routeCoordinates))
+                                    .put("properties", JSONObject())
+                                lineFeatures.put(lineFeature)
+                            }
+                            val lineGeoJson = JSONObject().put("type", "FeatureCollection").put("features", lineFeatures)
                             val styleJson = """
                                 {
                                   "version": 8,
