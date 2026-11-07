@@ -81,12 +81,13 @@ fun OfflineMapScreen(
                 }
             }
         } else {
+            val activeMapFile = mapFile!!
             Text(
-                "Карта установлена • ${mapFile.length() / (1024 * 1024)} МБ",
+                "Карта установлена • ${activeMapFile.length() / (1024 * 1024)} МБ",
                 color = EmeraldPrimary,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-            key(refreshKey, mapFile.absolutePath) {
+            key(refreshKey, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
                     MapView(context).apply { onCreate(null) }
@@ -111,7 +112,7 @@ fun OfflineMapScreen(
                 AndroidView(
                     factory = {
                         mapView.getMapAsync { map ->
-                            val source = OfflineMapStore.mapLibreSource(mapFile)
+                            val source = OfflineMapStore.mapLibreSource(activeMapFile)
                             val styleJson = """
                                 {
                                   "version": 8,
