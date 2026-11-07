@@ -72,7 +72,7 @@ private suspend fun runRussianOcr(context: android.content.Context, imageUri: Ur
         api.setImage(bitmap)
         api.getUTF8Text().orEmpty()
     } finally {
-        api.end()
+        api.recycle()
         bitmap.recycle()
     }
 }
