@@ -125,13 +125,29 @@ internal object PhotoRouteTextParser {
         return "$streetName#$houseNumber"
     }
 
-    fun extractCandidates(text: String, city: String = ""): List<String> =
-        text.lineSequence()
+    fun extractCandidates(text: String, city: String = ""): List<String> {
+        val lines = text.lineSequence()
             .map { it.replace(Regex("""^[\\s•*№\\-–—]+"""), "").trim() }
+            .filter { it.isNotBlank() }
+            .toList()
+        val rows = mutableListOf<String>()
+        lines.forEachIndexed { index, line ->
+            rows += line
+            val street = streetHint.find(line)
+            val hasHouseOnSameLine = street != null && houseAfterStreet.find(line, street.range.last + 1) != null
+            val next = lines.getOrNull(index + 1)
+            if (street != null && !hasHouseOnSameLine && next != null &&
+                Regex("""\\d{1,4}""").containsMatchIn(next) &&
+                !streetHint.containsMatchIn(next) && !metadataHint.containsMatchIn(next)
+            ) {
+                rows += "$line $next"
+            }
+        }
+        return rows
             .filter { it.length >= 8 && !metadataHint.containsMatchIn(it) }
             .mapNotNull { cleanAddressFragment(it, city) }
             .distinctBy(::canonicalAddressKey)
-            .toList()
+    }
 
     fun extractMetadata(text: String, address: String): PhotoStopMetadata {
         val lines = text.lineSequence().map { it.trim().replace(Regex("""\\s+"""), " ") }
