@@ -750,10 +750,6 @@ fun PhotoRoutePlannerScreen(
         if (located.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text("Точки маршрута: ${located.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = {
-                located = emptyList()
-                status = "Список адресов открыт для добавления, удаления и исправления."
-            }) { Text("Изменить список адресов") }
             Text(
                 "Проверьте каждую точку в Яндекс Картах. Порядок пока сохранён как в маршрутном листе, оптимизация не запускалась.",
                 color = TextMuted,
