@@ -51,7 +51,7 @@ internal data class PhotoStopMetadata(
     val comment: String = ""
 )
 
-internal data class PhotoRouteHeader(
+data class PhotoRouteHeader(
     val driver: String = "",
     val vehicle: String = "",
     val vehicleNumber: String = "",
@@ -63,44 +63,45 @@ internal object PhotoRouteHeaderParser {
 
     fun parse(text: String): PhotoRouteHeader {
         val lines = text.lineSequence()
-            .map { it.trim().replace(Regex("""\\s+"""), " ") }
+            .map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }
             .toList()
 
-        fun labeledValue(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
+        fun value(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
             pattern.find(line)?.groupValues?.getOrNull(1)?.trim()
                 ?.trim(':', '-', '—', '№', '.', ' ')
                 ?.takeIf { it.isNotBlank() }
         }.orEmpty()
 
-        val driver = labeledValue(Regex("""(?iu)(?:водитель|экспедитор)\\s*[:№-]?\\s*(.+)$"""))
-            .substringBefore(Regex("""(?iu)\\s+(?:экспедитор|водитель)\\s*:"""))
+        val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\s*[:№-]?\s*(.+)$"""))
+            .substringBefore(Regex("""(?iu)\s+(?:экспедитор|водитель)\s*:"""))
             .trim()
 
         var vehicle = ""
         var vehicleNumber = ""
-        lines.firstOrNull { Regex("""(?iu)(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)""").containsMatchIn(it) }
-            ?.let { line ->
-                val remainder = line.replaceFirst(
-                    Regex("""(?iu)^.*?(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)\\s*[:№-]?\\s*"""), ""
-                ).trim()
-                vehicleNumber = platePattern.find(remainder)?.groupValues?.getOrNull(1)
-                    ?.replace(Regex("""\\s+"""), "")?.uppercase(Locale("ru", "RU")).orEmpty()
-                vehicle = remainder
-                    .replace(platePattern, "")
-                    .replace(Regex("""(?iu)\\s*№\\s*"""), " ")
-                    .replace(Regex("""\\s+"""), " ")
-                    .trim(' ', ',', ';', '-', '—')
-            }
-
-        if (vehicleNumber.isBlank()) {
-            vehicleNumber = labeledValue(Regex("""(?iu)(?:гос(?:ударственный)?\\.?\\s*номер|г\\.?\\s*н\\.?|номер\\s+автомобиля)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9 -]{5,})"""))
-                .let { platePattern.find(it)?.groupValues?.getOrNull(1) ?: it }
-                .replace(Regex("""\\s+"""), "").uppercase(Locale("ru", "RU"))
+        val vehicleLine = lines.firstOrNull {
+            Regex("""(?iu)(?:транспортное\s+средство|автомобиль|машина|марка\s+авто)""").containsMatchIn(it)
+        }
+        if (vehicleLine != null) {
+            val remainder = vehicleLine.replaceFirst(
+                Regex("""(?iu)^.*?(?:транспортное\s+средство|автомобиль|машина|марка\s+авто)\s*[:№-]?\s*"""), ""
+            ).trim()
+            vehicleNumber = platePattern.find(remainder)?.groupValues?.getOrNull(1)
+                ?.replace(Regex("""\s+"""), "")?.uppercase(Locale("ru", "RU")).orEmpty()
+            vehicle = remainder.replace(platePattern, "")
+                .replace(Regex("""(?iu)\s*№\s*"""), " ")
+                .replace(Regex("""\s+"""), " ")
+                .trim(' ', ',', ';', '-', '—')
         }
 
-        val routeNumber = labeledValue(
-            Regex("""(?iu)(?:номер\\s+маршрута|маршрут|рейс|задание\\s+на\\s+отгрузку)\\s*№?\\s*[:№-]?\\s*([А-ЯЁA-Z0-9/-]+)""")
+        if (vehicleNumber.isBlank()) {
+            val rawPlate = value(Regex("""(?iu)(?:гос(?:ударственный)?\.?\s*номер|г\.?\s*н\.?|номер\s+автомобиля)\s*[:№-]?\s*([А-ЯЁA-Z0-9 -]{5,})"""))
+            vehicleNumber = (platePattern.find(rawPlate)?.groupValues?.getOrNull(1) ?: rawPlate)
+                .replace(Regex("""\s+"""), "").uppercase(Locale("ru", "RU"))
+        }
+
+        val routeNumber = value(
+            Regex("""(?iu)(?:номер\s+маршрута|маршрут|рейс|задание\s+на\s+отгрузку)\s*№?\s*[:№-]?\s*([А-ЯЁA-Z0-9/-]+)""")
         )
         return PhotoRouteHeader(driver, vehicle, vehicleNumber, routeNumber)
     }
