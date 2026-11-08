@@ -505,7 +505,6 @@ fun DigitDropRoot() {
     var sessionScanCodes by remember {
         mutableStateOf(prefs.getStringSet("scan_codes", emptySet())?.toSet().orEmpty())
     }
-    var appendInvoiceToRoute by remember { mutableStateOf(false) }
     var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet<String>())?.toList().orEmpty()) }
 
     var cameraXCamera by remember { mutableStateOf<Camera?>(null) }
@@ -816,7 +815,6 @@ fun DigitDropRoot() {
                     photoRouteInitialUri = uri
                     photoRouteInitialAction = null
                     currentScreen = AppScreen.PHOTO_ROUTE
-                    appendInvoiceToRoute = false
                     return@launch
                 }
                 val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
@@ -834,19 +832,13 @@ fun DigitDropRoot() {
                     }
                 }
                 if (imported.isNotEmpty()) {
-                    if (!appendInvoiceToRoute) {
-                        sessionScanCodes = emptySet()
-                        prefs.edit().remove("scan_codes").apply()
-                    }
-                    val withProgress = if (appendInvoiceToRoute && routeItems.isNotEmpty()) {
-                        mergeInvoiceRows(routeItems, imported)
-                    } else {
-                        mergeInvoiceRows(emptyList(), imported).map { item ->
-                            item.copy(
-                                isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
-                                scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
-                            )
-                        }
+                    sessionScanCodes = emptySet()
+                    prefs.edit().remove("scan_codes").apply()
+                    val withProgress = mergeInvoiceRows(emptyList(), imported).map { item ->
+                        item.copy(
+                            isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
+                            scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
+                        )
                     }
                     currentScreen = AppScreen.ROUTE_LIST
                     val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
@@ -865,7 +857,6 @@ fun DigitDropRoot() {
                     Toast.makeText(
                         context,
                         "Загружено позиций: ${ordered.size}" + when {
-                            appendInvoiceToRoute -> " • накладная объединена с текущим рейсом"
                             optimized -> " • точки упорядочены примерно по расстоянию"
                             geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
                             else -> " • порядок из накладной сохранён"
@@ -881,11 +872,7 @@ fun DigitDropRoot() {
                 }
             } catch (ex: Exception) {
                 Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_LONG).show()
-            } finally {
-                appendInvoiceToRoute = false
             }
-        } else {
-            appendInvoiceToRoute = false
         }
     }
 
@@ -987,14 +974,9 @@ fun DigitDropRoot() {
         AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
-                hasActiveRoute = routeItems.isNotEmpty(),
                 onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; currentScreen = AppScreen.PHOTO_ROUTE },
                 onLoadInvoice = {
                     appendInvoiceToRoute = false
-                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                },
-                onAppendInvoice = {
-                    appendInvoiceToRoute = routeItems.isNotEmpty()
                     filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 }
             )
@@ -1522,11 +1504,9 @@ fun SplashScreen(onFinished: () -> Unit) {
 
 @Composable
 fun InvoiceLandingScreen(
-    hasActiveRoute: Boolean,
     onBack: () -> Unit,
     onTakePhoto: () -> Unit,
-    onLoadInvoice: () -> Unit,
-    onAppendInvoice: () -> Unit
+    onLoadInvoice: () -> Unit
 ) {
     Column(
         Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
@@ -1543,12 +1523,6 @@ fun InvoiceLandingScreen(
             Modifier.fillMaxWidth(), onTakePhoto)
         HubTile("Загрузить", "Выбрать фото или файл накладной", "⇧", MintAccent,
             Modifier.fillMaxWidth(), onLoadInvoice)
-        if (hasActiveRoute) {
-            Spacer(Modifier.height(6.dp))
-            TextButton(onClick = onAppendInvoice) {
-                Text("Добавить накладную к текущему рейсу", color = MintAccent)
-            }
-        }
     }
 }
 
