@@ -1125,7 +1125,8 @@ fun DigitDropRoot() {
                     }
                     currentScreen = AppScreen.ROUTE_LIST
                     Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}", Toast.LENGTH_LONG).show()
-                }
+                },
+                onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP }
             )
         }
         AppScreen.OFFLINE_MAP -> {
