@@ -1801,7 +1801,7 @@ fun MoreMenuScreen(
         HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4),
             Modifier.fillMaxWidth(), onCallDispatcher)
         HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C),
-            Modifier.fillMaxWidth()) { confirmReset = true }
+            Modifier.fillMaxWidth(), onClick = { confirmReset = true })
     }
     if (confirmReset) {
         AlertDialog(
