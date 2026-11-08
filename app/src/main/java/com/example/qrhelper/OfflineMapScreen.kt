@@ -171,7 +171,7 @@ fun OfflineMapScreen(
             val missingCoordinates = visiblePointGroups.size - mappedCount
             Text(
                 "Точек на карте: $mappedCount • без координат: $missingCoordinates",
-                color = if (missingCoordinates > 0) Color(0xFF9A5A18) else TextMuted,
+                color = if (missingCoordinates > 0) EmeraldPrimary else TextMuted,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
@@ -234,10 +234,10 @@ fun OfflineMapScreen(
                                 val coordinates = JSONArray().put(item.longitude).put(item.latitude)
                                 routeCoordinates.put(coordinates)
                                 val markerStatus = when (deliveryPointStatus(group)) {
-                                    DeliveryPointStatus.PROBLEM -> "Проблема" to "#C62828"
-                                    DeliveryPointStatus.DELIVERED -> "Сдано" to "#27AE60"
-                                    DeliveryPointStatus.IN_PROGRESS -> "В работе" to "#2878C8"
-                                    DeliveryPointStatus.PENDING -> "Ожидает" to "#E5A000"
+                                    DeliveryPointStatus.PROBLEM -> "Проблема" to "#356B43"
+                                    DeliveryPointStatus.DELIVERED -> "Сдано" to "#278747"
+                                    DeliveryPointStatus.IN_PROGRESS -> "В работе" to "#4D9B62"
+                                    DeliveryPointStatus.PENDING -> "Ожидает" to "#79A96F"
                                 }
                                 val properties = JSONObject()
                                     .put("number", pointGroups.indexOf(group) + 1)
@@ -350,10 +350,10 @@ fun OfflineMapScreen(
                         DeliveryPointStatus.PENDING -> "Ожидает"
                     }
                     val tint = when (pointStatus) {
-                        DeliveryPointStatus.PROBLEM -> Color(0xFFC62828)
-                        DeliveryPointStatus.DELIVERED -> Color(0xFF27AE60)
-                        DeliveryPointStatus.IN_PROGRESS -> Color(0xFF2878C8)
-                        DeliveryPointStatus.PENDING -> Color(0xFFE5A000)
+                        DeliveryPointStatus.PROBLEM -> Color(0xFF356B43)
+                        DeliveryPointStatus.DELIVERED -> Color(0xFF278747)
+                        DeliveryPointStatus.IN_PROGRESS -> Color(0xFF4D9B62)
+                        DeliveryPointStatus.PENDING -> Color(0xFF79A96F)
                     }
                     Card(
                         Modifier.width(220.dp).clickable {
@@ -369,7 +369,7 @@ fun OfflineMapScreen(
                                 onSelectPoint(group)
                             }
                         },
-                        colors = CardDefaults.cardColors(containerColor = if (selectedPointId == PhotoRouteTextParser.canonicalAddressKey(first.address)) Color(0xFF294735) else CardSurface),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedPointId == PhotoRouteTextParser.canonicalAddressKey(first.address)) Color(0xFFE5F0E4) else CardSurface),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {

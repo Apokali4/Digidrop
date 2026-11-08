@@ -2,10 +2,16 @@ package com.example.qrhelper.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+/** One approved palette shared by every DigiDrop screen. */
+object DigiDropPalette {
+    val background = Color(0xFFF3F2EA)
+    val surface = Color(0xFFFFFFFF)
+    val surfaceSoft = Color(0xFFE9EDE5)
+    val border = Color(0xFFD8DED4)
+    val primary = Color(0xFF278747)
+    val primaryDark = Color(0xFF1F6F39)
+    val primarySoft = Color(0xFFE5F0E4)
+    val text = Color(0xFF26352C)
+    val textSecondary = Color(0xFF647168)
+    val divider = Color(0xFFDDE3D9)
+}

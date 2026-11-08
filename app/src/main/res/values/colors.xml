@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="digidrop_green">#FF278747</color>
+    <color name="digidrop_green_dark">#FF1F6F39</color>
+    <color name="digidrop_background">#FFF3F2EA</color>
+    <color name="digidrop_surface">#FFFFFFFF</color>
+    <color name="digidrop_text">#FF26352C</color>
 </resources>

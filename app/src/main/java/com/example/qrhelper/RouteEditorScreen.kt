@@ -190,7 +190,7 @@ internal fun RouteEditorScreen(
                         OutlinedTextField(quantity, { quantity = it.filter(Char::isDigit).take(6) }, label = { Text("Количество мест") }, singleLine = true)
                     }
                     if (validationError.isNotBlank()) {
-                        Text(validationError, color = androidx.compose.ui.graphics.Color(0xFFB3261E), fontSize = 12.sp)
+                        Text(validationError, color = EmeraldPrimary, fontSize = 12.sp)
                     }
                 }
             },
