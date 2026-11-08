@@ -182,14 +182,17 @@ internal object PhotoRouteTextParser {
         }
 
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
-        val brand = block.firstNotNullOfOrNull { line ->
-            brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
-        }
         val suffixBrand = afterHouse.takeIf {
             it.isNotBlank() && !legalPattern.containsMatchIn(it) &&
                 it.length <= 48 && !Regex("""[^А-Яа-яЁёA-Za-z0-9 .&()/-]""").containsMatchIn(it)
         }
-        val store = brand ?: suffixBrand.orEmpty()
+        val brandInSuffix = suffixBrand?.let { suffix ->
+            brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(suffix) }?.second
+        }
+        val brandNearby = block.firstNotNullOfOrNull { line ->
+            brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
+        }
+        val store = brandInSuffix ?: suffixBrand ?: brandNearby.orEmpty()
         val instructionPattern = Regex("""(?iu)(достав|до\\s*\\d|после\\s*\\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.filter { line ->
             line != cash && (instructionPattern.containsMatchIn(line) || line.contains("с ", ignoreCase = true) && Regex("""\\d{1,2}[:.]\\d{2}""").containsMatchIn(line))
