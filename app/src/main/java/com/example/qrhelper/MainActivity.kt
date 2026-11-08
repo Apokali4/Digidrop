@@ -1868,20 +1868,37 @@ fun HubTile(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 0.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 22.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (primary) {
-                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
             } else {
-                Text(symbol, color = accent, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                Text(symbol, color = accent, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, color = foreground, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = secondary, fontSize = 14.sp, maxLines = 2)
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    title,
+                    color = foreground,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    softWrap = true
+                )
+                Text(
+                    subtitle,
+                    color = secondary,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    maxLines = 3
+                )
             }
-            Text("›", color = foreground, fontSize = 30.sp)
+            Text("›", color = foreground, fontSize = 26.sp)
         }
     }
 }
