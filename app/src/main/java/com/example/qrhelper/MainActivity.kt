@@ -861,8 +861,16 @@ fun DigitDropRoot() {
                     }
                 }
                 if (imported.isNotEmpty()) {
+                    // Новый файл накладной не должен наследовать водителя и машину прошлого рейса.
+                    routeHeader = PhotoRouteHeader()
                     sessionScanCodes = emptySet()
-                    prefs.edit().remove("scan_codes").apply()
+                    prefs.edit()
+                        .remove("route_header_number")
+                        .remove("route_header_driver")
+                        .remove("route_header_vehicle")
+                        .remove("route_header_vehicle_number")
+                        .remove("scan_codes")
+                        .apply()
                     val withProgress = mergeInvoiceRows(emptyList(), imported).map { item ->
                         item.copy(
                             isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
