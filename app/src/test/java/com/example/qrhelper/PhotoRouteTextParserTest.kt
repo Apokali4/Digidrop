@@ -152,4 +152,21 @@ class PhotoRouteTextParserTest {
             PhotoRouteTextParser.extractCandidates(text, "Калуга")
         )
     }
+    @Test fun extractsHeaderFieldsFromRealisticShipmentTaskOcr() {
+        val text = """
+            Задание на отгрузку №Л00000006924 (07.11.2026)
+            Транспортное средство: ГАЗон №К347ХВ32
+            Водитель: Морозов Сергей Николаевич
+        """.trimIndent()
+        assertEquals(
+            PhotoRouteHeader(
+                driver = "Морозов Сергей Николаевич",
+                vehicle = "ГАЗон",
+                vehicleNumber = "К347ХВ32",
+                routeNumber = "Л00000006924"
+            ),
+            PhotoRouteHeaderParser.parse(text)
+        )
+    }
+
 }
