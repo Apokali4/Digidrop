@@ -8,6 +8,7 @@ import com.googlecode.tesseract.android.TessBaseAPI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -20,22 +21,43 @@ internal object RussianOcrEngine {
     ): String = withContext(Dispatchers.IO) {
         ensureRussianModel(context, onProgress)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(imageUri)?.use {
+        openImageStream(context, imageUri).use {
             BitmapFactory.decodeStream(it, null, bounds)
-        } ?: error("Не удалось открыть фотографию")
+        }
         check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Файл не является читаемым изображением" }
         val sample = sampleSize(bounds.outWidth, bounds.outHeight)
         val options = BitmapFactory.Options().apply {
             inSampleSize = sample
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        val bitmap = context.contentResolver.openInputStream(imageUri)?.use {
+        val bitmap = openImageStream(context, imageUri).use {
             BitmapFactory.decodeStream(it, null, options)
         } ?: error("Не удалось декодировать фотографию")
         try {
             recognizeBitmap(context, bitmap, onProgress)
         } finally {
             bitmap.recycle()
+        }
+    }
+
+
+    /**
+     * Gallery providers use content:// URIs; DigiDrop's import cache uses file:// URIs.
+     * Read app-owned cache files directly instead of relying on ContentResolver for file URIs.
+     */
+    private fun openImageStream(context: Context, uri: Uri): InputStream {
+        return when (uri.scheme?.lowercase()) {
+            "file" -> {
+                val path = uri.path ?: error("У локальной фотографии отсутствует путь")
+                val file = File(path)
+                check(file.isFile && file.canRead()) {
+                    "Локальная фотография недоступна: ${file.absolutePath}"
+                }
+                file.inputStream()
+            }
+            "content", "android.resource" -> context.contentResolver.openInputStream(uri)
+                ?: error("Android не открыл выбранную фотографию из хранилища")
+            else -> error("Неподдерживаемый источник фотографии: ${uri.scheme ?: "без схемы"}")
         }
     }
 
