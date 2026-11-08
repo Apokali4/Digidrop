@@ -106,9 +106,11 @@ internal object PhotoRouteTextParser {
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
         val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
+        val blockStart = maxOf(0, index - 3)
         val legalLines = block.withIndex().filter { legalPattern.containsMatchIn(it.value) }
-        val owner = legalLines.firstOrNull { it.index + maxOf(0, index - 3) > index && Regex("""(?iu)\\bИП\\b""").containsMatchIn(it.value) }?.value
-            ?: legalLines.firstOrNull { it.index + maxOf(0, index - 3) < index }?.value
+        // ИП is the delivery contact/operator; ООО/ЧУП usually identify the store.
+        val owner = legalLines.firstOrNull { Regex("""(?iu)\bИП\b""").containsMatchIn(it.value) }?.value
+            ?: legalLines.firstOrNull { it.index + blockStart < index }?.value
             ?: legalLines.firstOrNull()?.value.orEmpty()
         val phone = Regex("""(?iu)(?:\\+7|8)?[\\s(\\-]*\\d{3}[)\\s\\-]*\\d{3}[\\s\\-]*\\d{2}[\\s\\-]*\\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
@@ -119,9 +121,13 @@ internal object PhotoRouteTextParser {
         val suffixBrand = afterHouse.takeIf { it.isNotBlank() && !legalPattern.containsMatchIn(it) }
         val beforeAddressLegal = legalLines.firstOrNull { it.index + maxOf(0, index - 3) < index }?.value.orEmpty()
         val nearbyBrand = block.firstOrNull { it != owner && brandPattern.containsMatchIn(it) }.orEmpty()
+        val companyLine = block.firstOrNull { line ->
+            line != owner && Regex("""(?iu)\b(ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО)\b""").containsMatchIn(line)
+        }.orEmpty()
         val store = when {
             suffixBrand != null -> suffixBrand
             nearbyBrand.isNotBlank() -> nearbyBrand
+            companyLine.isNotBlank() -> companyLine
             beforeAddressLegal.isNotBlank() -> beforeAddressLegal
             else -> ""
         }
