@@ -51,6 +51,26 @@ internal data class PhotoStopMetadata(
     val comment: String = ""
 )
 
+internal data class PhotoRouteHeader(
+    val driver: String = "",
+    val vehicle: String = "",
+    val vehicleNumber: String = "",
+    val routeNumber: String = ""
+)
+
+internal object PhotoRouteHeaderParser {
+    fun parse(text: String): PhotoRouteHeader {
+        val lines = text.lineSequence().map { it.trim().replace(Regex("""\\s+"""), " ") }.filter { it.isNotBlank() }.toList()
+        fun value(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
+            pattern.find(line)?.groupValues?.getOrNull(1)?.trim()?.trim(':', '-', '—', '№', '.', ' ')?.takeIf { it.isNotBlank() }
+        }.orEmpty()
+        val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\\s*[:№-]?\\s*(.+)$"""))
+        val vehicle = value(Regex("""(?iu)(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)\\s*[:№-]?\\s*(.+)$"""))
+        val vehicleNumber = value(Regex("""(?iu)(?:гос(?:ударственный)?\\.?\\s*номер|г\\.?\\s*н\\.?|номер\\s+автомобиля)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9 -]{5,})"""))
+        val routeNumber = value(Regex("""(?iu)(?:номер\\s+маршрута|маршрут\\s*№?|рейс\\s*№?)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9/-]+)"""))
+        return PhotoRouteHeader(driver, vehicle, vehicleNumber, routeNumber)
+    }
+}
 internal object PhotoRouteTextParser {
     private val streetHint = Regex(
         """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
@@ -437,6 +457,7 @@ fun PhotoRoutePlannerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var rawText by remember { mutableStateOf("") }
+    var routeHeader by remember { mutableStateOf(PhotoRouteHeader()) }
     var routeCity by remember { mutableStateOf("Калуга") }
     var addresses by remember { mutableStateOf(listOf<String>()) }
     var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
@@ -554,6 +575,14 @@ fun PhotoRoutePlannerScreen(
             }
         }
         Spacer(Modifier.height(8.dp))
+        if (rawText.isNotBlank()) {
+            Text("ДАННЫЕ МАРШРУТНОГО ЛИСТА", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(value = routeHeader.routeNumber, onValueChange = { routeHeader = routeHeader.copy(routeNumber = it) }, label = { Text("Номер маршрута / рейса") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = routeHeader.driver, onValueChange = { routeHeader = routeHeader.copy(driver = it) }, label = { Text("Водитель") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = routeHeader.vehicle, onValueChange = { routeHeader = routeHeader.copy(vehicle = it) }, label = { Text("Транспортное средство") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(value = routeHeader.vehicleNumber, onValueChange = { routeHeader = routeHeader.copy(vehicleNumber = it) }, label = { Text("Государственный номер") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Spacer(Modifier.height(8.dp))
+        }
         OutlinedTextField(
             value = rawText,
             onValueChange = { rawText = it },
