@@ -167,7 +167,8 @@ internal object PhotoRouteTextParser {
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
 
         val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
-        val owner = block.firstOrNull { it.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(it) }.orEmpty()
+        val companyLine = block.firstOrNull { legalPattern.containsMatchIn(it) && !it.startsWith("ИП", ignoreCase = true) }.orEmpty()
+        val owner = block.firstOrNull { it.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(it) } ?: companyLine
         val phone = Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
 
@@ -193,7 +194,7 @@ internal object PhotoRouteTextParser {
         val brandNearby = block.firstNotNullOfOrNull { line ->
             brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
         }
-        val store = brandInSuffix ?: suffixBrand ?: brandNearby.orEmpty()
+        val store = brandInSuffix ?: suffixBrand ?: brandNearby ?: companyLine
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.filter { line ->
             line != cash && !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
