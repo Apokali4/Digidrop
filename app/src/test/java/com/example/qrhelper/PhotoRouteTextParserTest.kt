@@ -188,8 +188,6 @@ class PhotoRouteTextParserTest {
         )
     }
 
-}
-
 
     @Test fun recoversVehiclePlateWhenOcrSplitsLastDigits() {
         val text = """
@@ -205,11 +203,11 @@ class PhotoRouteTextParserTest {
 
     @Test fun appliesKnownStoreHoursOnlyWhenTheRouteSheetHasNoExplicitHours() {
         val redWhite = PhotoRouteTextParser.extractMetadata(
-            "Красное и Белое\\nКалуга, ул. Кирова, д. 12",
+            "Красное и Белое\nКалуга, ул. Кирова, д. 12",
             "Калуга, ул. Кирова, д. 12"
         )
         val bristol = PhotoRouteTextParser.extractMetadata(
-            "Бристоль\\nКалуга, ул. Ленина, д. 8",
+            "Бристоль\nКалуга, ул. Ленина, д. 8",
             "Калуга, ул. Ленина, д. 8"
         )
         assertEquals("09:00–22:00", redWhite.workingHours)
@@ -218,7 +216,7 @@ class PhotoRouteTextParserTest {
 
     @Test fun explicitDeliveryHoursOverrideKnownStoreDefaults() {
         val metadata = PhotoRouteTextParser.extractMetadata(
-            "Красное и Белое\\nКалуга, ул. Кирова, д. 12\\nДоставить до 10:00",
+            "Красное и Белое\nКалуга, ул. Кирова, д. 12\nДоставить до 10:00",
             "Калуга, ул. Кирова, д. 12"
         )
         assertEquals("до 10:00", metadata.workingHours)
