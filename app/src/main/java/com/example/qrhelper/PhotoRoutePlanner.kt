@@ -59,15 +59,49 @@ internal data class PhotoRouteHeader(
 )
 
 internal object PhotoRouteHeaderParser {
+    private val platePattern = Regex("""(?iu)([АВЕКМНОРСТУХABEKMHOPCTYX]\s*\d{3}\s*[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\s*\d{2,3})""")
+
     fun parse(text: String): PhotoRouteHeader {
-        val lines = text.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }.filter { it.isNotBlank() }.toList()
-        fun value(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
-            pattern.find(line)?.groupValues?.getOrNull(1)?.trim()?.trim(':', '-', '—', '№', '.', ' ')?.takeIf { it.isNotBlank() }
+        val lines = text.lineSequence()
+            .map { it.trim().replace(Regex("""\\s+"""), " ") }
+            .filter { it.isNotBlank() }
+            .toList()
+
+        fun labeledValue(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
+            pattern.find(line)?.groupValues?.getOrNull(1)?.trim()
+                ?.trim(':', '-', '—', '№', '.', ' ')
+                ?.takeIf { it.isNotBlank() }
         }.orEmpty()
-        val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\s*[:№-]?\s*(.+)$"""))
-        val vehicle = value(Regex("""(?iu)(?:транспортное\s+средство|автомобиль|машина|марка\s+авто)\s*[:№-]?\s*(.+)$"""))
-        val vehicleNumber = value(Regex("""(?iu)(?:гос(?:ударственный)?\.?\s*номер|г\.?\s*н\.?|номер\s+автомобиля)\s*[:№-]?\s*([А-ЯЁA-Z0-9 -]{5,})"""))
-        val routeNumber = value(Regex("""(?iu)(?:номер\s+маршрута|маршрут\s*№?|рейс\s*№?)\s*[:№-]?\s*([А-ЯЁA-Z0-9/-]+)"""))
+
+        val driver = labeledValue(Regex("""(?iu)(?:водитель|экспедитор)\\s*[:№-]?\\s*(.+)$"""))
+            .substringBefore(Regex("""(?iu)\\s+(?:экспедитор|водитель)\\s*:"""))
+            .trim()
+
+        var vehicle = ""
+        var vehicleNumber = ""
+        lines.firstOrNull { Regex("""(?iu)(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)""").containsMatchIn(it) }
+            ?.let { line ->
+                val remainder = line.replaceFirst(
+                    Regex("""(?iu)^.*?(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)\\s*[:№-]?\\s*"""), ""
+                ).trim()
+                vehicleNumber = platePattern.find(remainder)?.groupValues?.getOrNull(1)
+                    ?.replace(Regex("""\\s+"""), "")?.uppercase(Locale("ru", "RU")).orEmpty()
+                vehicle = remainder
+                    .replace(platePattern, "")
+                    .replace(Regex("""(?iu)\\s*№\\s*"""), " ")
+                    .replace(Regex("""\\s+"""), " ")
+                    .trim(' ', ',', ';', '-', '—')
+            }
+
+        if (vehicleNumber.isBlank()) {
+            vehicleNumber = labeledValue(Regex("""(?iu)(?:гос(?:ударственный)?\\.?\\s*номер|г\\.?\\s*н\\.?|номер\\s+автомобиля)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9 -]{5,})"""))
+                .let { platePattern.find(it)?.groupValues?.getOrNull(1) ?: it }
+                .replace(Regex("""\\s+"""), "").uppercase(Locale("ru", "RU"))
+        }
+
+        val routeNumber = labeledValue(
+            Regex("""(?iu)(?:номер\\s+маршрута|маршрут|рейс|задание\\s+на\\s+отгрузку)\\s*№?\\s*[:№-]?\\s*([А-ЯЁA-Z0-9/-]+)""")
+        )
         return PhotoRouteHeader(driver, vehicle, vehicleNumber, routeNumber)
     }
 }
@@ -498,7 +532,7 @@ fun PhotoRoutePlannerScreen(
     onInitialActionConsumed: () -> Unit = {},
     onInitialImageConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onApplyRoute: (List<RouteItem>) -> Unit
+    onApplyRoute: (List<RouteItem>, PhotoRouteHeader) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -546,6 +580,7 @@ fun PhotoRoutePlannerScreen(
                 }
                 rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
                 check(rawText.isNotBlank()) { "OCR не распознал текст на фотографии. Попробуйте снимок крупнее и без бликов." }
+                routeHeader = PhotoRouteHeaderParser.parse(rawText)
                 addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
                 status = if (addresses.isEmpty()) {
                     "Текст распознан, но адреса автоматически не выделены. Проверьте текст ниже и добавьте адреса вручную."
@@ -870,7 +905,7 @@ fun PhotoRoutePlannerScreen(
                             extraComment = metadata.comment
                         )
                     }
-                    onApplyRoute(items)
+                    onApplyRoute(items, routeHeader)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Также сохранить маршрут в DigiDrop") }
