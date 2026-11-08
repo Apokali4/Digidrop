@@ -221,3 +221,4 @@ class PhotoRouteTextParserTest {
         )
         assertEquals("до 10:00", metadata.workingHours)
     }
+}
