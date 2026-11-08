@@ -124,7 +124,6 @@ internal fun RouteEditorScreen(
                                     dragDelta = 0f
                                 },
                                 onDrag = { change, amount ->
-                                    change.consume()
                                     val from = draggedIndex ?: return@detectDragGesturesAfterLongPress
                                     dragDelta += amount.y
                                     val source = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
