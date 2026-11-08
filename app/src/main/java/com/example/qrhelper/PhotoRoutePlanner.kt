@@ -76,7 +76,7 @@ internal object PhotoRouteTextParser {
         """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)(?![А-Яа-яЁёA-Za-z])"""
     )
     private val houseAfterStreet = Regex(
-        """(?iu)(?:[,\\s]*(?:д\\.?|дом|вх\\.?|в)\\s*№?\\s*)?(\\d{1,4}[А-Яа-яA-Za-z]?(?:(?:[/\\-]|к)\\d{1,4}[А-Яа-яA-Za-z]?)?)\\b"""
+        """(?iu)(?:[,\\s-]*(?:д\\.?|дом|вх\\.?|в)\\s*№?\\s*[-–—]?)?(\\d{1,4}[А-Яа-яA-Za-z]?(?:(?:[/\\-]|к)\\d{1,4}[А-Яа-яA-Za-z]?)?)\\b"""
     )
     private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\\.?|диспетчер|итого|всего|водитель|экспедитор)""")
     private val brandPatterns = listOf(
@@ -119,7 +119,7 @@ internal object PhotoRouteTextParser {
             .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
         val streetName = address.substring(street.range.last + 1, house.range.first)
             .lowercase(Locale("ru", "RU"))
-            .replace(Regex("""[\\s.,;:|()_-]+"""), "")
+            .replace(Regex("""(?iu)[,\\s]*(?:д\\.?|дом|вх\\.?|в)\\s*[-–—]?\\s*$"""), "")\n            .replace(Regex("""[\\s.,;:|()_-]+"""), "")
         val houseNumber = house.groupValues[1].lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
         return "$streetName#$houseNumber"
