@@ -2103,7 +2103,6 @@ fun ScanResultsScreen(
 }
 
 @Composable
-@Composable
 fun StoreGroupCard(
     items: List<RouteItem>,
     compactMode: Boolean = true,
@@ -2887,9 +2886,8 @@ fun RouteListScreen(
                         Row(
                             Modifier.fillMaxWidth().pointerInput(originalIndex, allGroups.size) {
                                 var dragDistance = 0f
-                                detectDragGesturesAfterLongPress(
+                                detectDragGestures(
                                     onDrag = { change, amount ->
-                                        change.consume()
                                         dragDistance += amount.y
                                         if (kotlin.math.abs(dragDistance) >= 70f) {
                                             val target = (originalIndex + if (dragDistance > 0f) 1 else -1)
