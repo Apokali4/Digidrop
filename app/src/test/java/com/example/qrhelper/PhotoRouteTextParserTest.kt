@@ -102,7 +102,7 @@ class PhotoRouteTextParserTest {
     }
 
     @Test fun recognizesChupLegalForm() {
-        val text = "ЧУП Магазин Север\\nг. Калуга, ул. Кирова, д. 8"
+        val text = "ЧУП Магазин Север\nг. Калуга, ул. Кирова, д. 8"
         val metadata = PhotoRouteTextParser.extractMetadata(text, "г. Калуга, ул. Кирова, д. 8")
         assertEquals("ЧУП Магазин Север", metadata.ownerName)
     }
