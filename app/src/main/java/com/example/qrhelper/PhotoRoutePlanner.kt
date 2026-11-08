@@ -129,7 +129,7 @@ internal object PhotoRouteTextParser {
         val blockStart = maxOf(0, index - 3)
         val legalLines = block.withIndex().filter { legalPattern.containsMatchIn(it.value) }
         // ИП is the delivery contact/operator; ООО/ЧУП usually identify the store.
-        val owner = legalLines.firstOrNull { Regex("""(?iu)\bИП\b""").containsMatchIn(it.value) }?.value
+        val owner = legalLines.firstOrNull { it.value.trim().startsWith("ИП", ignoreCase = true) }?.value
             ?: legalLines.firstOrNull { it.index + blockStart < index }?.value
             ?: legalLines.firstOrNull()?.value.orEmpty()
         val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
