@@ -352,14 +352,6 @@ internal object PhotoRouteNavigationUrls {
 
 }
 
-private fun openExternalMap(context: android.content.Context, url: String) {
-    try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, "Не найдено приложение для открытия ссылки", Toast.LENGTH_LONG).show()
-    }
-}
-
 internal fun openYandexNavigator(
     context: android.content.Context,
     stops: List<PhotoRouteCoordinate>,
@@ -908,9 +900,19 @@ fun PhotoRoutePlannerScreen(
                         Text(stop.metadata.storeName.ifBlank { "Название магазина не распознано" },
                             color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
                         Text(stop.address, color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
-                        PhotoPlannerTile("Проверить адрес в Яндекс Картах", "Откроется найденная координата") {
-                            val query = "${stop.latitude},${stop.longitude}"
-                            openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
+                        PhotoPlannerTile("Проверить адрес в Яндекс Навигаторе", "Откроется найденная координата") {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yandexnavi://show_point_on_map")
+                                    .buildUpon()
+                                    .appendQueryParameter("lat", stop.latitude.toString())
+                                    .appendQueryParameter("lon", stop.longitude.toString())
+                                    .appendQueryParameter("zoom", "16")
+                                    .build())
+                                    .setPackage("ru.yandex.yandexnavi")
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
+                            }
                         }
                         PhotoMetadataField("Магазин", stop.metadata.storeName) { value -> updateStopMetadata(index) { it.copy(storeName = value) } }
                         PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value -> updateStopMetadata(index) { it.copy(workingHours = value) } }
