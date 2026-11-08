@@ -132,7 +132,7 @@ internal object PhotoRouteTextParser {
         val owner = legalLines.firstOrNull { it.value.trim().startsWith("ИП", ignoreCase = true) }?.value
             ?: legalLines.firstOrNull { it.index + blockStart < index }?.value
             ?: legalLines.firstOrNull()?.value.orEmpty()
-        val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
+        val phone = Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
         val hoursPattern = Regex("""(?iu)(?:режим\s+работы\s*)?(?:с\s*)?\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}""")
         val hours = hoursPattern.find(block.joinToString(" "))?.value.orEmpty().trim()
