@@ -104,4 +104,48 @@ class RouteImportMapperTest {
         assertEquals("НЕДОВОЗ", point.cargo.single().discrepancyReason?.name)
     }
 
+
+    @Test fun keepsDifferentShopNamesAtTheSameAddressAsSeparateStops() {
+        val items = listOf(
+            RouteItem("a", "Красное и Белое", "Калуга, ул. Кирова, 1", "Пиво", 2, ""),
+            RouteItem("b", "Продукты", "Калуга, ул. Кирова, 1", "Хлеб", 3, "")
+        )
+        val points = RouteImportMapper.map(items)
+        assertEquals(2, points.size)
+        assertEquals(listOf(2, 3), points.map { it.cargo.sumOf { cargo -> cargo.expectedQty } })
+    }
+
+    @Test fun normalizesMinorPunctuationDifferencesInTheSameStoreName() {
+        val items = listOf(
+            RouteItem("a", "Красное и Белое", "Калуга, ул. Кирова, 1", "Пиво", 2, ""),
+            RouteItem("b", "Красное-Белое", "Калуга, ул. Кирова, 1", "Снэки", 3, "")
+        )
+        assertEquals(1, RouteImportMapper.map(items).size)
+        assertEquals(5, RouteImportMapper.map(items).single().cargo.sumOf { it.expectedQty })
+    }
+
+    @Test fun usesShopBrandFromAddressWhenStoreColumnContainsOnlySupplierLegalName() {
+        val items = listOf(
+            RouteItem("a", "Балтика ПК ООО", "г. Калуга, ул. Врубовая, д. 2, Бристоль", "Пиво", 2, ""),
+            RouteItem("b", "Альфа Рязань ООО", "Калуга, улица Врубовая, 2, БРИСТОЛЬ", "Вода", 3, "")
+        )
+        assertEquals(1, RouteImportMapper.map(items).size)
+    }
+
+    @Test fun fallsBackToLegalEntityWhenStoreNameIsMissing() {
+        val items = listOf(
+            RouteItem("a", "Точка без названия", "Калуга, ул. Кирова, 1", "Хлеб", 2, "89000000001", ownerName = "ИП Иванов"),
+            RouteItem("b", "Точка без названия", "Калуга, ул. Кирова, 1", "Молоко", 3, "89000000002", ownerName = "ИП Петров")
+        )
+        assertEquals(2, RouteImportMapper.map(items).size)
+    }
+
+    @Test fun doesNotMergeUnidentifiedRecipientsOnlyBecauseAddressMatches() {
+        val items = listOf(
+            RouteItem("barcode-1", "Точка без названия", "Калуга, ул. Кирова, 1", "Хлеб", 2, ""),
+            RouteItem("barcode-2", "Точка без названия", "Калуга, ул. Кирова, 1", "Молоко", 3, "")
+        )
+        assertEquals(2, RouteImportMapper.map(items).size)
+    }
+
 }

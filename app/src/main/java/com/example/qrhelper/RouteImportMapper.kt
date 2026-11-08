@@ -2,6 +2,7 @@ package com.example.qrhelper
 
 import com.example.qrhelper.data.CargoBarcodeType
 import com.example.qrhelper.data.DeliveryStatus
+import java.util.Locale
 
 internal data class CargoImportPlan(
     val barcode: String,
@@ -44,23 +45,35 @@ internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
     }
 }
 
+/**
+ * A delivery stop is identified by address AND recipient identity.
+ *
+ * Store branding wins over legal/supplier names. If branding is absent, the legal
+ * entity and then phone are used as conservative fallbacks. Address alone is never
+ * enough to merge rows: that could send two shops in one building to one stop.
+ */
 internal object RouteImportMapper {
+    private val legalEntityPattern = Regex(
+        """(?iu)\b(?:ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|ОГРН|ИНН)\b"""
+    )
+    private val genericStoreNames = setOf("", "точка", "точкабезназвания", "магазин", "получатель")
+
     fun map(items: List<RouteItem>): List<PointImportPlan> =
         items.filter { it.address.isNotBlank() }
-            .groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+            .groupBy(::recipientIdentityKey)
             .values
             .mapIndexed { index, group ->
                 val status = deliveryStatusForItems(group)
                 val representative = group.first()
                 PointImportPlan(
-                    // Supplier/legal entity belongs to cargo, not to the physical stop.
-                    storeName = group.firstOrNull { it.storeName.isNotBlank() }?.storeName.orEmpty(),
+                    storeName = group.firstNotNullOfOrNull { physicalStoreLabel(it).takeIf(String::isNotBlank) }
+                        ?: group.firstOrNull { it.storeName.isNotBlank() }?.storeName.orEmpty(),
                     address = representative.address,
-                    phone = group.firstOrNull()?.phone.orEmpty(),
-                    latitude = group.firstOrNull()?.latitude,
-                    longitude = group.firstOrNull()?.longitude,
-                    photoDocUri = group.firstOrNull()?.photoDocUri.orEmpty(),
-                    signaturePath = group.firstOrNull()?.signaturePath.orEmpty(),
+                    phone = group.firstOrNull { it.phone.isNotBlank() }?.phone.orEmpty(),
+                    latitude = group.firstNotNullOfOrNull { it.latitude },
+                    longitude = group.firstNotNullOfOrNull { it.longitude },
+                    photoDocUri = group.firstOrNull { it.photoDocUri.isNotBlank() }?.photoDocUri.orEmpty(),
+                    signaturePath = group.firstOrNull { it.signaturePath.isNotBlank() }?.signaturePath.orEmpty(),
                     sortOrder = index,
                     status = status,
                     cargo = group.map { item ->
@@ -83,6 +96,53 @@ internal object RouteImportMapper {
                     }
                 )
             }
+
+    private fun recipientIdentityKey(item: RouteItem): String {
+        val address = PhotoRouteTextParser.canonicalAddressKey(item.address)
+        val store = normalizeIdentity(physicalStoreLabel(item))
+        val owner = normalizeIdentity(item.ownerName)
+        val phone = item.phone.filter(Char::isDigit)
+
+        val recipient = when {
+            store.isNotBlank() -> "store:$store"
+            owner.isNotBlank() -> "owner:$owner"
+            phone.isNotBlank() -> "phone:$phone"
+            // Unknown recipients at the same address must remain separate until reviewed.
+            else -> "unresolved:${item.barcode.trim().lowercase(Locale("ru", "RU"))}"
+        }
+        return "$address|$recipient"
+    }
+
+    private fun physicalStoreLabel(item: RouteItem): String {
+        val suppliedName = item.storeName.trim()
+        val meaningful = suppliedName.takeIf {
+            normalizeIdentity(it) !in genericStoreNames && !legalEntityPattern.containsMatchIn(it)
+        }
+        return meaningful ?: storeNameFromAddress(item.address)
+    }
+
+    /** Handles route sheets where the shop brand is printed after the house number. */
+    private fun storeNameFromAddress(address: String): String {
+        val street = Regex(
+            """(?iu)(?:ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)"""
+        ).find(address) ?: return ""
+        val house = Regex("""(?iu)(?:[ ,]*(?:д\.?|дом)\s*)?\d{1,4}[а-яa-z]?(?:(?:[/\-]|к)\d{1,4}[а-яa-z]?)?""")
+            .find(address, street.range.last + 1) ?: return ""
+        val suffix = address.substring(house.range.last + 1)
+            .trim(' ', ',', ';', '|', '.', ':', '-', '—')
+        return suffix.takeIf {
+            it.isNotBlank() && !legalEntityPattern.containsMatchIn(it) &&
+                !Regex("""(?iu)\b(?:телефон|тел\.?|ип|ооо|режим|доставить|до\s*\d)\b""").containsMatchIn(it)
+        }.orEmpty()
+    }
+
+    private fun normalizeIdentity(value: String): String {
+        if (value.isBlank()) return ""
+        return value.lowercase(Locale("ru", "RU"))
+            .replace("ё", "е")
+            .replace(Regex("""(?iu)\bи\b"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
+    }
 
     private fun barcodeType(raw: String): CargoBarcodeType {
         val value = raw.trim()
