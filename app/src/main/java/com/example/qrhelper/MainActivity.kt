@@ -803,7 +803,9 @@ fun DigitDropRoot() {
                 val isExcel = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
                 val imported = withContext(Dispatchers.IO) {
                     if (isPdf) {
-                        PdfInvoiceImporter.parse(context, uri)
+                        PdfInvoiceImporter.parse(context, uri) { message ->
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
                     } else {
                         context.contentResolver.openInputStream(uri)?.use { inputStream ->
                             if (isExcel) parseXlsx(inputStream)

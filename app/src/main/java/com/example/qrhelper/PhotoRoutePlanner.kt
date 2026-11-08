@@ -1,6 +1,5 @@
 package com.example.qrhelper
 
-import android.graphics.BitmapFactory
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -37,7 +36,6 @@ import android.location.Geocoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.googlecode.tesseract.android.TessBaseAPI
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -127,67 +125,7 @@ private suspend fun runRussianOcr(
     context: android.content.Context,
     imageUri: Uri,
     onProgress: suspend (String) -> Unit
-): String = withContext(Dispatchers.IO) {
-    val tessDir = File(context.filesDir, "tesseract")
-    val dataDir = File(tessDir, "tessdata")
-    if (!dataDir.exists() && !dataDir.mkdirs()) error("Не удалось создать папку OCR-модели")
-    val trainedData = File(dataDir, "rus.traineddata")
-
-    if (!trainedData.exists() || trainedData.length() < 1_000_000L) {
-        withContext(Dispatchers.Main) { onProgress("Скачиваю русскую OCR-модель (первый запуск)…") }
-        val temporary = File(dataDir, "rus.traineddata.download")
-        val connection = (URL("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata")
-            .openConnection() as HttpURLConnection)
-        try {
-            connection.connectTimeout = 15000
-            connection.readTimeout = 30000
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent", "DigiDrop-Android")
-            val responseCode = connection.responseCode
-            check(responseCode in 200..299) {
-                "Сервер OCR-модели ответил HTTP $responseCode. Проверьте интернет и повторите."
-            }
-            connection.inputStream.use { input ->
-                temporary.outputStream().use { output -> input.copyTo(output) }
-            }
-            check(temporary.length() >= 1_000_000L) {
-                "OCR-модель скачалась не полностью (${temporary.length()} байт)"
-            }
-            if (trainedData.exists() && !trainedData.delete()) error("Не удалось обновить старую OCR-модель")
-            check(temporary.renameTo(trainedData)) { "Не удалось сохранить OCR-модель" }
-        } finally {
-            connection.disconnect()
-            if (temporary.exists()) temporary.delete()
-        }
-    }
-
-    withContext(Dispatchers.Main) { onProgress("Подготавливаю фотографию для распознавания…") }
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    val boundsStream = context.contentResolver.openInputStream(imageUri)
-        ?: error("Не удалось открыть фотографию")
-    boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
-    check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Файл не является читаемым изображением" }
-    val options = BitmapFactory.Options().apply {
-        inSampleSize = PhotoOcrImageSizing.sampleSize(bounds.outWidth, bounds.outHeight)
-        inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-    }
-    val bitmap = context.contentResolver.openInputStream(imageUri)?.use {
-        BitmapFactory.decodeStream(it, null, options)
-    } ?: error("Не удалось декодировать фотографию")
-    val api = TessBaseAPI()
-    try {
-        withContext(Dispatchers.Main) { onProgress("Распознаю русский текст на устройстве…") }
-        // Загружается только rus.traineddata, поэтому запрашивать отсутствующий eng.traineddata нельзя.
-        check(api.init(tessDir.absolutePath, "rus")) {
-            "Tesseract не смог загрузить русскую модель. Выберите фото ещё раз для повторной загрузки."
-        }
-        api.setImage(bitmap)
-        api.getUTF8Text().orEmpty().trim()
-    } finally {
-        api.recycle()
-        bitmap.recycle()
-    }
-}
+): String = RussianOcrEngine.recognizeUri(context, imageUri, onProgress)
 
 private data class LocatedPhotoStop(val address: String, val latitude: Double, val longitude: Double)
 
