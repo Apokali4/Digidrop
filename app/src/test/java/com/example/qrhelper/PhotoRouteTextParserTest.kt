@@ -65,4 +65,27 @@ class PhotoRouteTextParserTest {
         assertEquals("Позвонить перед въездом", metadata.comment)
     }
 
+    @Test fun extractsStoreAndLegalEntityFromTheSameNoisyAddressRow() {
+        val text = """
+            Тов Балтика ООО
+            Калуга, ул. Врубовая, д. 2163, Бристоль
+            ИП Петров Петр Петрович
+            Режим работы 09:00-21:00
+        """.trimIndent()
+        val metadata = PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Врубовая, д. 2163")
+        assertEquals("Бристоль", metadata.storeName)
+        assertEquals("ИП Петров Петр Петрович", metadata.ownerName)
+        assertEquals("09:00-21:00", metadata.workingHours)
+    }
+
+    @Test fun recognizesChupAndPaoLegalForms() {
+        val text = """
+            ЧУП Магазин Север
+            г. Калуга, ул. Кирова, д. 8
+            ПАО Торговый дом
+        """.trimIndent()
+        val metadata = PhotoRouteTextParser.extractMetadata(text, "г. Калуга, ул. Кирова, д. 8")
+        assertEquals("ЧУП Магазин Север", metadata.ownerName)
+    }
+
 }
