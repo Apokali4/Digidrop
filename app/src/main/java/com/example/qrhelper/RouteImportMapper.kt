@@ -57,10 +57,21 @@ internal object RouteImportMapper {
         """(?iu)\b(?:ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|ОГРН|ИНН)\b"""
     )
     private val genericStoreNames = setOf("", "точка", "точкабезназвания", "магазин", "получатель")
+    private val supplierBrandPattern = Regex("""(?iu)\\b(?:кока[ -]?кола|coca[ -]?cola|пепси|pepsi|балтика|хайнекен|heineken)\\b""")
 
     fun map(items: List<RouteItem>): List<PointImportPlan> =
         items.filter { it.address.isNotBlank() }
-            .groupBy(::recipientIdentityKey)
+            .let { validItems ->
+                // If one invoice row contains the shop name after the house number,
+                // reuse it for supplier-only rows at that same normalized address.
+                val addressStoreLabels = validItems
+                    .groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+                    .mapValues { (_, rows) ->
+                        rows.firstNotNullOfOrNull { storeNameFromAddress(it.address).takeIf(String::isNotBlank) }
+                            .orEmpty()
+                    }
+                validItems.groupBy { recipientIdentityKey(it, addressStoreLabels) }
+            }
             .values
             .mapIndexed { index, group ->
                 val status = deliveryStatusForItems(group)
@@ -97,14 +108,22 @@ internal object RouteImportMapper {
                 )
             }
 
-    private fun recipientIdentityKey(item: RouteItem): String {
+    private fun recipientIdentityKey(item: RouteItem, addressStoreLabels: Map<String, String>): String {
         val address = PhotoRouteTextParser.canonicalAddressKey(item.address)
-        val store = normalizeIdentity(physicalStoreLabel(item))
+        val supplied = item.storeName.trim()
+        val isSupplier = supplierBrandPattern.containsMatchIn(supplied)
+        val isGenericShop = normalizeIdentity(supplied) == "магазин"
+        val storeLabel = physicalStoreLabel(item).ifBlank {
+            if (isSupplier || legalEntityPattern.containsMatchIn(supplied)) addressStoreLabels[address].orEmpty()
+            else ""
+        }
+        val store = normalizeIdentity(storeLabel)
         val owner = normalizeIdentity(item.ownerName)
         val phone = item.phone.filter(Char::isDigit)
 
         val recipient = when {
             store.isNotBlank() -> "store:$store"
+            isGenericShop -> "generic-store:магазин"
             owner.isNotBlank() -> "owner:$owner"
             phone.isNotBlank() -> "phone:$phone"
             // Unknown recipients at the same address must remain separate until reviewed.
@@ -116,7 +135,8 @@ internal object RouteImportMapper {
     private fun physicalStoreLabel(item: RouteItem): String {
         val suppliedName = item.storeName.trim()
         val meaningful = suppliedName.takeIf {
-            normalizeIdentity(it) !in genericStoreNames && !legalEntityPattern.containsMatchIn(it)
+            normalizeIdentity(it) !in genericStoreNames && !legalEntityPattern.containsMatchIn(it) &&
+                !supplierBrandPattern.containsMatchIn(it)
         }
         return meaningful ?: storeNameFromAddress(item.address)
     }
