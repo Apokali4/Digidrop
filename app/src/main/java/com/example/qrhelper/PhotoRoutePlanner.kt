@@ -195,7 +195,16 @@ internal object PhotoRouteTextParser {
             val street = streetHint.find(address)?.value.orEmpty()
             street.isNotBlank() && line.contains(street, ignoreCase = true)
         }
-        val block = if (index >= 0) lines.subList(maxOf(0, index - 3), minOf(lines.size, index + 7)) else lines
+        val block = if (index >= 0) {
+            // Ограничиваем метаданные соседними адресами, чтобы магазин/телефон/комментарий
+            // одной точки не перетекал в карточку следующей.
+            val addressIndices = lines.indices.filter { lineIndex ->
+                cleanAddressFragment(lines[lineIndex], "") != null
+            }
+            val previousAddress = addressIndices.lastOrNull { it < index } ?: -1
+            val nextAddress = addressIndices.firstOrNull { it > index } ?: lines.size
+            lines.subList(previousAddress + 1, nextAddress)
+        } else lines
         val anchor = lines.getOrNull(index).orEmpty()
         val houseMatch = houseAfterStreet.find(anchor, (streetHint.find(anchor)?.range?.last ?: -1) + 1)
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
