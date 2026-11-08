@@ -499,6 +499,9 @@ fun DigitDropRoot() {
     var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
+    var sessionScanCodes by remember {
+        mutableStateOf(prefs.getStringSet("scan_codes", emptySet())?.toSet().orEmpty())
+    }
     var appendInvoiceToRoute by remember { mutableStateOf(false) }
     var unknownCodes by remember { mutableStateOf(prefs.getStringSet("unknown_codes", emptySet<String>())?.toList().orEmpty()) }
 
@@ -621,6 +624,7 @@ fun DigitDropRoot() {
         editor.remove("scan_codes")
         editor.remove("unknown_codes")
         editor.apply()
+        sessionScanCodes = emptySet()
         val resetItems = routeItems.map {
             it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
         }
@@ -741,7 +745,7 @@ fun DigitDropRoot() {
                     autoSave = settingsAutoSave,
                     compactMode = settingsCompact,
                     unknownCodes = unknownCodes,
-                    scanCodes = prefs.getStringSet("scan_codes", emptySet()).orEmpty().toList(),
+                    scanCodes = sessionScanCodes.toList(),
                     catalog = catalog
                 )
                 context.contentResolver.openOutputStream(uri)?.use {
@@ -767,6 +771,7 @@ fun DigitDropRoot() {
                 settingsAutoSave = snapshot.autoSave
                 settingsCompact = snapshot.compactMode
                 unknownCodes = snapshot.unknownCodes
+                sessionScanCodes = snapshot.scanCodes.toSet()
                 val manifest = snapshot.routeItems.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
@@ -814,6 +819,10 @@ fun DigitDropRoot() {
                     }
                 }
                 if (imported.isNotEmpty()) {
+                    if (!appendInvoiceToRoute) {
+                        sessionScanCodes = emptySet()
+                        prefs.edit().remove("scan_codes").apply()
+                    }
                     val withProgress = if (appendInvoiceToRoute && routeItems.isNotEmpty()) {
                         mergeInvoiceRows(routeItems, imported)
                     } else {
@@ -1014,6 +1023,8 @@ fun DigitDropRoot() {
             PhotoRoutePlannerScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 onApplyRoute = { imported ->
+                    sessionScanCodes = emptySet()
+                    prefs.edit().remove("scan_codes").apply()
                     val content = imported.joinToString("\n") { item ->
                         listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
                             item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
@@ -1255,6 +1266,7 @@ fun DigitDropRoot() {
                         runCatching { LogisticsRepository(context).restoreArchivedRoute(routeId) }
                             .onSuccess { restored ->
                                 routeItems = restored
+                                sessionScanCodes = emptySet()
                                 val manifest = restored.joinToString("\n") { item ->
                                     listOf(
                                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
@@ -1304,7 +1316,7 @@ fun DigitDropRoot() {
                     val lookup = normalizeScannedBarcode(normalizedCode)
                     val matches = routeItems.filter { item -> lookup.candidates.any { it.equals(item.barcode.trim(), ignoreCase = true) } }
                     val matchedItem = matches.singleOrNull()
-                    val savedCodes = prefs.getStringSet("scan_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    val savedCodes = sessionScanCodes.toMutableSet()
                     val isPlainProductCode = !lookup.hasUniquePackageId
                     when {
                         matches.size > 1 -> {
@@ -1334,6 +1346,7 @@ fun DigitDropRoot() {
                         }
                         else -> {
                             savedCodes.add(normalizedCode)
+                            sessionScanCodes = savedCodes
                             val itemKey = routeItemKey(matchedItem)
                             if (settingsAutoSave) {
                                 prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
