@@ -1047,7 +1047,8 @@ fun DigitDropRoot() {
             PhotoRoutePlannerScreen(
                 initialAction = photoRouteInitialAction,
                 initialImageUri = photoRouteInitialUri,
-                onInitialActionConsumed = { photoRouteInitialAction = null; photoRouteInitialUri = null },
+                onInitialActionConsumed = { photoRouteInitialAction = null },
+                onInitialImageConsumed = { photoRouteInitialUri = null },
                 onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; currentScreen = AppScreen.INVOICE_IMPORT },
                 onApplyRoute = { imported ->
                     sessionScanCodes = emptySet()
