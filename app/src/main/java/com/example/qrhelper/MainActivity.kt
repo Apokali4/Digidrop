@@ -1532,12 +1532,12 @@ fun InvoiceLandingScreen(
         Text("← Назад", color = MintAccent, fontSize = 16.sp,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(8.dp))
-        Text("Загрузить накладную", color = TextLight, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+        Text("Добавить маршрут", color = TextLight, fontSize = 29.sp, fontWeight = FontWeight.Bold)
         Text("Выберите источник. После обработки откроется список точек маршрута.",
             color = TextMuted, fontSize = 15.sp)
-        HubTile("По фотографии", "Сфотографировать маршрутный лист", "◎", EmeraldPrimary,
+        HubTile("Сфотографировать", "Открыть камеру и распознать маршрутный лист", "▧", EmeraldPrimary,
             Modifier.fillMaxWidth(), onTakePhoto)
-        HubTile("Загрузить", "Выбрать фото или файл накладной", "⇧", MintAccent,
+        HubTile("Выбрать файл или фото", "Загрузить PDF, Excel, CSV или снимок из галереи", "⇧", MintAccent,
             Modifier.fillMaxWidth(), onLoadInvoice)
     }
 }
@@ -1584,14 +1584,12 @@ fun HubScreen(
             Modifier.fillMaxWidth().heightIn(min = 132.dp),
             onLoadInvoice
         )
-        if (onOpenScanner != {}) {
-            Text(
-                "Сканер коробок доступен внутри рабочего маршрута",
-                color = TextMuted,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        Text(
+            "Сканер коробок доступен внутри рабочего маршрута",
+            color = TextMuted,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
 }
 
