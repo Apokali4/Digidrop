@@ -528,6 +528,17 @@ fun DigitDropRoot() {
     var archivedRoutes by remember { mutableStateOf(emptyList<RouteHistorySnapshot>()) }
     var productCatalog by remember { mutableStateOf(emptyList<ProductEntity>()) }
 
+    var routeHeader by remember {
+        mutableStateOf(
+            PhotoRouteHeader(
+                driver = prefs.getString("route_header_driver", "").orEmpty(),
+                vehicle = prefs.getString("route_header_vehicle", "").orEmpty(),
+                vehicleNumber = prefs.getString("route_header_vehicle_number", "").orEmpty(),
+                routeNumber = prefs.getString("route_header_number", "").orEmpty()
+            )
+        )
+    }
+
     var routeItems by remember {
         mutableStateOf(
             parseManifest(prefs.getString("active_manifest", "").orEmpty()).map { item ->
@@ -1052,6 +1063,7 @@ fun DigitDropRoot() {
                 onInitialImageConsumed = { photoRouteInitialUri = null },
                 onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; currentScreen = AppScreen.INVOICE_IMPORT },
                 onApplyRoute = { imported, header ->
+                    routeHeader = header
                     prefs.edit()
                         .putString("route_header_number", header.routeNumber)
                         .putString("route_header_driver", header.driver)
@@ -1110,6 +1122,7 @@ fun DigitDropRoot() {
         AppScreen.ROUTE_LIST -> {
             RouteListScreen(
                 routeItems = routeItems,
+                routeHeader = routeHeader,
                 compactMode = settingsCompact,
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
@@ -2497,6 +2510,7 @@ fun SignatureCaptureDialog(
 @Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
+    routeHeader: PhotoRouteHeader,
     compactMode: Boolean,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
@@ -2600,6 +2614,24 @@ fun RouteListScreen(
                             }
                         }
                     }
+            }
+
+            if (routeHeader.driver.isNotBlank() || routeHeader.vehicle.isNotBlank() ||
+                routeHeader.vehicleNumber.isNotBlank() || routeHeader.routeNumber.isNotBlank()
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("ДАННЫЕ РЕЙСА", color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        if (routeHeader.routeNumber.isNotBlank()) Text("Маршрут: ${routeHeader.routeNumber}", color = TextLight, fontSize = 14.sp)
+                        if (routeHeader.driver.isNotBlank()) Text("Водитель: ${routeHeader.driver}", color = TextLight, fontSize = 14.sp)
+                        val vehicleLine = listOf(routeHeader.vehicle, routeHeader.vehicleNumber).filter { it.isNotBlank() }.joinToString(" • ")
+                        if (vehicleLine.isNotBlank()) Text("Автомобиль: $vehicleLine", color = TextLight, fontSize = 14.sp)
+                    }
+                }
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
