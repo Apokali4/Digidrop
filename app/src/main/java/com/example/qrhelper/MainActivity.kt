@@ -1418,6 +1418,15 @@ fun DigitDropRoot() {
                             selectedItem = matchedItem
                             currentScreen = AppScreen.DETAILS
                         }
+                        (matchedItem.totalBoxes - matchedItem.scannedBoxes - matchedItem.discrepancyQty) <= 0 -> {
+                            Toast.makeText(
+                                context,
+                                "${matchedItem.storeName}: все места по этой позиции уже учтены (${matchedItem.totalBoxes}). Повторный скан не засчитываю.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            selectedItem = matchedItem
+                            currentScreen = AppScreen.DETAILS
+                        }
                         normalizedCode in savedCodes -> {
                             Toast.makeText(context, "Дубликат уникального кода упаковки: $normalizedCode", Toast.LENGTH_LONG).show()
                             currentScreen = AppScreen.HUB
