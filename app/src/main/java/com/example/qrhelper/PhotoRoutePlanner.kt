@@ -606,10 +606,20 @@ fun PhotoRoutePlannerScreen(
                 check(rawText.isNotBlank()) { "OCR не распознал текст на фотографии. Попробуйте снимок крупнее и без бликов." }
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
                 addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
-                status = if (addresses.isEmpty()) {
-                    "Текст распознан, но адреса автоматически не выделены. Проверьте текст ниже и добавьте адреса вручную."
+                if (addresses.isEmpty()) {
+                    status = "Текст распознан, но адреса автоматически не выделены. Проверьте распознанный текст."
                 } else {
-                    "Готово: распознано фотографий ${uris.size}, найдено адресов-кандидатов ${addresses.size}. Проверьте список."
+                    status = "Распознано фотографий ${uris.size}. Автоматически формирую единый список точек…"
+                    val (resolved, failed) = geocodePhotoStops(context, addresses, routeCity)
+                    located = resolved.map { stop ->
+                        stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
+                    }
+                    routeOrigin = null
+                    status = when {
+                        located.isEmpty() -> "Распознано адресов: ${addresses.size}, но координаты не определились. Проверьте интернет и качество фотографии."
+                        failed.isNotEmpty() -> "В список добавлено ${located.size} точек. Не удалось определить координаты для: ${failed.joinToString("; ")}."
+                        else -> "Готово: ${located.size} точек распознаны и собраны в один список."
+                    }
                 }
             } catch (error: Exception) {
                 status = "Не удалось обработать фото: ${error.message ?: error.javaClass.simpleName}"
@@ -732,43 +742,8 @@ fun PhotoRoutePlannerScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { addresses = addresses + "" }, modifier = Modifier.weight(1f)) { Text("+ Точка") }
-                Button(onClick = {
-                    scope.launch {
-                        busy = true
-                        try {
-                            val clean = addresses.map { it.trim() }.filter { it.isNotBlank() }.distinct()
-                            require(clean.size >= 2) { "Добавьте минимум два адреса" }
-                            status = "Ищу координаты адресов…"
-                            val (resolved, failed) = geocodePhotoStops(context, clean, routeCity)
-                            located = resolved.map { stop ->
-                                stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
-                            }
-                            if (failed.isNotEmpty()) {
-                                status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
-                            } else if (resolved.size < 2) {
-                                status = "Найдено меньше двух координат. Проверьте адреса."
-                            } else {
-                                // Сохраняем OCR-метаданные: раньше чистый resolved затирал их после геокодирования.
-                                routeOrigin = null
-                                located = resolved.map { stop ->
-                                    stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
-                                }
-                                val duplicateGroups = resolved.groupBy {
-                                    "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
-                                }.values.filter { it.size > 1 }
-                                status = if (duplicateGroups.isEmpty()) {
-                                    "Найдено точек: ${resolved.size}. Проверьте каждую в Яндекс Картах и при необходимости исправьте адреса."
-                                } else {
-                                    "Найдено точек: ${resolved.size}. ${duplicateGroups.sumOf { it.size - 1 }} точек получили одинаковые координаты. Проверьте их вручную."
-                                }
-                            }
-                        } catch (error: Exception) {
-                            status = "Не удалось построить маршрут: ${error.message ?: "ошибка сети"}"
-                        } finally { busy = false }
-                    }
-                }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
-                    Text(if (busy) "Подождите…" else "Найти точки", maxLines = 1, softWrap = false, fontSize = 12.sp)
+                OutlinedButton(onClick = { addresses = addresses + "" }, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ Добавить адрес вручную")
                 }
             }
         }
