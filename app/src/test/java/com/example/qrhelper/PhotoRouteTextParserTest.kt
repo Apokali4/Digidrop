@@ -140,4 +140,16 @@ class PhotoRouteTextParserTest {
         assertEquals("до 10:00", metadata.workingHours)
         assertEquals("Магазин открывается с 12:00", metadata.comment)
     }
+
+    @Test fun joinsStreetAndHouseWhenOcrWrapsOneAddressAcrossTwoLines() {
+        val text = """
+            Калуга, ул. Тарутинская,
+            д. 168
+            Доставить до 10:00
+        """.trimIndent()
+        assertEquals(
+            listOf("Калуга, ул. Тарутинская, д. 168"),
+            PhotoRouteTextParser.extractCandidates(text, "Калуга")
+        )
+    }
 }
