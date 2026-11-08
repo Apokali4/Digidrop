@@ -1132,6 +1132,24 @@ fun DigitDropRoot() {
                     currentScreen = AppScreen.POINT_DETAILS
                 },
                 onToggleItem = { item -> updateItemStatus(item) },
+                onApplyAlternative = { orderedIds ->
+                    val grouped = routeItems.groupBy { it.storeName to it.address }
+                    val reordered = orderedIds.flatMap { id ->
+                        val split = id.indexOf("|")
+                        val key = if (split >= 0) id.substring(0, split) to id.substring(split + 1) else "" to ""
+                        grouped[key].orEmpty()
+                    } + grouped.filterKeys { key -> key.first + "|" + key.second !in orderedIds }.values.flatten()
+                    routeItems = reordered
+                    importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
+                    val saved = reordered.joinToString("\n") { item ->
+                        listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                            item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                            item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                            .joinToString("\t") { it.replace("\t", " ") }
+                    }
+                    prefs.edit().putString("active_manifest", saved).apply()
+                    Toast.makeText(context, "Выбранный порядок точек применён", Toast.LENGTH_SHORT).show()
+                },
                 onMoveGroup = { from, to ->
                     val groups = routeItems.groupBy { it.storeName to it.address }.toList().toMutableList()
                     if (from in groups.indices && to in groups.indices) {
@@ -2481,7 +2499,8 @@ fun RouteListScreen(
     onCallClient: (String) -> Unit,
     onPointClick: (List<RouteItem>) -> Unit,
     onToggleItem: (RouteItem) -> Unit,
-    onMoveGroup: (Int, Int) -> Unit
+    onMoveGroup: (Int, Int) -> Unit,
+    onApplyAlternative: (List<String>) -> Unit
 ) {
     var pointFilter by remember { mutableStateOf(PointFilter.ALL) }
     var manualDestination by remember { mutableStateOf("") }
@@ -2489,6 +2508,19 @@ fun RouteListScreen(
     val allGroups = remember(routeItems) {
         routeItems.groupBy { it.storeName to it.address }.toList()
     }
+    val routeAlternatives = remember(allGroups) {
+        val stops = allGroups.map { (key, group) ->
+            val first = group.first()
+            com.example.qrhelper.domain.RouteStop(
+                id = key.first + "|" + key.second,
+                latitude = first.latitude,
+                longitude = first.longitude,
+                completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
+            )
+        }
+        com.example.qrhelper.domain.RouteOrderOptimizer.alternatives(stops)
+    }
+    var showRouteAlternatives by remember { mutableStateOf(false) }
     val displayedGroups = remember(allGroups, pointFilter) {
         val snapshots = allGroups.mapIndexed { index, entry ->
             val group = entry.second
@@ -2605,6 +2637,38 @@ fun RouteListScreen(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { showRouteAlternatives = !showRouteAlternatives },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = routeAlternatives.isNotEmpty()
+            ) {
+                Text(if (showRouteAlternatives) "Скрыть варианты маршрута" else "Сравнить варианты маршрута (${routeAlternatives.size})")
+            }
+            if (showRouteAlternatives) {
+                routeAlternatives.forEachIndexed { alternativeIndex, alternative ->
+                    val firstId = alternative.firstOrNull { !it.completed }?.id
+                    val firstName = allGroups.firstOrNull { it.first.first + "|" + it.first.second == firstId }
+                        ?.second?.firstOrNull()?.storeName ?: "Точка старта"
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                            .clickable { onApplyAlternative(alternative.map { it.id }) },
+                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Вариант ${alternativeIndex + 1}", color = TextLight, fontWeight = FontWeight.Bold)
+                                Text("Старт: $firstName", color = TextMuted, fontSize = 13.sp)
+                            }
+                            Text("Применить ›", color = EmeraldPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier
