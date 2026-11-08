@@ -385,31 +385,48 @@ fun PhotoRoutePlannerScreen(
         updated[index] = updated[index].copy(metadata = transform(updated[index].metadata))
         located = updated
     }
-    fun processPhotoUris(uris: List<Uri>) {
-        if (uris.isNotEmpty()) scope.launch {
+    fun processPhotoUris(uris: List<Uri>, onFinished: (() -> Unit)? = null) {
+        if (uris.isEmpty()) {
+            status = "Фотография не передана в обработчик. Выберите снимок ещё раз."
+            onFinished?.invoke()
+            return
+        }
+        if (busy) {
+            status = "Предыдущая фотография ещё обрабатывается. Дождитесь завершения."
+            return
+        }
+        scope.launch {
             busy = true
-            status = "Распознаю ${uris.size} фотографий. Тексты будут объединены в один маршрут."
+            rawText = ""
+            addresses = emptyList()
+            located = emptyList()
+            routeOrigin = null
+            status = "Фото получено. Подготавливаю OCR…"
             try {
                 val recognizedTexts = mutableListOf<String>()
                 uris.forEachIndexed { index, uri ->
+                    status = "Открываю фото ${index + 1} из ${uris.size}…"
                     recognizedTexts += runRussianOcr(context, uri) { message ->
                         status = "Фото ${index + 1} из ${uris.size}: $message"
                     }
                 }
                 rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
+                check(rawText.isNotBlank()) { "OCR не распознал текст на фотографии. Попробуйте снимок крупнее и без бликов." }
                 addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
-                located = emptyList()
-                routeOrigin = null
                 status = if (addresses.isEmpty()) {
-                    "Распознано фотографий: ${uris.size}, но адреса не выделены автоматически. Исправьте текст или добавьте адреса вручную."
+                    "Текст распознан, но адреса автоматически не выделены. Проверьте текст ниже и добавьте адреса вручную."
                 } else {
-                    "Распознано фотографий: ${uris.size}. Найдено строк-кандидатов: ${addresses.size}. Проверьте общий список перед построением маршрута."
+                    "Готово: распознано фотографий ${uris.size}, найдено адресов-кандидатов ${addresses.size}. Проверьте список."
                 }
             } catch (error: Exception) {
-                status = "Ошибка OCR: ${error.message ?: "неизвестная ошибка"}"
-            } finally { busy = false }
+                status = "Не удалось обработать фото: ${error.message ?: error.javaClass.simpleName}"
+            } finally {
+                busy = false
+                onFinished?.invoke()
+            }
         }
     }
+
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) cameraOpen = true
         else Toast.makeText(context, "Для съёмки маршрутника нужно разрешение камеры", Toast.LENGTH_LONG).show()
@@ -420,13 +437,16 @@ fun PhotoRoutePlannerScreen(
     }
     LaunchedEffect(initialImageUri) {
         initialImageUri?.let { uri ->
-            processPhotoUris(listOf(uri))
-            onInitialImageConsumed()
+            status = "Фотография получена из загрузчика. Запускаю распознавание…"
+            processPhotoUris(listOf(uri), onFinished = onInitialImageConsumed)
         }
     }
     if (cameraOpen) {
         RouteCameraCaptureScreen(
-            onPhotoCaptured = { uri -> capturedUris = capturedUris + uri },
+            onPhotoCaptured = { uri ->
+                capturedUris = capturedUris + uri
+                processPhotoUris(listOf(uri))
+            },
             onClose = { cameraOpen = false }
         )
         return
@@ -445,7 +465,15 @@ fun PhotoRoutePlannerScreen(
         Text("‹ Главная", color = MintAccent, modifier = Modifier.clickable { onBack() })
         Spacer(Modifier.height(10.dp))
         Text("Маршрут по фотографии", color = TextLight, style = MaterialTheme.typography.headlineSmall)
-        Text(status, color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        Text(status, color = if (status.startsWith("Не удалось") || status.startsWith("Ошибка")) MaterialTheme.colorScheme.error else TextMuted,
+            style = MaterialTheme.typography.bodySmall)
+        if (busy) {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                Text("Обработка фотографии… не закрывайте экран", color = TextLight, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = { cameraPermission.launch(Manifest.permission.CAMERA) },
