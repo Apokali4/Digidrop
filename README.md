@@ -52,3 +52,9 @@ Unit-тесты для текущего состояния ветки `main` п�
 
 ### Важное разделение статуса
 Этот документ фиксирует целевой дизайн и требования по предоставленному пользователем референсу. Он не заменяет проверку исходного кода, тестов и поведения APK на устройстве.
+
+## DigiDrop Industrial Graphite UI
+
+The driver hub, route list, offline map and barcode scanner now use the approved Industrial Graphite visual system. The route list keeps its action bar pinned while the full list scrolls. Delivery stops are grouped by normalized address, preserving all invoice cargo rows inside one stop. The offline map uses the bundled Kaluga PMTiles vector archive and locally bundled Noto Sans glyph ranges for road, place and water labels.
+
+Verification: GitHub Actions unit tests passed on the current main revision. A final debug APK build is triggered by this commit.
