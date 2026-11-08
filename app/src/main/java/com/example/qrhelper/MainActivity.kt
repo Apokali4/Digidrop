@@ -995,9 +995,8 @@ fun DigitDropRoot() {
                 },
                 onAppendInvoice = {
                     appendInvoiceToRoute = routeItems.isNotEmpty()
-                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                },
-                onPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE }
+                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                }
             )
         }
         AppScreen.HUB -> {
@@ -1526,7 +1525,6 @@ fun InvoiceLandingScreen(
     hasActiveRoute: Boolean,
     onBack: () -> Unit,
     onTakePhoto: () -> Unit,
-    onChoosePhoto: () -> Unit,
     onLoadInvoice: () -> Unit,
     onAppendInvoice: () -> Unit
 ) {
@@ -1541,11 +1539,9 @@ fun InvoiceLandingScreen(
         Text("Загрузить накладную", color = TextLight, fontSize = 29.sp, fontWeight = FontWeight.Bold)
         Text("Выберите источник. После обработки откроется список точек маршрута.",
             color = TextMuted, fontSize = 15.sp)
-        HubTile("Сфотографировать", "Снять накладную камерой", "◎", EmeraldPrimary,
+        HubTile("По фотографии", "Сфотографировать маршрутный лист", "◎", EmeraldPrimary,
             Modifier.fillMaxWidth(), onTakePhoto)
-        HubTile("Выбрать фото", "Загрузить снимок из галереи", "▧", Color(0xFF3978A8),
-            Modifier.fillMaxWidth(), onChoosePhoto)
-        HubTile("Загрузить файл", "PDF, Excel или CSV", "⇧", MintAccent,
+        HubTile("Загрузить", "Выбрать фото или файл накладной", "⇧", MintAccent,
             Modifier.fillMaxWidth(), onLoadInvoice)
         if (hasActiveRoute) {
             Spacer(Modifier.height(6.dp))
@@ -1592,7 +1588,7 @@ fun HubScreen(
         )
         HubTile(
             "Загрузить накладную",
-            "Фото, галерея или файл",
+            "Сфотографировать или загрузить накладную",
             "⇧",
             EmeraldPrimary,
             Modifier.fillMaxWidth().height(190.dp),
