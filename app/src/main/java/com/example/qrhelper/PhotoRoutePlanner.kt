@@ -352,6 +352,14 @@ internal object PhotoRouteNavigationUrls {
 
 }
 
+private fun openExternalMap(context: android.content.Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "Не найдено приложение для открытия ссылки", Toast.LENGTH_LONG).show()
+    }
+}
+
 internal fun openYandexNavigator(
     context: android.content.Context,
     stops: List<PhotoRouteCoordinate>,
