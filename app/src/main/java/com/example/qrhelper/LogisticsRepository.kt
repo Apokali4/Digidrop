@@ -76,6 +76,63 @@ internal class LogisticsRepository(context: Context) {
         }
     }
 
+    /**
+     * Updates the current route in place. Editing a route must not create a fake
+     * archived trip every time a point is renamed, removed, or reordered.
+     */
+    suspend fun updateActiveRoute(items: List<RouteItem>) {
+        val points = RouteImportMapper.map(items)
+        database.withTransaction {
+            val dao = database.dao()
+            val activeRoute = dao.activeRouteOnce()
+            val routeId = if (activeRoute == null) {
+                dao.insertRoute(DeliveryRouteEntity(routeNumber = "Импорт ${System.currentTimeMillis()}"))
+            } else {
+                dao.deletePointsForRoute(activeRoute.id)
+                activeRoute.id
+            }
+            val catalog = mapProductCatalog(items).map { product ->
+                ProductEntity(barcode = product.barcode, productName = product.productName)
+            }
+            if (catalog.isNotEmpty()) dao.upsertProducts(catalog)
+            points.forEach { point ->
+                val pointId = dao.insertPoint(
+                    DeliveryPointEntity(
+                        routeId = routeId,
+                        storeName = point.storeName,
+                        address = point.address,
+                        phone = point.phone,
+                        sortOrder = point.sortOrder,
+                        status = point.status,
+                        latitude = point.latitude,
+                        longitude = point.longitude,
+                        photoDocUri = point.photoDocUri,
+                        signaturePath = point.signaturePath
+                    )
+                )
+                dao.insertCargo(
+                    point.cargo.map { cargo ->
+                        CargoItemEntity(
+                            pointId = pointId,
+                            barcode = cargo.barcode,
+                            itemName = cargo.itemName,
+                            expectedQty = cargo.expectedQty,
+                            scannedQty = cargo.scannedQty,
+                            barcodeType = cargo.barcodeType,
+                            note = cargo.note,
+                            ownerName = cargo.ownerName,
+                            workingHours = cargo.workingHours,
+                            cashNote = cargo.cashNote,
+                            extraComment = cargo.extraComment,
+                            discrepancyQty = cargo.discrepancyQty,
+                            discrepancyReason = cargo.discrepancyReason
+                        )
+                    }
+                )
+            }
+        }
+    }
+
     suspend fun activeRouteItems(): List<RouteItem> {
         val dao = database.dao()
         val route = dao.activeRouteOnce() ?: return emptyList()
