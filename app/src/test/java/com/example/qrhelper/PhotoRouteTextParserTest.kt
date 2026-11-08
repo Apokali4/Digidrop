@@ -118,4 +118,26 @@ class PhotoRouteTextParserTest {
         assertEquals(PhotoRouteHeader("Иванов Иван Иванович", "Газель Next", "А123ВС40", "42-А"), PhotoRouteHeaderParser.parse(text))
     }
 
+
+    @Test fun deduplicatesSameStreetAndHouseAcrossOcrPunctuationVariants() {
+        val text = """
+            Калуга, ул. В.Никитиной, В-21
+            Калуга. ул-В-Никитиной, д-21
+            Калуга, ул. Тарутинская, д. 72
+        """.trimIndent()
+        assertEquals(2, PhotoRouteTextParser.extractCandidates(text, "Калуга").size)
+    }
+
+    @Test fun recognizesDeliveryDeadlineAndOpeningTimeAsInstructions() {
+        val text = """
+            Красное и Белое
+            Калуга, ул. Тарутинская, д. 168
+            Доставить до 10:00
+            Магазин открывается с 12:00
+        """.trimIndent()
+        val metadata = PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Тарутинская, д. 168")
+        assertEquals("Красное и Белое", metadata.storeName)
+        assertEquals("до 10:00", metadata.workingHours)
+        assertEquals("Магазин открывается с 12:00", metadata.comment)
+    }
 }
