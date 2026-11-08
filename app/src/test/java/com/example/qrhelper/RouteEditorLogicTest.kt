@@ -21,11 +21,11 @@ class RouteEditorLogicTest {
         scannedBoxes = scanned
     )
 
-    @Test fun groupsRowsByTrimmedStoreAndAddressWithoutLosingCargoRows() {
+    @Test fun groupsRowsByPhysicalAddressEvenWhenInvoiceSupplierNamesDiffer() {
         val rows = listOf(
-            item(" Магазин ", "Адрес 1", "a", "Молоко"),
-            item("Магазин", "Адрес 1 ", "b", "Хлеб"),
-            item("Магазин Б", "Адрес 2", "c", "Вода")
+            item("Балтика ПК ООО", "Калуга, ул. Кирова, д. 1", "a", "Пиво"),
+            item("Альфа Рязань ООО", "г. Калуга, улица Кирова, 1", "b", "Вода"),
+            item("Кока-Кола", "Калуга, ул. Победы, д. 2", "c", "Напитки")
         )
         val groups = groupRouteItems(rows)
         assertEquals(2, groups.size)
