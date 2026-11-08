@@ -477,6 +477,7 @@ class MainActivity : ComponentActivity() {
 fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
     var offlineMapRefresh by remember { mutableStateOf(0) }
+    var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
     val windowContext = LocalContext.current
     SideEffect {
         val activity = windowContext as? Activity
@@ -974,6 +975,8 @@ fun DigitDropRoot() {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 hasActiveRoute = routeItems.isNotEmpty(),
+                onTakePhoto = { photoRouteInitialAction = "camera"; currentScreen = AppScreen.PHOTO_ROUTE },
+                onChoosePhoto = { photoRouteInitialAction = "gallery"; currentScreen = AppScreen.PHOTO_ROUTE },
                 onLoadInvoice = {
                     appendInvoiceToRoute = false
                     filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
@@ -1030,7 +1033,8 @@ fun DigitDropRoot() {
         }
         AppScreen.PHOTO_ROUTE -> {
             PhotoRoutePlannerScreen(
-                onBack = { currentScreen = AppScreen.HUB },
+                initialAction = photoRouteInitialAction,
+                onBack = { photoRouteInitialAction = null; currentScreen = AppScreen.HUB },
                 onApplyRoute = { imported ->
                     sessionScanCodes = emptySet()
                     prefs.edit().remove("scan_codes").apply()
@@ -1506,9 +1510,10 @@ fun SplashScreen(onFinished: () -> Unit) {
 fun InvoiceLandingScreen(
     hasActiveRoute: Boolean,
     onBack: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
     onLoadInvoice: () -> Unit,
-    onAppendInvoice: () -> Unit,
-    onPhotoRoute: () -> Unit
+    onAppendInvoice: () -> Unit
 ) {
     Column(
         Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
@@ -1522,9 +1527,9 @@ fun InvoiceLandingScreen(
         Text("Выберите источник. После обработки откроется список точек маршрута.",
             color = TextMuted, fontSize = 15.sp)
         HubTile("Сфотографировать", "Снять накладную камерой", "◎", EmeraldPrimary,
-            Modifier.fillMaxWidth(), onPhotoRoute)
+            Modifier.fillMaxWidth(), onTakePhoto)
         HubTile("Выбрать фото", "Загрузить снимок из галереи", "▧", Color(0xFF3978A8),
-            Modifier.fillMaxWidth(), onPhotoRoute)
+            Modifier.fillMaxWidth(), onChoosePhoto)
         HubTile("Загрузить файл", "PDF, Excel или CSV", "⇧", MintAccent,
             Modifier.fillMaxWidth(), onLoadInvoice)
         if (hasActiveRoute) {
