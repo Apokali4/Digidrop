@@ -12,15 +12,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = androidx.compose.ui.graphics.Color(0xFF278653),
+    secondary = androidx.compose.ui.graphics.Color(0xFF4F8B72),
+    tertiary = androidx.compose.ui.graphics.Color(0xFF789B86),
+    background = androidx.compose.ui.graphics.Color(0xFFF3F6F4),
+    surface = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    onPrimary = androidx.compose.ui.graphics.Color.White,
+    onBackground = androidx.compose.ui.graphics.Color(0xFF26332C),
+    onSurface = androidx.compose.ui.graphics.Color(0xFF26332C)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = androidx.compose.ui.graphics.Color(0xFF278653),
+    secondary = androidx.compose.ui.graphics.Color(0xFF4F8B72),
+    tertiary = androidx.compose.ui.graphics.Color(0xFF789B86),
+    background = androidx.compose.ui.graphics.Color(0xFFF3F6F4),
+    surface = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    onPrimary = androidx.compose.ui.graphics.Color.White,
+    onBackground = androidx.compose.ui.graphics.Color(0xFF26332C),
+    onSurface = androidx.compose.ui.graphics.Color(0xFF26332C)
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -37,7 +47,7 @@ private val LightColorScheme = lightColorScheme(
 fun QRHelperTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
