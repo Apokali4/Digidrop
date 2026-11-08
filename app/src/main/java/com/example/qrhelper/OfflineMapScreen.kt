@@ -45,6 +45,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -122,6 +124,8 @@ fun OfflineMapScreen(
     }
     val mappedGroups = visiblePointGroups.filter { group -> group.firstOrNull()?.let { it.latitude != null && it.longitude != null } == true }
     val lifecycleOwner = LocalLifecycleOwner.current
+    var liveMap by remember { mutableStateOf<MapLibreMap?>(null) }
+    var selectedPointId by remember { mutableStateOf<String?>(null) }
     var mapFile by remember { mutableStateOf(OfflineMapStore.installedMap(context)) }
     LaunchedEffect(refreshKey) {
         mapFile = OfflineMapStore.installBundledMap(context)
@@ -220,6 +224,7 @@ fun OfflineMapScreen(
                 AndroidView(
                     factory = {
                         mapView.getMapAsync { map ->
+                            liveMap = map
                             val source = OfflineMapStore.mapLibreSource(activeMapFile)
                             val pointFeatures = JSONArray()
                             val routeCoordinates = JSONArray()
@@ -340,7 +345,7 @@ fun OfflineMapScreen(
                     }
                     Card(
                         Modifier.width(190.dp).clickable { onSelectPoint(group) },
-                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedPointId == first.storeName + "|" + first.address) Color(0xFFE8F4EC) else CardSurface),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
