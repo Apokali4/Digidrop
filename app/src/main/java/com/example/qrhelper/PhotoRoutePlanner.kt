@@ -73,14 +73,14 @@ internal object PhotoRouteHeaderParser {
 }
 internal object PhotoRouteTextParser {
     private val streetHint = Regex(
-        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)(?![А-Яа-яЁёA-Za-z])"""
+        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
     )
     private val houseAfterStreet = Regex(
-        """(?iu)(?:[,\\s-]*(?:д\\.?|дом|вх\\.?|в)\\s*№?\\s*[-–—]?)?(\\d{1,4}[А-Яа-яA-Za-z]?(?:(?:[/\\-]|к)\\d{1,4}[А-Яа-яA-Za-z]?)?)\\b"""
+        """(?iu)(?:[,\s-]*(?:д\.?|дом|вх\.?|в)\s*№?\s*[-–—]?)?(\d{1,4}[А-Яа-яA-Za-z]?(?:(?:[/\-]|к)\d{1,4}[А-Яа-яA-Za-z]?)?)\b"""
     )
-    private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\\.?|диспетчер|итого|всего|водитель|экспедитор)""")
+    private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор)""")
     private val brandPatterns = listOf(
-        Regex("""(?iu)красное\\s+и\\s+белое""") to "Красное и Белое",
+        Regex("""(?iu)красное\s+и\s+белое""") to "Красное и Белое",
         Regex("""(?iu)бристоль""") to "Бристоль",
         Regex("""(?iu)пят[её]рочк""") to "Пятёрочка",
         Regex("""(?iu)магнит""") to "Магнит",
@@ -100,34 +100,35 @@ internal object PhotoRouteTextParser {
             Regex(Regex.escape(city.trim()), RegexOption.IGNORE_CASE).find(line)
                 ?.takeIf { it.range.first <= street.range.first }
         } else {
-            Regex("""(?iu)\\bг\\.?\\s*[А-ЯЁ][А-Яа-яЁё-]+""").find(line)
+            Regex("""(?iu)\bг\.?\s*[А-ЯЁ][А-Яа-яЁё-]+""").find(line)
                 ?.takeIf { it.range.first <= street.range.first }
         }
         val start = cityMatch?.range?.first ?: street.range.first
         return line.substring(start, house.range.last + 1)
-            .replace(Regex("""\\s*,\\s*"""), ", ")
-            .replace(Regex("""\\s+"""), " ")
+            .replace(Regex("""\s*,\s*"""), ", ")
+            .replace(Regex("""\s+"""), " ")
             .trim(' ', ',', ';', '|', '.', ':')
             .takeIf { it.length >= 8 }
     }
 
     private fun canonicalAddressKey(address: String): String {
         val street = streetHint.find(address) ?: return address.lowercase(Locale("ru", "RU"))
-            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
         val house = houseAfterStreet.find(address, street.range.last + 1)
         if (house == null) return address.lowercase(Locale("ru", "RU"))
-            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
         val streetName = address.substring(street.range.last + 1, house.range.first)
             .lowercase(Locale("ru", "RU"))
-            .replace(Regex("""(?iu)[,\\s]*(?:д\\.?|дом|вх\\.?|в)\\s*[-–—]?\\s*$"""), "")\n            .replace(Regex("""[\\s.,;:|()_-]+"""), "")
+            .replace(Regex("""(?iu)[,\s]*(?:д\.?|дом|вх\.?|в)\s*[-–—]?\s*$"""), "")
+            .replace(Regex("""[\s.,;:|()_-]+"""), "")
         val houseNumber = house.groupValues[1].lowercase(Locale("ru", "RU"))
-            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
         return "$streetName#$houseNumber"
     }
 
     fun extractCandidates(text: String, city: String = ""): List<String> {
         val lines = text.lineSequence()
-            .map { it.replace(Regex("""^[\\s•*№\\-–—]+"""), "").trim() }
+            .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
             .filter { it.isNotBlank() }
             .toList()
         val rows = mutableListOf<String>()
@@ -137,7 +138,7 @@ internal object PhotoRouteTextParser {
             val hasHouseOnSameLine = street != null && houseAfterStreet.find(line, street.range.last + 1) != null
             val next = lines.getOrNull(index + 1)
             if (street != null && !hasHouseOnSameLine && next != null &&
-                Regex("""\\d{1,4}""").containsMatchIn(next) &&
+                Regex("""\d{1,4}""").containsMatchIn(next) &&
                 !streetHint.containsMatchIn(next) && !metadataHint.containsMatchIn(next)
             ) {
                 rows += "$line $next"
@@ -150,7 +151,7 @@ internal object PhotoRouteTextParser {
     }
 
     fun extractMetadata(text: String, address: String): PhotoStopMetadata {
-        val lines = text.lineSequence().map { it.trim().replace(Regex("""\\s+"""), " ") }
+        val lines = text.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }.toList()
         val targetKey = canonicalAddressKey(address)
         val index = lines.indexOfFirst { line ->
@@ -165,15 +166,15 @@ internal object PhotoRouteTextParser {
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
 
-        val legalPattern = Regex("""(?iu)\\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\\.?|товарищество)\\b""")
+        val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
         val owner = block.firstOrNull { it.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(it) }.orEmpty()
-        val phone = Regex("""(?iu)(?<!\\d)(?:\\+7|8)?(?:[\\s()\\-]*\\d){10}(?!\\d)""")
+        val phone = Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
 
         val combined = block.joinToString(" ")
-        val timeRange = Regex("""(?iu)\\d{1,2}[:.]\\d{2}\\s*(?:[-–—]|до)\\s*\\d{1,2}[:.]\\d{2}""").find(combined)?.value.orEmpty()
-        val deadline = Regex("""(?iu)до\\s*\\d{1,2}[:.]\\d{2}""").find(combined)?.value.orEmpty()
-        val opening = Regex("""(?iu)(?:с|после)\\s*\\d{1,2}[:.]\\d{2}""").find(combined)?.value.orEmpty()
+        val timeRange = Regex("""(?iu)\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
+        val deadline = Regex("""(?iu)до\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
+        val opening = Regex("""(?iu)(?:с|после)\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
         val hours = when {
             timeRange.isNotBlank() -> timeRange
             deadline.isNotBlank() -> deadline
@@ -193,11 +194,11 @@ internal object PhotoRouteTextParser {
             brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
         }
         val store = brandInSuffix ?: suffixBrand ?: brandNearby.orEmpty()
-        val instructionPattern = Regex("""(?iu)(достав|до\\s*\\d|после\\s*\\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
+        val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.filter { line ->
             line != cash && !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
                 (instructionPattern.containsMatchIn(line) ||
-                    line.contains("с ", ignoreCase = true) && Regex("""\\d{1,2}[:.]\\d{2}""").containsMatchIn(line))
+                    line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
         }.distinct().joinToString("; ")
         return PhotoStopMetadata(store, owner, phone, hours, cash, comment)
     }
