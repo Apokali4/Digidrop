@@ -18,6 +18,11 @@ internal fun shouldRunPdfOcr(extractedText: String): Boolean = extractedText.isB
 internal fun selectPdfInvoiceText(extractedText: String, recognizedText: String): String =
     extractedText.takeIf { it.isNotBlank() }?.trim() ?: recognizedText.trim()
 
+internal fun normalizeOcrTableText(text: String): String =
+    text.lineSequence().map { line ->
+        line.trim().replace(Regex(" {2,}"), "\\t")
+    }.joinToString("\\n")
+
 internal object PdfInvoiceImporter {
     fun extractText(context: Context, uri: Uri): String {
         PDFBoxResourceLoader.init(context.applicationContext)
@@ -45,17 +50,30 @@ internal object PdfInvoiceImporter {
         onProgress: suspend (String) -> Unit = {}
     ): List<RouteItem> {
         val extracted = extractText(context, uri)
-        val recognized = if (shouldRunPdfOcr(extracted)) {
-            withContext(Dispatchers.Main) {
-                onProgress("В PDF нет текстового слоя. Запускаю распознавание страниц…")
-            }
-            recognizeScannedPdf(context, uri, onProgress)
-        } else ""
-        val invoiceText = selectPdfInvoiceText(extracted, recognized)
-        check(invoiceText.isNotBlank()) {
-            "В PDF не удалось найти текст накладной. Проверьте качество скана и попробуйте ещё раз."
+        if (!shouldRunPdfOcr(extracted)) {
+            val textRows = runCatching { parseManifest(extracted) }.getOrDefault(emptyList())
+            if (textRows.isNotEmpty()) return textRows
         }
-        return parseManifest(invoiceText)
+
+        withContext(Dispatchers.Main) {
+            onProgress(
+                if (extracted.isBlank()) "В PDF нет текстового слоя. Запускаю распознавание страниц…"
+                else "Текст PDF найден, но колонки не распознаны. Пробую OCR страниц…"
+            )
+        }
+        val recognized = recognizeScannedPdf(context, uri, onProgress)
+        val normalized = normalizeOcrTableText(recognized)
+        val invoiceText = selectPdfInvoiceText(normalized, recognized)
+        check(invoiceText.isNotBlank()) {
+            "В PDF не удалось распознать текст. Проверьте качество скана и попробуйте ещё раз."
+        }
+        val parsed = listOf(invoiceText, recognized).firstNotNullOfOrNull { candidate ->
+            runCatching { parseManifest(candidate) }.getOrNull()?.takeIf { it.isNotEmpty() }
+        }
+        check(!parsed.isNullOrEmpty()) {
+            "OCR распознал текст, но не смог разделить колонки накладной. Лучше загрузить чёткий скан с видимыми границами колонок."
+        }
+        return parsed
     }
 
     private suspend fun recognizeScannedPdf(

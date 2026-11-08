@@ -52,6 +52,7 @@ internal object RussianOcrEngine {
             check(api.init(tessDirectory.absolutePath, "rus")) {
                 "Tesseract не смог загрузить русскую модель"
             }
+            api.setVariable("preserve_interword_spaces", "1")
             api.setImage(bitmap)
             api.getUTF8Text().orEmpty().trim()
         } finally {
@@ -70,6 +71,20 @@ internal object RussianOcrEngine {
         }
         val trainedData = File(dataDirectory, "rus.traineddata")
         if (trainedData.exists() && trainedData.length() >= 1_000_000L) return
+
+        val bundledModel = runCatching { context.assets.open("tessdata/rus.traineddata") }.getOrNull()
+        if (bundledModel != null) {
+            val assetCopy = File(dataDirectory, "rus.traineddata.asset")
+            bundledModel.use { input ->
+                assetCopy.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (assetCopy.length() >= 1_000_000L) {
+                if (trainedData.exists()) trainedData.delete()
+                check(assetCopy.renameTo(trainedData)) { "Не удалось установить встроенную OCR-модель" }
+                return
+            }
+            assetCopy.delete()
+        }
 
         withContext(Dispatchers.Main) {
             onProgress("Скачиваю русскую OCR-модель (первый запуск)…")

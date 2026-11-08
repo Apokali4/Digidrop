@@ -47,6 +47,13 @@ jobs:
           run_id: 42376599076
           name: DigiDrop-Kaluga-Offline-Map
           path: app/src/main/assets
+      - name: Download bundled Russian OCR model
+        run: |
+          mkdir -p app/src/main/assets/tessdata
+          curl --fail --location --retry 3 \
+            "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata" \
+            --output app/src/main/assets/tessdata/rus.traineddata
+          test "$(stat -c%s app/src/main/assets/tessdata/rus.traineddata)" -gt 1000000
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Make Gradle wrapper executable
