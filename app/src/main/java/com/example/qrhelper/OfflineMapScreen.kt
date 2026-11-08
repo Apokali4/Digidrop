@@ -270,7 +270,7 @@ fun OfflineMapScreen(
                                 }
                                 if (mappedCoordinates.size >= 2) {
                                     val bounds = LatLngBounds.Builder().also { builder ->
-                                        mappedCoordinates.forEach(builder::include)
+                                        mappedCoordinates.forEach { coordinate -> builder.include(coordinate) }
                                     }.build()
                                     map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 64))
                                 } else {
