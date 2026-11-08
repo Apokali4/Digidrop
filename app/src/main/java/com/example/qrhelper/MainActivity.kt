@@ -2544,7 +2544,9 @@ fun RouteListScreen(
     var manualDestination by remember { mutableStateOf("") }
 
     val allGroups = remember(routeItems) {
-        routeItems.groupBy { it.storeName to it.address }.toList()
+        routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+            .values
+            .map { group -> (group.first().storeName to group.first().address) to group }
     }
     val routeAlternatives = remember(allGroups) {
         val stops = allGroups.map { (key, group) ->
@@ -2586,6 +2588,7 @@ fun RouteListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             Row(
@@ -2726,10 +2729,8 @@ fun RouteListScreen(
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(if (compactMode) 7.dp else 14.dp)
             ) {
                 if (displayedGroups.isEmpty()) {
@@ -2759,7 +2760,7 @@ fun RouteListScreen(
                         }
                     }
                 } else {
-                    itemsIndexed(displayedGroups, key = { _, group -> group.first.first + "|" + group.first.second }) { index, group ->
+                    displayedGroups.forEachIndexed { index, group ->
                         val originalIndex = allGroups.indexOfFirst { it.first == group.first }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
