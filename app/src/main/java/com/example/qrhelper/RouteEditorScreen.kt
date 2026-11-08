@@ -77,34 +77,55 @@ internal fun RouteEditorScreen(
         validationError = ""
     }
 
+    val palette = com.example.qrhelper.ui.theme.DigiDropPalette
     Column(
-        Modifier.fillMaxSize().background(Color(0xFFF1F5F1)).padding(16.dp),
+        Modifier.fillMaxSize().background(palette.background).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = onBack) { Text("← Назад") }
-            Button(onClick = { onSave(groups.flatten()) }) { Text("Сохранить маршрут") }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Card(
+                onClick = onBack, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = palette.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
+            ) { Text("← НАЗАД", Modifier.padding(16.dp), color = palette.text) }
+            Card(
+                onClick = { onSave(groups.flatten()) }, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = palette.primary)
+            ) { Text("СОХРАНИТЬ", Modifier.padding(16.dp), color = Color.White) }
         }
-        Text("Редактор маршрута", color = Color(0xFF20352A), fontSize = 24.sp)
-        Text(
-            "Точек: ${groups.size} • строк груза: ${groups.sumOf { it.size }}. Изменения применятся после сохранения.",
-            color = Color(0xFF617268),
-            fontSize = 12.sp
-        )
-        Button(onClick = { openEditor(null) }, modifier = Modifier.fillMaxWidth()) {
-            Text("+ Добавить точку")
+        Text("Редактор маршрута", color = palette.text, fontSize = 24.sp)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft),
+            border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
+        ) {
+            Text("ТОЧЕК: ${groups.size}   •   СТРОК ГРУЗА: ${groups.sumOf { it.size }}",
+                Modifier.padding(14.dp), color = palette.textSecondary)
+        }
+        Card(
+            onClick = { openEditor(null) }, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = palette.primary)
+        ) {
+            Text("+ ДОБАВИТЬ ТОЧКУ", Modifier.padding(16.dp), color = Color.White)
         }
         if (groups.isEmpty()) {
-            Text("Маршрут пуст. Добавь первую точку или вернись к импорту накладной.", color = TextMuted)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft)) {
+                Text("Маршрут пуст. Добавь первую точку.", Modifier.padding(16.dp), color = palette.textSecondary)
+            }
         } else {
             val listState = rememberLazyListState()
             var draggedIndex by remember { mutableStateOf<Int?>(null) }
             var dragDelta by remember { mutableStateOf(0f) }
-            Text("Для перестановки зажми карточку и перетащи. Стрелки тоже доступны.", color = TextMuted, fontSize = 11.sp)
+            Text("Зажми плитку и перетащи для изменения порядка.", color = palette.textSecondary, fontSize = 12.sp)
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 itemsIndexed(groups, key = { _, group -> group.first().storeName + "|" + group.first().address }) { index, group ->
                     val first = group.first()
@@ -112,26 +133,18 @@ internal fun RouteEditorScreen(
                     Card(
                         Modifier.fillMaxWidth().pointerInput(first.storeName, first.address) {
                             detectDragGesturesAfterLongPress(
-                                onDragStart = {
-                                    draggedIndex = currentIndex
-                                    dragDelta = 0f
-                                },
-                                onDragEnd = {
-                                    draggedIndex = null
-                                    dragDelta = 0f
-                                },
-                                onDragCancel = {
-                                    draggedIndex = null
-                                    dragDelta = 0f
-                                },
+                                onDragStart = { draggedIndex = currentIndex; dragDelta = 0f },
+                                onDragEnd = { draggedIndex = null; dragDelta = 0f },
+                                onDragCancel = { draggedIndex = null; dragDelta = 0f },
                                 onDrag = { change, amount ->
+                                    change.consume()
                                     val from = draggedIndex ?: return@detectDragGesturesAfterLongPress
                                     dragDelta += amount.y
                                     val source = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == from }
                                         ?: return@detectDragGesturesAfterLongPress
-                                    val draggedCenter = source.offset + source.size / 2 + dragDelta
+                                    val center = source.offset + source.size / 2 + dragDelta
                                     val target = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
-                                        info.index != from && draggedCenter >= info.offset && draggedCenter <= info.offset + info.size
+                                        info.index != from && center >= info.offset && center <= info.offset + info.size
                                     }
                                     if (target != null) {
                                         groups = groupRouteItems(moveRoutePointGroup(groups.flatten(), from, target.index))
@@ -141,24 +154,28 @@ internal fun RouteEditorScreen(
                                 }
                             )
                         },
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = palette.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.border),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("${index + 1}. ${first.storeName}", color = TextLight, fontSize = 16.sp)
-                            Text(first.address, color = TextMuted, fontSize = 13.sp)
-                            Text("${group.size} строк • мест: ${group.sumOf { it.totalBoxes }} • сканов: ${group.sumOf { it.scannedBoxes }}",
-                                color = MintAccent, fontSize = 12.sp)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(onClick = { openEditor(group) }) { Text("Изменить") }
-                                TextButton(onClick = { deletingGroup = group }) { Text("Удалить") }
-                                Spacer(Modifier.weight(1f))
-                                TextButton(enabled = index > 0, onClick = {
-                                    groups = groupRouteItems(moveRoutePointGroup(groups.flatten(), index, index - 1))
-                                }) { Text("Поднять") }
-                                TextButton(enabled = index < groups.lastIndex, onClick = {
-                                    groups = groupRouteItems(moveRoutePointGroup(groups.flatten(), index, index + 1))
-                                }) { Text("Опустить") }
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("ТОЧКА ${index + 1}  •  ⠿ ПЕРЕТАЩИТЬ", color = palette.primary, fontSize = 12.sp)
+                            Text(first.storeName.ifBlank { "Магазин не указан" }, color = palette.text, fontSize = 19.sp)
+                            Text(first.address, color = palette.textSecondary, fontSize = 14.sp)
+                            Text("${group.size} строк груза • мест: ${group.sumOf { it.totalBoxes }} • сканов: ${group.sumOf { it.scannedBoxes }}",
+                                color = palette.textSecondary, fontSize = 12.sp)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Card(
+                                    onClick = { openEditor(group) }, modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = palette.primarySoft)
+                                ) { Text("ИЗМЕНИТЬ", Modifier.padding(12.dp), color = palette.primaryDark) }
+                                Card(
+                                    onClick = { deletingGroup = group }, modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft)
+                                ) { Text("УДАЛИТЬ", Modifier.padding(12.dp), color = palette.text) }
                             }
                         }
                     }
