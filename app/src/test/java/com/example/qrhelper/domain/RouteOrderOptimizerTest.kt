@@ -46,4 +46,32 @@ class RouteOrderOptimizerTest {
         )
         assertEquals(stops, RouteOrderOptimizer.optimize(stops))
     }
+    
+    @Test fun generatesUpToFourDistinctAlternativesWithDifferentStartingPoints() {
+        val stops = listOf(
+            RouteStop("a", 0.0, 0.0, false),
+            RouteStop("b", 0.0, 1.0, false),
+            RouteStop("c", 1.0, 1.0, false),
+            RouteStop("d", 1.0, 0.0, false),
+            RouteStop("e", 0.5, 0.5, false)
+        )
+        val alternatives = RouteOrderOptimizer.alternatives(stops)
+        assertEquals(4, alternatives.size)
+        assertEquals(listOf("a", "b", "c", "d"), alternatives.map { it.first().id })
+        assertEquals(4, alternatives.map { it.map(RouteStop::id) }.distinct().size)
+    }
+
+    @Test fun alternativesKeepCompletedStopsAtTheFront() {
+        val stops = listOf(
+            RouteStop("done", 0.0, 0.0, true),
+            RouteStop("a", 0.0, 1.0, false),
+            RouteStop("b", 1.0, 1.0, false),
+            RouteStop("c", 1.0, 0.0, false)
+        )
+        assertEquals(
+            listOf("done"),
+            RouteOrderOptimizer.alternatives(stops).first().take(1).map { it.id }
+        )
+        assertEquals(4, RouteOrderOptimizer.alternatives(stops).size)
+    }
 }
