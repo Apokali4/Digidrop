@@ -29,4 +29,18 @@ class DeliveryPointStatusTest {
     @Test fun emptyPointIsPending() {
         assertEquals(DeliveryPointStatus.PENDING, deliveryPointStatus(emptyList()))
     }
+
+    @Test fun remainingBoxesNeverGoesBelowZero() {
+        val item = RouteItem(
+            barcode = "123",
+            storeName = "Store",
+            address = "Address",
+            itemName = "Box",
+            totalBoxes = 5,
+            phone = "",
+            scannedBoxes = 4,
+            discrepancyQty = 2
+        )
+        assertEquals(0, remainingBoxes(item))
+    }
 }
