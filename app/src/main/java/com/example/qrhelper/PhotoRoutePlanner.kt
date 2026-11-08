@@ -689,7 +689,7 @@ fun PhotoRoutePlannerScreen(
             onPhotoCaptured = {
                 uri ->
                 capturedUris = capturedUris + uri
-                message = "Фото добавлено в пакет. Снимите следующий лист или нажмите «Готово»."
+                status = "Фото добавлено в пакет. Снимите следующий лист или нажмите «Готово»."
             },
             onClose = { cameraOpen = false }
         )
