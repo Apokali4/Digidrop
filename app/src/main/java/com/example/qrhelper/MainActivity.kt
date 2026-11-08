@@ -420,6 +420,7 @@ enum class AppScreen {
     HUB,
     INVOICE_IMPORT,
     ROUTE_LIST,
+    ROUTE_EDITOR,
     DETAILS,
     SCANNER,
     SCAN_RESULTS,
@@ -934,6 +935,7 @@ fun DigitDropRoot() {
             AppScreen.POINT_DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
+            AppScreen.ROUTE_EDITOR -> AppScreen.ROUTE_LIST
             AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
@@ -1054,6 +1056,7 @@ fun DigitDropRoot() {
                 compactMode = settingsCompact,
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
+                onEditRoute = { currentScreen = AppScreen.ROUTE_EDITOR },
                 onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
@@ -1095,6 +1098,33 @@ fun DigitDropRoot() {
                                 .joinToString("\t") { it.replace("\t", " ") }
                         }
                         prefs.edit().putString("active_manifest", saved).apply()
+                    }
+                }
+            )
+        }
+        AppScreen.ROUTE_EDITOR -> {
+            RouteEditorScreen(
+                routeItems = routeItems,
+                onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                onSave = { editedItems ->
+                    importScope.launch {
+                        runCatching { LogisticsRepository(context).updateActiveRoute(editedItems) }
+                            .onSuccess {
+                                routeItems = editedItems
+                                val manifest = editedItems.joinToString("\n") { item ->
+                                    listOf(
+                                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                                    ).joinToString("\t") { it.replace("\t", " ") }
+                                }
+                                prefs.edit().putString("active_manifest", manifest).apply()
+                                currentScreen = AppScreen.ROUTE_LIST
+                                Toast.makeText(context, "Маршрут сохранён", Toast.LENGTH_SHORT).show()
+                            }
+                            .onFailure { error ->
+                                Toast.makeText(context, "Не удалось сохранить маршрут: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
                     }
                 }
             )
@@ -2443,6 +2473,7 @@ fun RouteListScreen(
     compactMode: Boolean,
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
+    onEditRoute: () -> Unit,
     onOpenOfflineMap: () -> Unit,
     onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
@@ -2528,6 +2559,10 @@ fun RouteListScreen(
                             }
                         }
                     }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onEditRoute) { Text("Редактировать / добавить / удалить точки", color = MintAccent) }
             }
 
             Row(
