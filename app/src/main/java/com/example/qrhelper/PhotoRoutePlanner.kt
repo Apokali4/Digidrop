@@ -195,7 +195,9 @@ internal object PhotoRouteTextParser {
         val store = brandInSuffix ?: suffixBrand ?: brandNearby.orEmpty()
         val instructionPattern = Regex("""(?iu)(достав|до\\s*\\d|после\\s*\\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.filter { line ->
-            line != cash && (instructionPattern.containsMatchIn(line) || line.contains("с ", ignoreCase = true) && Regex("""\\d{1,2}[:.]\\d{2}""").containsMatchIn(line))
+            line != cash && !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
+                (instructionPattern.containsMatchIn(line) ||
+                    line.contains("с ", ignoreCase = true) && Regex("""\\d{1,2}[:.]\\d{2}""").containsMatchIn(line))
         }.distinct().joinToString("; ")
         return PhotoStopMetadata(store, owner, phone, hours, cash, comment)
     }
