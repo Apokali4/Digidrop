@@ -129,11 +129,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.Style
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.example.qrhelper.LogisticsRepository
@@ -444,8 +439,7 @@ enum class AppScreen {
     HISTORY,
     PRODUCTS,
     UNKNOWN_CODES,
-    PHOTO_ROUTE,
-    OFFLINE_MAP
+    PHOTO_ROUTE
 }
 
 // Единая светлая зелёная палитра DigiDrop для всех экранов.
@@ -493,7 +487,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
-    var offlineMapRefresh by remember { mutableStateOf(0) }
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
     var photoRouteInitialUri by remember { mutableStateOf<Uri?>(null) }
     val windowContext = LocalContext.current
@@ -693,22 +686,6 @@ fun DigitDropRoot() {
                 Toast.makeText(context, "Отчёт сохранён", Toast.LENGTH_SHORT).show()
             } catch (ex: Exception) {
                 Toast.makeText(context, "Не удалось сохранить отчёт: " + ex.message, Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    val mapFileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            importScope.launch {
-                try {
-                    withContext(Dispatchers.IO) { OfflineMapStore.import(context, uri) }
-                    offlineMapRefresh++
-                    Toast.makeText(context, "Офлайн-карта импортирована", Toast.LENGTH_LONG).show()
-                } catch (error: Exception) {
-                    Toast.makeText(context, error.message ?: "Ошибка импорта карты", Toast.LENGTH_LONG).show()
-                }
             }
         }
     }
@@ -1011,7 +988,6 @@ fun DigitDropRoot() {
             AppScreen.DETAILS -> AppScreen.ROUTE_LIST
             AppScreen.ROUTE_LIST -> AppScreen.HUB
             AppScreen.ROUTE_EDITOR -> AppScreen.ROUTE_LIST
-            AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
             AppScreen.MORE_MENU -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
@@ -1042,7 +1018,6 @@ fun DigitDropRoot() {
                 onOpenScanner = { openScanner() },
                 onLoadInvoice = { currentScreen = AppScreen.INVOICE_IMPORT },
                 onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
-                onOpenMap = { currentScreen = AppScreen.OFFLINE_MAP },
                 onOpenReports = { currentScreen = AppScreen.REPORTS },
                 onOpenHistory = {
                     importScope.launch {
@@ -1126,36 +1101,6 @@ fun DigitDropRoot() {
                     currentScreen = AppScreen.ROUTE_LIST
                     Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}", Toast.LENGTH_LONG).show()
                 },
-                onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP }
-            )
-        }
-        AppScreen.OFFLINE_MAP -> {
-            OfflineMapScreen(
-                routeItems = routeItems,
-                refreshKey = offlineMapRefresh,
-                onBack = { currentScreen = AppScreen.ROUTE_LIST },
-                onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) },
-                onOpenScanner = { openScanner() },
-                onGeocodeMissing = {
-                    importScope.launch {
-                        val resolved = geocodeRoute(context, routeItems)
-                        routeItems = resolved
-                        val saved = resolved.joinToString("\n") { item ->
-                            listOf(
-                                item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                item.ownerName, item.workingHours, item.cashNote, item.extraComment
-                            ).joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", saved).apply()
-                        val found = resolved.count { it.latitude != null && it.longitude != null }
-                        Toast.makeText(context, "Координаты определены: $found из ${resolved.size}", Toast.LENGTH_LONG).show()
-                    }
-                },
-                onSelectPoint = { items ->
-                    selectedPointItems = items
-                    currentScreen = AppScreen.POINT_DETAILS
-                }
             )
         }
         AppScreen.ROUTE_LIST -> {
@@ -1166,7 +1111,6 @@ fun DigitDropRoot() {
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onEditRoute = { currentScreen = AppScreen.ROUTE_EDITOR },
-                onOpenOfflineMap = { currentScreen = AppScreen.OFFLINE_MAP },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
                     if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
@@ -1665,7 +1609,6 @@ fun HubScreen(
     onOpenScanner: () -> Unit,
     onLoadInvoice: () -> Unit,
     onOpenRoute: () -> Unit,
-    onOpenMap: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit
@@ -2650,7 +2593,6 @@ fun RouteListScreen(
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onEditRoute: () -> Unit,
-    onOpenOfflineMap: () -> Unit,
     onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
@@ -2810,12 +2752,6 @@ fun RouteListScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Перестроить маршрут", maxLines = 1, fontSize = 12.sp)
-                }
-                TextButton(
-                    onClick = onOpenOfflineMap,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Офлайн-карта", maxLines = 1, fontSize = 12.sp)
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
