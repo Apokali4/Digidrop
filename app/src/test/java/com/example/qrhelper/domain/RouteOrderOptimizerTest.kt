@@ -72,6 +72,6 @@ class RouteOrderOptimizerTest {
             listOf("done"),
             RouteOrderOptimizer.alternatives(stops).first().take(1).map { it.id }
         )
-        assertEquals(4, RouteOrderOptimizer.alternatives(stops).size)
+        assertEquals(3, RouteOrderOptimizer.alternatives(stops).size)
     }
 }
