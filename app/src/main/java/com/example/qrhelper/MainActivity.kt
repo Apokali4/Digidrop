@@ -1051,7 +1051,13 @@ fun DigitDropRoot() {
                 onInitialActionConsumed = { photoRouteInitialAction = null },
                 onInitialImageConsumed = { photoRouteInitialUri = null },
                 onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; currentScreen = AppScreen.INVOICE_IMPORT },
-                onApplyRoute = { imported ->
+                onApplyRoute = { imported, header ->
+                    prefs.edit()
+                        .putString("route_header_number", header.routeNumber)
+                        .putString("route_header_driver", header.driver)
+                        .putString("route_header_vehicle", header.vehicle)
+                        .putString("route_header_vehicle_number", header.vehicleNumber)
+                        .apply()
                     sessionScanCodes = emptySet()
                     prefs.edit().remove("scan_codes").apply()
                     val content = imported.joinToString("\n") { item ->
@@ -1068,7 +1074,7 @@ fun DigitDropRoot() {
                             }
                     }
                     currentScreen = AppScreen.ROUTE_LIST
-                    Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}", Toast.LENGTH_LONG).show()
                 }
             )
         }
