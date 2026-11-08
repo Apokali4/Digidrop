@@ -245,6 +245,13 @@ internal class LogisticsRepository(context: Context) {
     suspend fun searchProducts(query: String): List<ProductEntity> =
         database.dao().searchProducts(query.trim())
 
+    suspend fun allProducts(): List<ProductEntity> = database.dao().allProducts()
+
+    suspend fun restoreProducts(products: List<ProductCatalogRecord>) {
+        val entities = products.map { ProductEntity(barcode = it.barcode, productName = it.productName) }
+        if (entities.isNotEmpty()) database.dao().upsertProducts(entities)
+    }
+
     suspend fun history(): List<RouteHistorySnapshot> {
         val dao = database.dao()
         return dao.archivedRoutesOnce().map { route ->
