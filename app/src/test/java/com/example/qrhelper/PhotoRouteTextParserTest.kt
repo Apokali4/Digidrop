@@ -189,3 +189,37 @@ class PhotoRouteTextParserTest {
     }
 
 }
+
+
+    @Test fun recoversVehiclePlateWhenOcrSplitsLastDigits() {
+        val text = """
+            Задание на отгрузку №Л00000006924
+            Транспортное средство: ГАЗон К347ХВ2 13
+            Водитель: Морозов Сергей Николаевич
+        """.trimIndent()
+        assertEquals(
+            PhotoRouteHeader("Морозов Сергей Николаевич", "ГАЗон", "К347ХВ213", "Л00000006924"),
+            PhotoRouteHeaderParser.parse(text)
+        )
+    }
+
+    @Test fun appliesKnownStoreHoursOnlyWhenTheRouteSheetHasNoExplicitHours() {
+        val redWhite = PhotoRouteTextParser.extractMetadata(
+            "Красное и Белое\\nКалуга, ул. Кирова, д. 12",
+            "Калуга, ул. Кирова, д. 12"
+        )
+        val bristol = PhotoRouteTextParser.extractMetadata(
+            "Бристоль\\nКалуга, ул. Ленина, д. 8",
+            "Калуга, ул. Ленина, д. 8"
+        )
+        assertEquals("09:00–22:00", redWhite.workingHours)
+        assertEquals("08:00–22:00", bristol.workingHours)
+    }
+
+    @Test fun explicitDeliveryHoursOverrideKnownStoreDefaults() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Красное и Белое\\nКалуга, ул. Кирова, д. 12\\nДоставить до 10:00",
+            "Калуга, ул. Кирова, д. 12"
+        )
+        assertEquals("до 10:00", metadata.workingHours)
+    }
