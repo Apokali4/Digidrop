@@ -1669,87 +1669,22 @@ fun HubScreen(
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val pointCount = routeItems.map { PhotoRouteTextParser.canonicalAddressKey(it.address) }.distinct().size
-    val invoiceCount = routeItems.size
-    val placeCount = routeItems.sumOf { it.totalBoxes.coerceAtLeast(0) }
-    val driverName = routeHeader.driver.substringBefore(" ").takeIf { it.isNotBlank() }
-    Column(
-        modifier = Modifier.fillMaxSize().background(BgDark)
-            .statusBarsPadding().navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF5F8F5))
+            .statusBarsPadding().navigationBarsPadding().padding(22.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Button(
+            onClick = onLoadInvoice,
+            modifier = Modifier.fillMaxWidth().height(76.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF278747), contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(20.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Text("Логистика • Водитель", color = TextMuted, fontSize = 14.sp)
-            }
-            TextButton(onClick = onOpenMenu) {
-                Text("Ещё  ⋯", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
-        }
-        if (routeItems.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("ТЕКУЩИЙ РЕЙС", color = MintAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(routeHeader.routeNumber.ifBlank { "Маршрут загружен" }, color = TextLight, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    if (routeHeader.driver.isNotBlank()) Text(routeHeader.driver, color = TextMuted, fontSize = 14.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HubMetric(pointCount.toString(), "точек", Modifier.weight(1f))
-                        HubMetric(invoiceCount.toString(), "строк груза", Modifier.weight(1f))
-                        HubMetric(placeCount.toString(), "мест", Modifier.weight(1f))
-                    }
-                    Button(
-                        onClick = onOpenRoute,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = EmeraldPrimary,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) { Text("Открыть маршрут", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-                }
-            }
-        } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = IndustrialPanel),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Рабочая смена", color = TextLight, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Загрузите маршрутный лист, чтобы начать работу", color = TextMuted, fontSize = 14.sp)
-                }
-            }
-        }
-        HubTile(
-            "Загрузить накладную",
-            "Фото • PDF • Excel • CSV",
-            "▤", EmeraldPrimary,
-            Modifier.fillMaxWidth().heightIn(min = 132.dp),
-            primary = true,
-            onClick = onLoadInvoice
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubQuickAction("⌗", "Сканер", Modifier.weight(1f), onOpenScanner)
-            HubQuickAction("⌖", "Карта", Modifier.weight(1f), onOpenMap)
-            HubQuickAction("▤", "Отчёты", Modifier.weight(1f), onOpenReports)
-            HubQuickAction("⚙", "Настройки", Modifier.weight(1f), onOpenSettings)
-        }
-        if (routeItems.isNotEmpty()) {
-            TextButton(onClick = onOpenHistory, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("История завершённых рейсов", color = TextMuted)
-            }
+            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(12.dp))
+            Text("Загрузить накладную", fontSize = 19.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
