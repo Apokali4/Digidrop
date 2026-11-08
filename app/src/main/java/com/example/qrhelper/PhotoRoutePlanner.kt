@@ -287,7 +287,7 @@ private data class LocatedPhotoStop(
     val metadata: PhotoStopMetadata = PhotoStopMetadata()
 )
 
-internal data class PhotoRouteCoordinate(val latitude: Double, val longitude: Double)
+data class PhotoRouteCoordinate(val latitude: Double, val longitude: Double)
 
 internal object PhotoRouteNavigationUrls {
     private fun encode(value: String): String =
