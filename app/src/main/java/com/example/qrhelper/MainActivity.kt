@@ -478,6 +478,7 @@ fun DigitDropRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
     var offlineMapRefresh by remember { mutableStateOf(0) }
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
+    var photoRouteInitialUri by remember { mutableStateOf<Uri?>(null) }
     val windowContext = LocalContext.current
     SideEffect {
         val activity = windowContext as? Activity
@@ -806,6 +807,18 @@ fun DigitDropRoot() {
             try {
                 val mime = context.contentResolver.getType(uri).orEmpty()
                 val uriText = uri.toString().lowercase()
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+                if (InvoiceImportKind.isImage(mime, uriText)) {
+                    photoRouteInitialUri = uri
+                    photoRouteInitialAction = null
+                    currentScreen = AppScreen.PHOTO_ROUTE
+                    appendInvoiceToRoute = false
+                    return@launch
+                }
                 val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
                 val isExcel = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
                 val imported = withContext(Dispatchers.IO) {
@@ -975,11 +988,10 @@ fun DigitDropRoot() {
             InvoiceLandingScreen(
                 onBack = { currentScreen = AppScreen.HUB },
                 hasActiveRoute = routeItems.isNotEmpty(),
-                onTakePhoto = { photoRouteInitialAction = "camera"; currentScreen = AppScreen.PHOTO_ROUTE },
-                onChoosePhoto = { photoRouteInitialAction = "gallery"; currentScreen = AppScreen.PHOTO_ROUTE },
+                onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; currentScreen = AppScreen.PHOTO_ROUTE },
                 onLoadInvoice = {
                     appendInvoiceToRoute = false
-                    filePickerLauncher.launch(arrayOf("text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 },
                 onAppendInvoice = {
                     appendInvoiceToRoute = routeItems.isNotEmpty()
@@ -1034,8 +1046,9 @@ fun DigitDropRoot() {
         AppScreen.PHOTO_ROUTE -> {
             PhotoRoutePlannerScreen(
                 initialAction = photoRouteInitialAction,
-                onInitialActionConsumed = { photoRouteInitialAction = null },
-                onBack = { photoRouteInitialAction = null; currentScreen = AppScreen.HUB },
+                initialImageUri = photoRouteInitialUri,
+                onInitialActionConsumed = { photoRouteInitialAction = null; photoRouteInitialUri = null },
+                onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; currentScreen = AppScreen.INVOICE_IMPORT },
                 onApplyRoute = { imported ->
                     sessionScanCodes = emptySet()
                     prefs.edit().remove("scan_codes").apply()
