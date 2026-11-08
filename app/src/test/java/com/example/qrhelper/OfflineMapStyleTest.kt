@@ -23,7 +23,7 @@ class OfflineMapStyleTest {
         assertTrue(style.contains("© OpenStreetMap contributors"))
         assertTrue("Map labels must use bundled offline glyphs", style.contains("asset://fonts/{fontstack}/{range}.pbf"))
         assertTrue("Road labels must be present", style.contains("transportation_name"))
-        assertTrue("Place labels must be present", style.contains("source-layer\\\":\\\"place"))
+        assertTrue("Place labels must be present", style.contains("\"source-layer\":\"place\""))
         assertFalse("Vector tile sources must not declare raster-dem encoding", style.contains("\\"encoding\\""))
     }
 }
