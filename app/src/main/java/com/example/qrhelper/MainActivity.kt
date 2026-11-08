@@ -1111,6 +1111,15 @@ fun DigitDropRoot() {
                 onBackToHub = { currentScreen = AppScreen.HUB },
                 onOpenScanner = { openScanner() },
                 onEditRoute = { currentScreen = AppScreen.ROUTE_EDITOR },
+                onNavigateSegment = { index, segment ->
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, PhotoRouteNavigationUrls.yandexNavigator(segment, startsFromPreviousStop = index > 0))
+                            .setPackage("ru.yandex.yandexnavi")
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Яндекс Навигатор не установлен или не принимает маршрут. Установите приложение и повторите.", Toast.LENGTH_LONG).show()
+                    }
+                },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
                     if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
@@ -2593,6 +2602,7 @@ fun RouteListScreen(
     onBackToHub: () -> Unit,
     onOpenScanner: () -> Unit,
     onEditRoute: () -> Unit,
+    onNavigateSegment: (Int, List<PhotoRouteCoordinate>) -> Unit,
     onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
@@ -2622,6 +2632,25 @@ fun RouteListScreen(
         com.example.qrhelper.domain.RouteOrderOptimizer.alternatives(stops)
     }
     var showRouteAlternatives by remember { mutableStateOf(false) }
+    val pendingNavigationGroups = remember(allGroups) {
+        allGroups.filter { (_, group) ->
+            deliveryPointStatus(group) != com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
+        }
+    }
+    val navigationStops = remember(pendingNavigationGroups) {
+        pendingNavigationGroups.mapNotNull { (_, group) ->
+            val point = group.first()
+            if (point.latitude != null && point.longitude != null) {
+                PhotoRouteCoordinate(point.latitude, point.longitude)
+            } else null
+        }
+    }
+    val missingNavigationCoordinates = pendingNavigationGroups.size - navigationStops.size
+    val navigationSegments = remember(navigationStops, missingNavigationCoordinates) {
+        if (missingNavigationCoordinates == 0 && navigationStops.size >= 2) {
+            PhotoRouteNavigationUrls.yandexSegments(navigationStops)
+        } else emptyList()
+    }
     val displayedGroups = remember(allGroups, pointFilter) {
         val snapshots = allGroups.mapIndexed { index, entry ->
             val group = entry.second
@@ -2739,6 +2768,43 @@ fun RouteListScreen(
                     onClick = { if (manualDestination.isNotBlank()) onOpenPointMap(manualDestination.trim()) },
                     enabled = manualDestination.isNotBlank()
                 ) { Text("Маршрут") }
+            }
+
+            if (pendingNavigationGroups.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("НАВИГАЦИЯ ПО МАРШРУТУ", color = MintAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        when {
+                            missingNavigationCoordinates > 0 -> Text(
+                                "Не хватает координат у $missingNavigationCoordinates точек. Полный маршрут в Навигатор пока не отправить.",
+                                color = TextMuted, fontSize = 13.sp
+                            )
+                            navigationSegments.isEmpty() -> Text(
+                                "Для маршрута нужны минимум две незавершённые точки.",
+                                color = TextMuted, fontSize = 13.sp
+                            )
+                            else -> navigationSegments.forEachIndexed { index, segment ->
+                                Button(
+                                    onClick = { onNavigateSegment(index, segment) },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        if (navigationSegments.size == 1) "Открыть весь маршрут в Яндекс Навигаторе"
+                                        else if (index == 0) "Яндекс Навигатор • участок 1 из ${navigationSegments.size}"
+                                        else "Яндекс Навигатор • участок ${index + 1} из ${navigationSegments.size} (после переходной точки)",
+                                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
