@@ -258,29 +258,69 @@ internal object PhotoRouteOrdering {
         }
         return stops.indices.maxBy { distanceKm(stops[it]) }
     }
+    fun nearestNeighborOrder(points: List<PhotoRouteCoordinate>): List<Int> {
+        if (points.size < 2) return points.indices.toList()
+        val remaining = points.indices.drop(1).toMutableSet()
+        val ordered = mutableListOf(0)
+        while (remaining.isNotEmpty()) {
+            val current = points[ordered.last()]
+            val next = remaining.minByOrNull { index ->
+                val candidate = points[index]
+                val lat1 = Math.toRadians(current.latitude)
+                val lat2 = Math.toRadians(candidate.latitude)
+                val dLat = lat2 - lat1
+                val dLon = Math.toRadians(candidate.longitude - current.longitude)
+                val a = kotlin.math.sin(dLat / 2).let { it * it } +
+                    kotlin.math.cos(lat1) * kotlin.math.cos(lat2) *
+                    kotlin.math.sin(dLon / 2).let { it * it }
+                6_371_000.0 * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+            } ?: break
+            ordered += next
+            remaining.remove(next)
+        }
+        return ordered
+    }
+
 }
 
-private suspend fun optimizeStopsOnly(stops: List<LocatedPhotoStop>): List<LocatedPhotoStop> = withContext(Dispatchers.IO) {
+private data class PhotoRouteOptimizationResult(
+    val stops: List<LocatedPhotoStop>,
+    val usedRoadNetwork: Boolean
+)
+
+private suspend fun optimizeStopsOnly(stops: List<LocatedPhotoStop>): PhotoRouteOptimizationResult = withContext(Dispatchers.IO) {
     require(stops.size >= 2) { "Для оптимизации нужны минимум две точки" }
-    val coordinates = stops.joinToString(";") { "${it.longitude},${it.latitude}" }
-    val endpoint = "https://router.project-osrm.org/trip/v1/driving/$coordinates?source=any&destination=any&roundtrip=false&overview=false"
-    val connection = URL(endpoint).openConnection() as HttpURLConnection
-    connection.connectTimeout = 15000
-    connection.readTimeout = 30000
     try {
-        val response = connection.inputStream.bufferedReader().use { it.readText() }
-        val json = JSONObject(response)
-        check(json.optString("code") == "Ok") { "Сервис маршрутизации не смог построить порядок точек" }
-        val waypoints = json.getJSONArray("waypoints")
-        val ordered = (0 until waypoints.length())
-            .sortedBy { waypoints.getJSONObject(it).getInt("waypoint_index") }
-            .map { stops[it] }
-        check(ordered.size == stops.size && ordered.toSet().size == stops.size) {
-            "Оптимизатор вернул неполный список точек"
+        val coordinates = stops.joinToString(";") { "${it.longitude},${it.latitude}" }
+        val endpoint = "https://router.project-osrm.org/trip/v1/driving/$coordinates?source=any&destination=any&roundtrip=false&overview=false"
+        val connection = URL(endpoint).openConnection() as HttpURLConnection
+        connection.connectTimeout = 15000
+        connection.readTimeout = 30000
+        try {
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            check(code in 200..299) { "OSRM HTTP $code: ${body.take(300)}" }
+            val json = JSONObject(body)
+            check(json.optString("code") == "Ok") {
+                "OSRM: ${json.optString("message", json.optString("code", "ошибка маршрута"))}"
+            }
+            val waypoints = json.getJSONArray("waypoints")
+            val ordered = (0 until waypoints.length())
+                .sortedBy { waypoints.getJSONObject(it).getInt("waypoint_index") }
+                .map { stops[it] }
+            check(ordered.size == stops.size && ordered.toSet().size == stops.size) {
+                "Оптимизатор вернул неполный список точек"
+            }
+            PhotoRouteOptimizationResult(ordered, true)
+        } finally {
+            connection.disconnect()
         }
-        ordered
-    } finally {
-        connection.disconnect()
+    } catch (_: Exception) {
+        val indexes = PhotoRouteOrdering.nearestNeighborOrder(
+            stops.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
+        )
+        PhotoRouteOptimizationResult(indexes.map(stops::get), false)
     }
 }
 
@@ -594,8 +634,13 @@ fun PhotoRoutePlannerScreen(
                         busy = true
                         status = "Оптимизирую порядок только после проверки точек…"
                         try {
-                            located = optimizeStopsOnly(located)
-                            status = "Порядок оптимизирован по дорожной сети. Все ${located.size} точек сохранены."
+                            val result = optimizeStopsOnly(located)
+                            located = result.stops
+                            status = if (result.usedRoadNetwork) {
+                                "Порядок оптимизирован по дорожной сети. Все ${located.size} точек сохранены."
+                            } else {
+                                "OSRM сейчас недоступен. Точки упорядочены локально по расстоянию по прямой; проверьте порядок перед выездом."
+                            }
                         } catch (error: Exception) {
                             status = "Не удалось оптимизировать: ${error.message ?: "ошибка сети"}"
                         } finally { busy = false }
