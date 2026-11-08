@@ -46,14 +46,16 @@ internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
 
 internal object RouteImportMapper {
     fun map(items: List<RouteItem>): List<PointImportPlan> =
-        items.groupBy { it.storeName.trim() to it.address.trim() }
-            .entries
-            .mapIndexed { index, entry ->
-                val group = entry.value
+        items.filter { it.address.isNotBlank() }
+            .groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+            .values
+            .mapIndexed { index, group ->
                 val status = deliveryStatusForItems(group)
+                val representative = group.first()
                 PointImportPlan(
-                    storeName = entry.key.first,
-                    address = entry.key.second,
+                    // Supplier/legal entity belongs to cargo, not to the physical stop.
+                    storeName = group.firstOrNull { it.storeName.isNotBlank() }?.storeName.orEmpty(),
+                    address = representative.address,
                     phone = group.firstOrNull()?.phone.orEmpty(),
                     latitude = group.firstOrNull()?.latitude,
                     longitude = group.firstOrNull()?.longitude,
