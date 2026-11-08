@@ -2029,8 +2029,26 @@ fun LiveCameraScannerScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = CardSurface.copy(alpha = 0.96f)),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(EmeraldPrimary))
+                        Text("Готов к сканированию", color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text("Наведите камеру на код коробки. DigiDrop автоматически найдёт накладную и точку доставки.",
+                        color = TextMuted, fontSize = 13.sp)
+                    Text("Поддерживаются: EAN-13 • Data Matrix • QR • Code 128",
+                        color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }
