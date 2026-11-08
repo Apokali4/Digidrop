@@ -1812,8 +1812,8 @@ fun HubTile(
     symbol: String,
     accent: Color,
     modifier: Modifier = Modifier,
-    primary: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    primary: Boolean = false
 ) {
     val tileColor = if (primary) Color(0xFF247A3C) else CardSurface
     val foreground = if (primary) Color.White else TextLight
