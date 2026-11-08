@@ -1,5 +1,7 @@
 package com.example.qrhelper
 
+import com.example.qrhelper.ui.theme.DigiDropPalette
+
 import android.widget.Toast
 import android.graphics.Bitmap
 import android.graphics.Canvas
