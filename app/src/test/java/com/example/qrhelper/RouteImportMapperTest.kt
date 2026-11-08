@@ -29,12 +29,16 @@ class RouteImportMapperTest {
         assertEquals(6, points.single().cargo.sumOf { it.expectedQty })
     }
 
-    @Test fun keepsDifferentStoresSeparateEvenWhenAddressesMatch() {
+    @Test fun groupsDifferentInvoiceSuppliersIntoOnePhysicalStorePoint() {
         val items = listOf(
-            RouteItem("4601234567890", "Магазин А", "Калуга, ул. Кирова, 1", "Молоко", 4, ""),
-            RouteItem("4601234567890", "Магазин Б", "Калуга, ул. Кирова, 1", "Молоко", 2, "")
+            RouteItem("1708", "Балтика ПК ООО", "г. Калуга, ул. Врубовая, д. 2, Бристоль", "Пиво", 4, ""),
+            RouteItem("1646", "Альфа Рязань ООО", "Калуга, улица Врубовая, 2", "Вода", 3, ""),
+            RouteItem("2835", "Кока-Кола", "Калуга, ул. Врубовая, дом 2", "Напитки", 5, "")
         )
-        assertEquals(2, RouteImportMapper.map(items).size)
+        val points = RouteImportMapper.map(items)
+        assertEquals(1, points.size)
+        assertEquals(3, points.single().cargo.size)
+        assertEquals(12, points.single().cargo.sumOf { it.expectedQty })
     }
 
     @Test fun derivesPointStatusFromImportedProgress() {
