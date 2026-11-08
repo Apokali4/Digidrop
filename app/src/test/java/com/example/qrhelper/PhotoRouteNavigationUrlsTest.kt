@@ -28,7 +28,7 @@ class PhotoRouteNavigationUrlsTest {
     @Test fun yandexSplitsLongRouteIntoTwentyStopSegmentsWithSharedBoundary() {
         val manyStops = (0..32).map { PhotoRouteCoordinate(55.0 + it / 1000.0, 37.0 + it / 1000.0) }
         val segments = PhotoRouteNavigationUrls.yandexSegments(manyStops)
-        assertEquals(listOf(20, 14), segments.map { it.size })
+        assertEquals(listOf(19, 15), segments.map { it.size })
         assertEquals(segments[0].last(), segments[1].first())
         assertEquals(manyStops.first(), segments.first().first())
         assertEquals(manyStops.last(), segments.last().last())
@@ -37,6 +37,24 @@ class PhotoRouteNavigationUrlsTest {
 
     @Test fun yandexKeepsShortRoutesAsSingleSegment() {
         assertEquals(1, PhotoRouteNavigationUrls.yandexSegments(stops).size)
+    }
+
+    @Test fun yandexNavigatorDeepLinkPreservesAllOrderedStops() {
+        val uri = PhotoRouteNavigationUrls.yandexNavigator(stops)
+        assertEquals("yandexnavi", uri.scheme)
+        assertEquals("build_route_on_map", uri.host)
+        assertEquals("55.78", uri.getQueryParameter("lat_to"))
+        assertEquals("55.76", uri.getQueryParameter("lat_via_0"))
+        assertEquals("55.77", uri.getQueryParameter("lat_via_1"))
+        assertEquals(null, uri.getQueryParameter("lat_from"))
+    }
+
+    @Test fun nextYandexSegmentStartsAtSharedTransitionPoint() {
+        val segment = stops.takeLast(2)
+        val uri = PhotoRouteNavigationUrls.yandexNavigator(segment, startsFromPreviousStop = true)
+        assertEquals("55.77", uri.getQueryParameter("lat_from"))
+        assertEquals("55.78", uri.getQueryParameter("lat_to"))
+        assertEquals(null, uri.getQueryParameter("lat_via_0"))
     }
 
     @Test fun geocodingQueryAddsSelectedCityToAmbiguousStreetAddress() {
