@@ -602,7 +602,8 @@ fun PhotoRoutePlannerScreen(
     onInitialActionConsumed: () -> Unit = {},
     onInitialImageConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onApplyRoute: (List<RouteItem>, PhotoRouteHeader) -> Unit
+    onApplyRoute: (List<RouteItem>, PhotoRouteHeader) -> Unit,
+    onOpenOfflineMap: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -894,7 +895,7 @@ fun PhotoRoutePlannerScreen(
                     )
                 }
                 onApplyRoute(items, routeHeader)
-                Toast.makeText(context, "Маршрут сохранён. Открой раздел «Карта» для офлайн-карты.", Toast.LENGTH_LONG).show()
+                onOpenOfflineMap()
             }
             val coords = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
             val segments = PhotoRouteNavigationUrls.yandexSegments(coords)
