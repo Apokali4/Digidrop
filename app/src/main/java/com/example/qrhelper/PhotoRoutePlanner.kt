@@ -509,6 +509,7 @@ fun PhotoRoutePlannerScreen(
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве после загрузки языковой модели.") }
     var busy by remember { mutableStateOf(false) }
+    var showRawText by remember { mutableStateOf(false) }
     var cameraOpen by remember { mutableStateOf(false) }
     var capturedUris by remember { mutableStateOf(listOf<Uri>()) }
     fun updateStopMetadata(index: Int, transform: (PhotoStopMetadata) -> PhotoStopMetadata) {
@@ -628,19 +629,24 @@ fun PhotoRoutePlannerScreen(
             OutlinedTextField(value = routeHeader.vehicleNumber, onValueChange = { routeHeader = routeHeader.copy(vehicleNumber = it) }, label = { Text("Государственный номер") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             Spacer(Modifier.height(8.dp))
         }
-        OutlinedTextField(
-            value = rawText,
-            onValueChange = { rawText = it },
-            label = { Text("Распознанный текст (можно исправить)") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp),
-            minLines = 4
-        )
-        OutlinedButton(onClick = {
-            addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
-            located = emptyList()
-            routeOrigin = null
-            status = "Кандидатов адресов: ${addresses.size}. Город поиска: ${routeCity.ifBlank { "не задан" }}. Проверьте список ниже."
-        }, modifier = Modifier.fillMaxWidth()) { Text("Выделить адреса из текста") }
+        TextButton(onClick = { showRawText = !showRawText }) {
+            Text(if (showRawText) "Скрыть распознанный текст" else "Показать распознанный текст для ручной проверки")
+        }
+        if (showRawText) {
+            OutlinedTextField(
+                value = rawText,
+                onValueChange = { rawText = it },
+                label = { Text("Распознанный текст (можно исправить)") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp),
+                minLines = 4
+            )
+            OutlinedButton(onClick = {
+                addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
+                located = emptyList()
+                routeOrigin = null
+                status = "Кандидатов адресов: ${addresses.size}. Проверьте список ниже."
+            }, modifier = Modifier.fillMaxWidth()) { Text("Повторно выделить адреса") }
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = routeCity,
@@ -709,6 +715,10 @@ fun PhotoRoutePlannerScreen(
         if (located.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text("Точки маршрута: ${located.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = {
+                located = emptyList()
+                status = "Список адресов открыт для добавления, удаления и исправления."
+            }) { Text("Изменить список адресов") }
             Text(
                 "Проверьте каждую точку в Яндекс Картах. Порядок пока сохранён как в маршрутном листе, оптимизация не запускалась.",
                 color = TextMuted,
@@ -811,6 +821,10 @@ fun PhotoRoutePlannerScreen(
                             }
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            TextButton(onClick = {
+                                located = located.filterIndexed { i, _ -> i != index }
+                                status = "Точка удалена из маршрута."
+                            }) { Text("Убрать") }
                             TextButton(
                                 enabled = index > 0,
                                 onClick = {
