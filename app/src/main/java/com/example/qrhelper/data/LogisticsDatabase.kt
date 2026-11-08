@@ -45,6 +45,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Query("SELECT * FROM delivery_points WHERE routeId=:id ORDER BY sortOrder") fun points(id:Long):Flow<List<DeliveryPointEntity>>
  @Query("SELECT * FROM delivery_points WHERE routeId=:id ORDER BY sortOrder") suspend fun pointsOnce(id:Long):List<DeliveryPointEntity>
  @Query("SELECT * FROM cargo_items WHERE pointId=:id ORDER BY id") suspend fun cargoOnce(id:Long):List<CargoItemEntity>
+ @Query("DELETE FROM delivery_points WHERE routeId=:routeId") suspend fun deletePointsForRoute(routeId:Long)
  @Query("UPDATE delivery_points SET sortOrder=:sortOrder WHERE id=:id") suspend fun updateSortOrder(id:Long,sortOrder:Int)
  @Query("UPDATE cargo_items SET scannedQty=:qty WHERE id=:id") suspend fun setScannedQty(id:Long,qty:Int)
  @Query("SELECT * FROM delivery_points WHERE id=:id") fun point(id:Long):Flow<DeliveryPointEntity?>
