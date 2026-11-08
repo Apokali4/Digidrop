@@ -1139,7 +1139,7 @@ fun DigitDropRoot() {
                                         item.ownerName, item.workingHours, item.cashNote, item.extraComment
                                     ).joinToString("\t") { it.replace("\t", " ") }
                                 }
-                                prefs.edit().putString("active_manifest", manifest).apply()
+                                prefs.edit().putString("active_manifest", manifest).remove("scan_codes").apply()
                                 currentScreen = AppScreen.ROUTE_LIST
                                 Toast.makeText(context, "Маршрут сохранён", Toast.LENGTH_SHORT).show()
                             }
