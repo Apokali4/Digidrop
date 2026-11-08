@@ -661,6 +661,15 @@ fun PhotoRoutePlannerScreen(
         }
     }
 
+    val galleryPhotosLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            capturedUris = capturedUris + uris
+            status = "Добавлено фотографий: ${capturedUris.size}. Можно выбрать ещё или запустить общее распознавание."
+        }
+    }
+
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) cameraOpen = true
         else Toast.makeText(context, "Для съёмки маршрутника нужно разрешение камеры", Toast.LENGTH_LONG).show()
@@ -677,7 +686,11 @@ fun PhotoRoutePlannerScreen(
     }
     if (cameraOpen) {
         RouteCameraCaptureScreen(
-            onPhotoCaptured = { uri -> capturedUris = capturedUris + uri; processPhotoUris(listOf(uri)) },
+            onPhotoCaptured = {
+                uri ->
+                capturedUris = capturedUris + uri
+                message = "Фото добавлено в пакет. Снимите следующий лист или нажмите «Готово»."
+            },
             onClose = { cameraOpen = false }
         )
         return
@@ -709,8 +722,11 @@ fun PhotoRoutePlannerScreen(
         PhotoPlannerTile("Сфотографировать маршрутный лист", "Камера • можно добавить несколько снимков", enabled = !busy, primary = true) {
             cameraPermission.launch(Manifest.permission.CAMERA)
         }
+        PhotoPlannerTile("Выбрать фотографии из галереи", "Можно отметить сразу несколько снимков накладной", enabled = !busy) {
+            galleryPhotosLauncher.launch("image/*")
+        }
         if (capturedUris.isNotEmpty()) {
-            PhotoPlannerTile("Распознать снятые фотографии", "Снимков: ${capturedUris.size}", enabled = !busy) {
+            PhotoPlannerTile("Распознать все фотографии", "В очереди снимков: ${capturedUris.size}", enabled = !busy, primary = true) {
                 processPhotoUris(capturedUris)
                 capturedUris = emptyList()
             }
