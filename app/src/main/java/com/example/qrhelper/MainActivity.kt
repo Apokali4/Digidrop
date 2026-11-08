@@ -1078,6 +1078,7 @@ fun DigitDropRoot() {
                 refreshKey = offlineMapRefresh,
                 onBack = { currentScreen = AppScreen.ROUTE_LIST },
                 onImportMap = { mapFileLauncher.launch(arrayOf("*/*")) },
+                onOpenScanner = { openScanner() },
                 onGeocodeMissing = {
                     importScope.launch {
                         val resolved = geocodeRoute(context, routeItems)
