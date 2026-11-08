@@ -59,6 +59,10 @@ jobs:
               --output "$FONT_DIR/${RANGE}.pbf"
             test -s "$FONT_DIR/${RANGE}.pbf"
           done
+          curl --fail --location --retry 3 \
+            "https://raw.githubusercontent.com/protomaps/basemaps-assets/main/fonts/OFL.txt" \
+            --output "app/src/main/assets/fonts/OFL.txt"
+          test -s "app/src/main/assets/fonts/OFL.txt"
       - name: Download bundled Russian OCR model
         run: |
           mkdir -p app/src/main/assets/tessdata
