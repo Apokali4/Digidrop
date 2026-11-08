@@ -151,7 +151,7 @@ internal object PhotoRouteTextParser {
             .takeIf { it.length >= 8 }
     }
 
-    private fun canonicalAddressKey(address: String): String {
+    internal fun canonicalAddressKey(address: String): String {
         val street = streetHint.find(address) ?: return address.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
         val house = houseAfterStreet.find(address, street.range.last + 1)
