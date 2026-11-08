@@ -87,3 +87,5 @@ fun ProductCatalogScreen(
         }
     }
 }
+
+// DigiDrop interactive controls follow the shared rounded green tile style.
