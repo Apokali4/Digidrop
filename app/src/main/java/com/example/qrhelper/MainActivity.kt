@@ -1626,9 +1626,8 @@ fun HubScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
             .statusBarsPadding().navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
         Row(
             Modifier.fillMaxWidth(),
@@ -1645,21 +1644,11 @@ fun HubScreen(
         }
         HubTile(
             "Накладная",
-            "Загрузить или заменить маршрутный лист: фото, PDF, Excel, CSV",
-            "▤", EmeraldPrimary, Modifier.fillMaxWidth().heightIn(min = 112.dp), onLoadInvoice
+            "Загрузить или заменить маршрутный лист: фото, PDF, Excel или CSV",
+            "▤", EmeraldPrimary,
+            Modifier.fillMaxWidth().heightIn(min = 132.dp),
+            onLoadInvoice
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Сканер", "Штрихкоды и места", "▦", MintAccent, Modifier.weight(1f), onOpenScanner)
-            HubTile("Рейс и точки", "Список доставок", "⌖", EmeraldPrimary, Modifier.weight(1f), onOpenRoute)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Карта", "Маршрут и навигация", "◉", Color(0xFF4F8B72), Modifier.weight(1f), onOpenMap)
-            HubTile("Отчёты", "Сверка и экспорт", "▤", Color(0xFF3978A8), Modifier.weight(1f), onOpenReports)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("История", "Завершённые рейсы", "◷", MintAccent, Modifier.weight(1f), onOpenHistory)
-            HubTile("Настройки", "Офлайн и резервная копия", "⚙", Color(0xFF687C70), Modifier.weight(1f), onOpenSettings)
-        }
     }
 }
 
