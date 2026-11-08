@@ -13,6 +13,26 @@ data class RouteStop(
 )
 
 object RouteOrderOptimizer {
+    /** Builds up to four distinct nearest-neighbour routes, each beginning at a different pending stop. */
+    fun alternatives(stops: List<RouteStop>, limit: Int = 4): List<List<RouteStop>> {
+        if (limit <= 0 || stops.size < 3) return emptyList()
+        val completed = stops.filter { it.completed }
+        val pending = stops.filterNot { it.completed }
+        if (pending.size < 2 || pending.any { !it.hasValidCoordinates() }) return emptyList()
+        return pending.take(limit).mapNotNull { start ->
+            val remaining = pending.filterNot { it.id == start.id }.toMutableList()
+            val ordered = mutableListOf(start)
+            var current = start
+            while (remaining.isNotEmpty()) {
+                val next = remaining.minByOrNull { distanceMeters(current, it) } ?: break
+                ordered.add(next)
+                remaining.remove(next)
+                current = next
+            }
+            (completed + ordered).takeIf { it.map(RouteStop::id).distinct().size == stops.size }
+        }.distinctBy { route -> route.map(RouteStop::id) }
+    }
+
     fun optimize(stops: List<RouteStop>): List<RouteStop> {
         if (stops.size < 3) return stops
         val completed = stops.filter { it.completed }
