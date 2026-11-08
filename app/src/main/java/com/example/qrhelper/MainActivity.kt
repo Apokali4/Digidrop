@@ -1487,20 +1487,26 @@ fun SplashScreen(onFinished: () -> Unit) {
     )
     val pulse = rememberInfiniteTransition(label = "splashPulse")
     val glow by pulse.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.04f,
+        initialValue = 0.96f,
+        targetValue = 1.035f,
         animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
         label = "logoGlow"
     )
+    val progress by pulse.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1250), RepeatMode.Restart),
+        label = "splashProgress"
+    )
     LaunchedEffect(Unit) {
         visible = true
-        delay(1700)
+        delay(2200)
         onFinished()
     }
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(
-                listOf(Color(0xFFF4EBDD), Color(0xFFE8DCC9), Color(0xFFD8C8B1))
+                listOf(Color(0xFF071713), Color(0xFF101D19), Color(0xFF151A1D))
             )
         ),
         contentAlignment = Alignment.Center
@@ -1509,11 +1515,11 @@ fun SplashScreen(onFinished: () -> Unit) {
             val w = size.width
             val h = size.height
             drawCircle(
-                Brush.radialGradient(listOf(Color(0x55A68B68), Color.Transparent)),
-                radius = w * 0.72f,
-                center = Offset(w * 0.5f, h * 0.43f)
+                Brush.radialGradient(listOf(Color(0x5537C96B), Color.Transparent)),
+                radius = w * 0.78f,
+                center = Offset(w * 0.52f, h * 0.55f)
             )
-            // Лесные силуэты по краям, дорога и небольшой фургон.
+            // Силуэты леса, горная дорога и грузовик в графитово-зелёной палитре.
             fun tree(centerX: Float, baseY: Float, height: Float, tint: Color) {
                 val treePath = Path().apply {
                     moveTo(centerX, baseY - height)
@@ -1528,32 +1534,43 @@ fun SplashScreen(onFinished: () -> Unit) {
                 drawPath(treePath, tint)
                 drawLine(tint, Offset(centerX, baseY - height * 0.12f), Offset(centerX, baseY), height * 0.08f)
             }
-            val forest = Color(0x55708065)
+            val forest = Color(0xAA0C3023)
             listOf(0.04f to 0.76f, 0.14f to 0.82f, 0.25f to 0.77f, 0.83f to 0.82f, 0.94f to 0.76f)
-                .forEach { (x, y) -> tree(w * x, h * y, h * 0.18f, forest) }
+                .forEach { (x, y) -> tree(w * x, h * y, h * 0.19f, forest) }
+            val mountain = Path().apply {
+                moveTo(0f, h * 0.62f)
+                lineTo(w * 0.18f, h * 0.48f)
+                lineTo(w * 0.34f, h * 0.57f)
+                lineTo(w * 0.55f, h * 0.40f)
+                lineTo(w * 0.78f, h * 0.56f)
+                lineTo(w, h * 0.43f)
+                lineTo(w, h)
+                lineTo(0f, h)
+                close()
+            }
+            drawPath(mountain, Color(0x66304F3D))
             val road = Path().apply {
-                moveTo(w * 0.47f, h * 1.04f)
-                cubicTo(w * 0.42f, h * 0.88f, w * 0.64f, h * 0.80f, w * 0.54f, h * 0.67f)
+                moveTo(w * 0.50f, h * 1.04f)
+                cubicTo(w * 0.39f, h * 0.88f, w * 0.68f, h * 0.81f, w * 0.55f, h * 0.68f)
                 cubicTo(w * 0.48f, h * 0.59f, w * 0.53f, h * 0.54f, w * 0.56f, h * 0.50f)
             }
-            drawPath(road, Color(0x66847F73), style = Stroke(width = w * 0.13f, cap = StrokeCap.Round))
-            drawPath(road, Color(0x99F5F0E7), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-            val truckX = w * 0.58f
+            drawPath(road, Color(0xAA07110E), style = Stroke(width = w * 0.16f, cap = StrokeCap.Round))
+            drawPath(road, Color(0x6643B85B), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            val truckX = w * 0.48f
             val truckY = h * 0.70f
-            drawRoundRect(Color(0xFF667B68), Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
-            drawRoundRect(Color(0xFF536B5C), Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
-            drawRoundRect(Color(0xFFB9C9BE), Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
-            drawCircle(Color(0xFF3F4942), w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
-            drawCircle(Color(0xFF3F4942), w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
-            // Тонкая маршрутная линия с контрольными точками.
+            drawRoundRect(Color(0xFF263A31), Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
+            drawRoundRect(Color(0xFF365746), Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
+            drawRoundRect(Color(0xFF9CE6A7), Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+            drawCircle(Color(0xFF080E0B), w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
+            drawCircle(Color(0xFF080E0B), w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
             val routePath = Path().apply {
                 moveTo(w * 0.12f, h * 0.78f)
                 cubicTo(w * 0.34f, h * 0.66f, w * 0.25f, h * 0.48f, w * 0.52f, h * 0.50f)
                 cubicTo(w * 0.76f, h * 0.52f, w * 0.64f, h * 0.30f, w * 0.88f, h * 0.22f)
             }
-            drawPath(routePath, Color(0x557B6A52), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(routePath, Color(0x8843B85B), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
             listOf(Offset(w * 0.12f, h * 0.78f), Offset(w * 0.52f, h * 0.50f), Offset(w * 0.88f, h * 0.22f))
-                .forEach { drawCircle(Color(0xFF8A765D), radius = 6.dp.toPx(), center = it) }
+                .forEach { drawCircle(Color(0xFF65D77A), radius = 6.dp.toPx(), center = it) }
         }
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp).padding(top = 22.dp)
@@ -1563,7 +1580,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Box(
                 Modifier.size(112.dp).graphicsLayer { scaleX = glow; scaleY = glow }
                     .clip(RoundedCornerShape(34.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF8D7658), Color(0xFF5E5945)))),
+                    .background(Brush.linearGradient(listOf(Color(0xFF43B85B), Color(0xFF176B3A)))),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(Modifier.size(66.dp)) {
@@ -1576,23 +1593,34 @@ fun SplashScreen(onFinished: () -> Unit) {
                         lineTo(size.width * 0.12f, size.height * 0.26f)
                         close()
                     }
-                    drawPath(p, Color(0xFFF7F0E5), style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-                    drawLine(Color(0xFFF7F0E5), Offset(size.width * 0.27f, size.height * 0.53f), Offset(size.width * 0.46f, size.height * 0.68f), 4.dp.toPx(), cap = StrokeCap.Round)
-                    drawLine(Color(0xFFF7F0E5), Offset(size.width * 0.46f, size.height * 0.68f), Offset(size.width * 0.75f, size.height * 0.36f), 4.dp.toPx(), cap = StrokeCap.Round)
+                    drawPath(p, Color.White, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                    drawLine(Color.White, Offset(size.width * 0.27f, size.height * 0.53f), Offset(size.width * 0.46f, size.height * 0.68f), 4.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(Color.White, Offset(size.width * 0.46f, size.height * 0.68f), Offset(size.width * 0.75f, size.height * 0.36f), 4.dp.toPx(), cap = StrokeCap.Round)
                 }
             }
             Spacer(Modifier.height(26.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = Color(0xFF342D25), fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Drop", color = Color(0xFF80664E), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = Color(0xFFF1F4F2), fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Drop", color = Color(0xFF65D77A), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
             }
-            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = Color(0xFF746756), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = Color(0xFFADB8B2), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(56.dp))
-            Box(Modifier.fillMaxWidth(0.58f).height(5.dp).clip(CircleShape).background(Color(0x668A765D))) {
-                Box(Modifier.fillMaxWidth(appear.coerceIn(0.12f, 1f)).fillMaxHeight().clip(CircleShape).background(Color(0xFF80664E)))
+            Canvas(Modifier.fillMaxWidth(0.68f).height(8.dp)) {
+                val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
+                drawRoundRect(Color(0x663B5145), cornerRadius = radius)
+                val segmentWidth = size.width * 0.34f
+                val x = (size.width - segmentWidth) * progress
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        listOf(Color(0xFF176B3A), Color(0xFF65E879), Color(0xFFB4FFBD), Color(0xFF43B85B))
+                    ),
+                    topLeft = Offset(x, 0f),
+                    size = Size(segmentWidth, size.height),
+                    cornerRadius = radius
+                )
             }
             Spacer(Modifier.height(12.dp))
-            Text("Подготавливаем маршрут", color = Color(0xFF746756), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("Подготавливаем маршрут", color = Color(0xFFDCE7DF), fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
