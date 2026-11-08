@@ -8,9 +8,9 @@ import org.junit.Test
 class BrandPaletteTest {
     @Test
     fun appPaletteUsesLightSurfacesAndGreenActions() {
-        assertEquals(Color(0xFFF3F2EA), DigiDropPalette.background)
+        assertEquals(Color.White, DigiDropPalette.background)
         assertEquals(Color.White, DigiDropPalette.surface)
         assertEquals(Color(0xFF278747), DigiDropPalette.primary)
-        assertEquals(Color(0xFF26352C), DigiDropPalette.text)
+        assertEquals(Color(0xFF1F2D23), DigiDropPalette.text)
     }
 }
