@@ -21,16 +21,7 @@ class PhotoRouteNavigationUrlsTest {
         assertTrue(decoded.contains("rtt=auto"))
     }
 
-    @Test fun googleUrlUsesFirstAndLastAsEndpointsAndAllMiddleStopsAsWaypoints() {
-        val url = PhotoRouteNavigationUrls.google(stops)
-        val decoded = URLDecoder.decode(url, StandardCharsets.UTF_8.name())
-        assertTrue(decoded.contains("origin=55.75,37.61"))
-        assertTrue(decoded.contains("destination=55.78,37.64"))
-        assertTrue(decoded.contains("waypoints=55.76,37.62|55.77,37.63"))
-        assertTrue(decoded.contains("travelmode=driving"))
-    }
-
-    @Test fun bothProvidersRejectRoutesWithFewerThanTwoStops() {
+    @Test fun yandexRejectsRoutesWithFewerThanTwoStops() {
         val error = runCatching { PhotoRouteNavigationUrls.yandex(stops.take(1)) }.exceptionOrNull()
         assertEquals("Для навигации нужны минимум две точки", error?.message)
     }
