@@ -59,7 +59,7 @@ data class PhotoRouteHeader(
 )
 
 internal object PhotoRouteHeaderParser {
-    private val platePattern = Regex("""(?iu)([АВЕКМНОРСТУХABEKMHOPCTYX]\s*\d{3}\s*[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\s*\d{2,3})""")
+    private val platePattern = Regex("""(?iu)([АВЕКМНОРСТУХABEKMHOPCTYX]\s*\d{3}\s*[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\s*\d\s*\d\s*\d?)""")
 
     fun parse(text: String): PhotoRouteHeader {
         val lines = text.lineSequence()
@@ -86,9 +86,10 @@ internal object PhotoRouteHeaderParser {
             val remainder = vehicleLine.replaceFirst(
                 Regex("""(?iu)^.*?(?:транспортное\s+средство|автомобиль|машина|марка\s+авто)\s*[:№-]?\s*"""), ""
             ).trim()
-            vehicleNumber = platePattern.find(remainder)?.groupValues?.getOrNull(1)
+            val normalizedRemainder = remainder.replace(Regex("""(?<=\d)\s+(?=\d)"""), "")
+            vehicleNumber = platePattern.find(normalizedRemainder)?.groupValues?.getOrNull(1)
                 ?.replace(Regex("""\s+"""), "")?.uppercase(Locale("ru", "RU")).orEmpty()
-            vehicle = remainder.replace(platePattern, "")
+            vehicle = normalizedRemainder.replace(platePattern, "")
                 .replace(Regex("""(?iu)\s*№\s*"""), " ")
                 .replace(Regex("""\s+"""), " ")
                 .trim(' ', ',', ';', '-', '—')
@@ -100,9 +101,13 @@ internal object PhotoRouteHeaderParser {
                 .replace(Regex("""\s+"""), "").uppercase(Locale("ru", "RU"))
         }
 
-        val routeNumber = value(
+        val routeNumberFromLabel = value(
             Regex("""(?iu)(?:номер\s+маршрута|маршрут|рейс|задание\s+на\s+отгрузку)\s*№?\s*[:№-]?\s*([А-ЯЁA-Z0-9/-]+)""")
         )
+        val routeNumber = routeNumberFromLabel.ifBlank {
+            Regex("""(?iu)(?<![А-ЯЁA-Z0-9])([А-ЯЁA-Z])\s*([0-9][0-9\s]{7,}[0-9])(?![0-9])""")
+                .find(text)?.let { it.groupValues[1] + it.groupValues[2].replace(Regex("""\s+"""), "") }.orEmpty()
+        }
         return PhotoRouteHeader(driver, vehicle, vehicleNumber, routeNumber)
     }
 }
@@ -115,7 +120,7 @@ internal object PhotoRouteTextParser {
     )
     private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор)""")
     private val brandPatterns = listOf(
-        Regex("""(?iu)красное\s+и\s+белое""") to "Красное и Белое",
+        Regex("""(?iu)красное\s+и(?:\s+бел(?:ое|\w*))?""") to "Красное и Белое",
         Regex("""(?iu)бристоль""") to "Бристоль",
         Regex("""(?iu)пят[её]рочк""") to "Пятёрочка",
         Regex("""(?iu)магнит""") to "Магнит",
@@ -249,7 +254,12 @@ internal object PhotoRouteTextParser {
                 (instructionPattern.containsMatchIn(line) ||
                     line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
         }.map { it.value }.distinct().joinToString("; ")
-        return PhotoStopMetadata(store, owner, phone, hours, cash, comment)
+        val defaultHours = when (store) {
+            "Красное и Белое" -> "09:00–22:00"
+            "Бристоль" -> "08:00–22:00"
+            else -> ""
+        }
+        return PhotoStopMetadata(store, owner, phone, hours.ifBlank { defaultHours }, cash, comment)
     }
 }
 internal object PhotoOcrImageSizing {
