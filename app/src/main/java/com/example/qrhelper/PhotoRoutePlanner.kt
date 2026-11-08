@@ -87,45 +87,43 @@ internal object PhotoRouteTextParser {
             .toList()
 
     fun extractMetadata(text: String, address: String): PhotoStopMetadata {
-        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+        val lines = text.lineSequence().map { it.trim().replace(Regex("""\\s+"""), " ") }
+            .filter { it.isNotBlank() }.toList()
         val streetToken = streetHint.find(address)?.value?.lowercase(Locale("ru", "RU")).orEmpty()
         val houseToken = houseAfterStreet.find(address)?.groupValues?.getOrNull(1).orEmpty()
+        // OCR often changes a house number or punctuation. Match the street first,
+        // then use the nearest row as the anchor instead of losing all metadata.
         val index = lines.indexOfFirst { line ->
             val lower = line.lowercase(Locale("ru", "RU"))
-            streetToken.isNotBlank() && lower.contains(streetToken) && houseToken.isNotBlank() && lower.contains(houseToken)
+            streetToken.isNotBlank() && lower.contains(streetToken) &&
+                (houseToken.isBlank() || lower.contains(houseToken))
+        }.takeIf { it >= 0 } ?: lines.indexOfFirst { line ->
+            streetToken.isNotBlank() && line.lowercase(Locale("ru", "RU")).contains(streetToken)
         }
-        val block = if (index >= 0) lines.subList(maxOf(0, index - 5), minOf(lines.size, index + 8)) else emptyList()
-        val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
+        val block = if (index >= 0) lines.subList(maxOf(0, index - 3), minOf(lines.size, index + 6)) else lines
+        val anchor = lines.getOrNull(index).orEmpty()
+        val houseMatch = houseAfterStreet.find(anchor, (streetHint.find(anchor)?.range?.last ?: -1) + 1)
+        val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
+            ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
+        val legalPattern = Regex("""(?iu)\\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\\.?|товарищество)\\b""")
+        val owner = block.firstOrNull { legalPattern.containsMatchIn(it) }.orEmpty()
+        val phone = Regex("""(?iu)(?:\\+7|8)?[\\s(\\-]*\\d{3}[)\\s\\-]*\\d{3}[\\s\\-]*\\d{2}[\\s\\-]*\\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
-        val hours = Regex("""(?iu)\b\d{1,2}[:.]\d{2}\s*[-–—до]+\s*\d{1,2}[:.]\d{2}\b""")
-            .find(block.joinToString(" "))?.value.orEmpty()
+        val hoursPattern = Regex("""(?iu)(?:режим\\s+работы\\s*)?(?:с\\s*)?\\b\\d{1,2}[:.]?\\d{0,2}\\s*(?:[-–—]|до)\\s*\\d{1,2}[:.]?\\d{0,2}\\b""")
+        val hours = hoursPattern.find(block.joinToString(" "))?.value.orEmpty().trim()
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
-        val legalForm = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ЗАО|ЧУП|ФГУП|ГУП|МУП|НКО)\b""")
-        val owner = block.firstOrNull { legalForm.containsMatchIn(it) }.orEmpty()
-        val addressLine = block.firstOrNull { line ->
-            streetToken.isNotBlank() && line.contains(streetToken, ignoreCase = true) &&
-                houseToken.isNotBlank() && line.contains(houseToken)
-        }.orEmpty()
-        val houseMatch = houseAfterStreet.find(addressLine, streetHint.find(addressLine)?.range?.last?.plus(1) ?: 0)
-        val trailingStore = houseMatch?.let { match ->
-            addressLine.substring(match.range.last + 1).trim(' ', ',', ';', '.', ':', '|', '-', '—')
-        }.orEmpty()
-        val prefixStore = streetHint.find(addressLine)?.let { match ->
-            addressLine.substring(0, match.range.first)
-                .replace(Regex("""(?iu)\b(г\.?|калуга|тов\.?|магазин)\b"""), " ")
-                .replace(legalForm, " ")
-                .trim(' ', ',', ';', '.', ':', '|', '-', '—', '_')
-        }.orEmpty()
-        val shop = sequenceOf(trailingStore, prefixStore).firstOrNull {
-            it.length in 3..60 && !Regex("""(?iu)^(дом|корпус|строение|кв\.?|телефон)$""").containsMatchIn(it)
-        } ?: block.firstOrNull {
-            it != addressLine && it != owner && !legalForm.containsMatchIn(it) &&
-                Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|балтик|бристол|доставка|павильон)""").containsMatchIn(it)
-        }.orEmpty()
+        val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\\w*|Дикси|Красное\\s+и\\s+Белое|К\\s*&?\\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
+        val suffixBrand = afterHouse.takeIf { it.isNotBlank() && !legalPattern.containsMatchIn(it) }
+        val nearbyBrand = block.firstOrNull { it != owner && brandPattern.containsMatchIn(it) }.orEmpty()
+        val store = when {
+            suffixBrand != null -> suffixBrand
+            nearbyBrand.isNotBlank() -> nearbyBrand
+            else -> ""
+        }
         val comment = block.firstOrNull {
             it != cash && Regex("""(?iu)(коммент|подъезд|въезд|позвон|до закрыт|разгруз|ворот|забрать|передать)""").containsMatchIn(it)
         }.orEmpty()
-        return PhotoStopMetadata(shop, owner, phone, hours, cash, comment)
+        return PhotoStopMetadata(store, owner, phone, hours, cash, comment)
     }
 }
 
