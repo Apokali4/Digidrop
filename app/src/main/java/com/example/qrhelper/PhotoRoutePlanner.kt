@@ -301,15 +301,18 @@ internal object PhotoRouteNavigationUrls {
 
     fun yandexSegments(stops: List<PhotoRouteCoordinate>): List<List<PhotoRouteCoordinate>> {
         validate(stops)
-        if (stops.size <= YANDEX_MAX_STOPS) return listOf(stops)
+        val firstSegmentLimit = YANDEX_MAX_STOPS - 1 // Текущая позиция водителя тоже занимает одну точку.
+        if (stops.size <= firstSegmentLimit) return listOf(stops)
         val segments = mutableListOf<List<PhotoRouteCoordinate>>()
         var start = 0
+        var limit = firstSegmentLimit
         while (start < stops.lastIndex) {
-            val endExclusive = minOf(start + YANDEX_MAX_STOPS, stops.size)
+            val endExclusive = minOf(start + limit, stops.size)
             segments += stops.subList(start, endExclusive).toList()
             if (endExclusive == stops.size) break
-            // Последняя точка участка становится начальной точкой следующего.
+            // Последняя точка участка становится стартом следующего участка.
             start = endExclusive - 1
+            limit = YANDEX_MAX_STOPS
         }
         return segments
     }
@@ -349,11 +352,21 @@ internal object PhotoRouteNavigationUrls {
 
 }
 
-private fun openExternalMap(context: android.content.Context, url: String) {
+internal fun openYandexNavigator(
+    context: android.content.Context,
+    stops: List<PhotoRouteCoordinate>,
+    startsFromPreviousStop: Boolean = false
+) {
     try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            PhotoRouteNavigationUrls.yandexNavigator(stops, startsFromPreviousStop)
+        ).setPackage("ru.yandex.yandexnavi")
+        context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        android.widget.Toast.makeText(context, "Не найдено приложение для открытия карт", android.widget.Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
+    } catch (error: Exception) {
+        Toast.makeText(context, error.message ?: "Не удалось открыть маршрут в Яндекс Навигаторе", Toast.LENGTH_LONG).show()
     }
 }
 
@@ -910,13 +923,13 @@ fun PhotoRoutePlannerScreen(
                 Text("Для Яндекс Навигатора нужны минимум две точки с координатами.", color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else if (segments.size == 1) {
                 PhotoPlannerTile("Яндекс Навигатор", "Открыть все ${coords.size} точек в заданном порядке") {
-                    openExternalMap(context, PhotoRouteNavigationUrls.yandex(segments.first()))
+                    openYandexNavigator(context, segments.first())
                 }
             } else {
                 segments.forEachIndexed { index, segment ->
                     PhotoPlannerTile("Яндекс • участок ${index + 1} из ${segments.size}",
                         "${segment.size} точек • соседние участки имеют общую переходную точку") {
-                        openExternalMap(context, PhotoRouteNavigationUrls.yandex(segment))
+                        openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
                     }
                 }
             }
