@@ -362,7 +362,9 @@ private fun PhotoMetadataField(
 @Composable
 fun PhotoRoutePlannerScreen(
     initialAction: String? = null,
+    initialImageUri: Uri? = null,
     onInitialActionConsumed: () -> Unit = {},
+    onInitialImageConsumed: () -> Unit = {},
     onBack: () -> Unit,
     onApplyRoute: (List<RouteItem>) -> Unit
 ) {
@@ -408,19 +410,19 @@ fun PhotoRoutePlannerScreen(
             } finally { busy = false }
         }
     }
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
-        processPhotoUris(uris)
-    }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) cameraOpen = true
         else Toast.makeText(context, "Для съёмки маршрутника нужно разрешение камеры", Toast.LENGTH_LONG).show()
     }
     LaunchedEffect(initialAction) {
-        when (initialAction) {
-            "camera" -> cameraPermission.launch(Manifest.permission.CAMERA)
-            "gallery" -> photoPicker.launch("image/*")
-        }
+        if (initialAction == "camera") cameraPermission.launch(Manifest.permission.CAMERA)
         if (initialAction != null) onInitialActionConsumed()
+    }
+    LaunchedEffect(initialImageUri) {
+        initialImageUri?.let { uri ->
+            processPhotoUris(listOf(uri))
+            onInitialImageConsumed()
+        }
     }
     if (cameraOpen) {
         RouteCameraCaptureScreen(
@@ -445,14 +447,11 @@ fun PhotoRoutePlannerScreen(
         Text("Маршрут по фотографии", color = TextLight, style = MaterialTheme.typography.headlineSmall)
         Text(status, color = TextMuted, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { cameraPermission.launch(Manifest.permission.CAMERA) }, enabled = !busy, modifier = Modifier.weight(1f)) {
-                Text("Сфотографировать")
-            }
-            OutlinedButton(onClick = { photoPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.weight(1f)) {
-                Text("Из галереи")
-            }
-        }
+        Button(
+            onClick = { cameraPermission.launch(Manifest.permission.CAMERA) },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Сфотографировать ещё") }
         if (capturedUris.isNotEmpty()) {
             Text("Снимков с камеры: ${capturedUris.size}", color = TextLight, style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(onClick = { processPhotoUris(capturedUris); capturedUris = emptyList() },
