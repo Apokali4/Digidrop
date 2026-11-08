@@ -58,3 +58,13 @@ Unit-тесты для текущего состояния ветки `main` п�
 The driver hub, route list, offline map and barcode scanner now use the approved Industrial Graphite visual system. The route list keeps its action bar pinned while the full list scrolls. Delivery stops are grouped by normalized address, preserving all invoice cargo rows inside one stop. The offline map uses the bundled Kaluga PMTiles vector archive and locally bundled Noto Sans glyph ranges for road, place and water labels.
 
 Verification: GitHub Actions unit tests passed on the current main revision. A final debug APK build is triggered by this commit.
+
+
+## UI update 2026-11-08
+
+- Photo route planning uses the approved white-and-green tile layout for navigation, status, route actions and each delivery stop.
+- Delivery stop order is changed by long-press drag; obsolete up/down and remove text actions are removed from the route planner.
+- The offline-map tile saves the imported route and opens the local map screen directly. Yandex navigation remains available with 20-stop route segmentation.
+- The route editor uses the same tile-based controls and drag ordering.
+- Google Maps route launch has been removed from the photo route planner.
+
