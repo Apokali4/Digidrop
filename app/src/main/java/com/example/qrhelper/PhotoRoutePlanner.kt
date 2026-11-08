@@ -94,16 +94,33 @@ internal object PhotoRouteTextParser {
             val lower = line.lowercase(Locale("ru", "RU"))
             streetToken.isNotBlank() && lower.contains(streetToken) && houseToken.isNotBlank() && lower.contains(houseToken)
         }
-        val block = if (index >= 0) lines.subList(maxOf(0, index - 4), minOf(lines.size, index + 7)) else emptyList()
+        val block = if (index >= 0) lines.subList(maxOf(0, index - 5), minOf(lines.size, index + 8)) else emptyList()
         val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
         val hours = Regex("""(?iu)\b\d{1,2}[:.]\d{2}\s*[-–—до]+\s*\d{1,2}[:.]\d{2}\b""")
             .find(block.joinToString(" "))?.value.orEmpty()
-        val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс)""").containsMatchIn(it) }.orEmpty()
-        val owner = block.firstOrNull { Regex("""(?iu)\bИП\b""").containsMatchIn(it) }
-            ?: block.firstOrNull { Regex("""(?iu)\b(ООО|АО)\b""").containsMatchIn(it) }.orEmpty()
-        val shop = block.firstOrNull {
-            it != address && Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|доставка|павильон|ООО|АО)""").containsMatchIn(it)
+        val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
+        val legalForm = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ЗАО|ЧУП|ФГУП|ГУП|МУП|НКО)\b""")
+        val owner = block.firstOrNull { legalForm.containsMatchIn(it) }.orEmpty()
+        val addressLine = block.firstOrNull { line ->
+            streetToken.isNotBlank() && line.contains(streetToken, ignoreCase = true) &&
+                houseToken.isNotBlank() && line.contains(houseToken)
+        }.orEmpty()
+        val houseMatch = houseAfterStreet.find(addressLine, streetHint.find(addressLine)?.range?.last?.plus(1) ?: 0)
+        val trailingStore = houseMatch?.let { match ->
+            addressLine.substring(match.range.last + 1).trim(' ', ',', ';', '.', ':', '|', '-', '—')
+        }.orEmpty()
+        val prefixStore = streetHint.find(addressLine)?.let { match ->
+            addressLine.substring(0, match.range.first)
+                .replace(Regex("""(?iu)\b(г\.?|калуга|тов\.?|магазин)\b"""), " ")
+                .replace(legalForm, " ")
+                .trim(' ', ',', ';', '.', ':', '|', '-', '—', '_')
+        }.orEmpty()
+        val shop = sequenceOf(trailingStore, prefixStore).firstOrNull {
+            it.length in 3..60 && !Regex("""(?iu)^(дом|корпус|строение|кв\.?|телефон)$""").containsMatchIn(it)
+        } ?: block.firstOrNull {
+            it != addressLine && it != owner && !legalForm.containsMatchIn(it) &&
+                Regex("""(?iu)(магазин|маркет|продукт|торгов|пятероч|магнит|балтик|бристол|доставка|павильон)""").containsMatchIn(it)
         }.orEmpty()
         val comment = block.firstOrNull {
             it != cash && Regex("""(?iu)(коммент|подъезд|въезд|позвон|до закрыт|разгруз|ворот|забрать|передать)""").containsMatchIn(it)
@@ -542,9 +559,11 @@ fun PhotoRoutePlannerScreen(
                         } else if (resolved.size < 2) {
                             status = "Найдено меньше двух координат. Проверьте адреса."
                         } else {
-                            // Сначала только проверка и просмотр адресов. Оптимизация запускается отдельно после проверки водителем.
+                            // Сохраняем OCR-метаданные: раньше чистый resolved затирал их после геокодирования.
                             routeOrigin = null
-                            located = resolved
+                            located = resolved.map { stop ->
+                                stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
+                            }
                             val duplicateGroups = resolved.groupBy {
                                 "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
                             }.values.filter { it.size > 1 }
