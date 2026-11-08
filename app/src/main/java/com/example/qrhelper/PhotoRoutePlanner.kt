@@ -106,18 +106,23 @@ internal object PhotoRouteTextParser {
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
         val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
-        val owner = block.firstOrNull { legalPattern.containsMatchIn(it) }.orEmpty()
-        val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
+        val legalLines = block.withIndex().filter { legalPattern.containsMatchIn(it.value) }
+        val owner = legalLines.firstOrNull { it.index + maxOf(0, index - 3) > index && Regex("""(?iu)\\bИП\\b""").containsMatchIn(it.value) }?.value
+            ?: legalLines.firstOrNull { it.index + maxOf(0, index - 3) < index }?.value
+            ?: legalLines.firstOrNull()?.value.orEmpty()
+        val phone = Regex("""(?iu)(?:\\+7|8)?[\\s(\\-]*\\d{3}[)\\s\\-]*\\d{3}[\\s\\-]*\\d{2}[\\s\\-]*\\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
-        val hoursPattern = Regex("""(?iu)(?:режим\s+работы\s*)?(?:с\s*)?\b\d{1,2}[:.]?\d{0,2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]?\d{0,2}\b""")
+        val hoursPattern = Regex("""(?iu)(?:режим\\s+работы\\s*)?(?:с\\s*)?\\b\\d{1,2}[:.]?\\d{0,2}\\s*(?:[-–—]|до)\\s*\\d{1,2}[:.]?\\d{0,2}\\b""")
         val hours = hoursPattern.find(block.joinToString(" "))?.value.orEmpty().trim()
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
-        val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\w*|Дикси|Красное\s+и\s+Белое|К\s*&?\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
+        val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\\w*|Дикси|Красное\\s+и\\s+Белое|К\\s*&?\\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
         val suffixBrand = afterHouse.takeIf { it.isNotBlank() && !legalPattern.containsMatchIn(it) }
+        val beforeAddressLegal = legalLines.firstOrNull { it.index + maxOf(0, index - 3) < index }?.value.orEmpty()
         val nearbyBrand = block.firstOrNull { it != owner && brandPattern.containsMatchIn(it) }.orEmpty()
         val store = when {
             suffixBrand != null -> suffixBrand
             nearbyBrand.isNotBlank() -> nearbyBrand
+            beforeAddressLegal.isNotBlank() -> beforeAddressLegal
             else -> ""
         }
         val comment = block.firstOrNull {
