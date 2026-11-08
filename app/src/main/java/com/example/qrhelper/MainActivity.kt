@@ -730,21 +730,27 @@ fun DigitDropRoot() {
     val backupExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
     ) { uri: Uri? ->
-        if (uri != null) runCatching {
-            val snapshot = BackupSnapshot(
-                routeItems = routeItems,
-                offlineMode = settingsOffline,
-                autoSave = settingsAutoSave,
-                compactMode = settingsCompact,
-                unknownCodes = unknownCodes,
-                scanCodes = prefs.getStringSet("scan_codes", emptySet()).orEmpty().toList()
-            )
-            context.contentResolver.openOutputStream(uri)?.use {
-                BackupManager.writeBackup(it, snapshot, context.filesDir)
-            } ?: error("Не удалось открыть файл резервной копии")
-            Toast.makeText(context, "Резервная копия сохранена", Toast.LENGTH_SHORT).show()
-        }.onFailure { error ->
-            Toast.makeText(context, "Ошибка резервного копирования: ${error.message}", Toast.LENGTH_LONG).show()
+        if (uri != null) importScope.launch {
+            runCatching {
+                val catalog = LogisticsRepository(context).allProducts().map {
+                    ProductCatalogRecord(barcode = it.barcode, productName = it.productName)
+                }
+                val snapshot = BackupSnapshot(
+                    routeItems = routeItems,
+                    offlineMode = settingsOffline,
+                    autoSave = settingsAutoSave,
+                    compactMode = settingsCompact,
+                    unknownCodes = unknownCodes,
+                    scanCodes = prefs.getStringSet("scan_codes", emptySet()).orEmpty().toList(),
+                    catalog = catalog
+                )
+                context.contentResolver.openOutputStream(uri)?.use {
+                    BackupManager.writeBackup(it, snapshot, context.filesDir)
+                } ?: error("Не удалось открыть файл резервной копии")
+                Toast.makeText(context, "Резервная копия сохранена", Toast.LENGTH_SHORT).show()
+            }.onFailure { error ->
+                Toast.makeText(context, "Ошибка резервного копирования: ${error.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -776,7 +782,9 @@ fun DigitDropRoot() {
                     .putStringSet("unknown_codes", snapshot.unknownCodes.toSet())
                     .putStringSet("scan_codes", snapshot.scanCodes.toSet())
                     .apply()
-                LogisticsRepository(context).replaceActiveRoute(snapshot.routeItems)
+                val repository = LogisticsRepository(context)
+                repository.replaceActiveRoute(snapshot.routeItems)
+                repository.restoreProducts(snapshot.catalog)
                 Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
             }.onFailure { error ->
                 Toast.makeText(context, "Не удалось восстановить копию: ${error.message}", Toast.LENGTH_LONG).show()
