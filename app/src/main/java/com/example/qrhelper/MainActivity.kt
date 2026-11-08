@@ -2561,12 +2561,22 @@ fun RouteListScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = onRebuildRoute) {
-                    Text("Перестроить оставшийся маршрут")
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onRebuildRoute,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Перестроить маршрут", maxLines = 1, fontSize = 12.sp)
                 }
-                TextButton(onClick = onOpenOfflineMap) {
-                    Text("ОФЛАЙН-КАРТА КАЛУГИ И ОБЛАСТИ")
+                TextButton(
+                    onClick = onOpenOfflineMap,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Офлайн-карта", maxLines = 1, fontSize = 12.sp)
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
