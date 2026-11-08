@@ -98,7 +98,7 @@ fun OfflineMapScreen(
     onSelectPoint: (List<RouteItem>) -> Unit
 ) {
     val context = LocalContext.current
-    val pointGroups = remember(routeItems) { routeItems.groupBy { it.storeName to it.address }.values.map { it.toList() } }
+    val pointGroups = remember(routeItems) { routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.map { it.toList() } }
     var selectedFilter by remember { mutableStateOf(PointFilter.ALL) }
     val pointSnapshots = remember(pointGroups) {
         pointGroups.mapIndexed { index, group ->
@@ -107,7 +107,7 @@ fun OfflineMapScreen(
             val discrepancies = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
             val status = deliveryPointStatus(group)
             DeliveryPointSnapshot(
-                id = group.first().storeName + "|" + group.first().address,
+                id = PhotoRouteTextParser.canonicalAddressKey(group.first().address),
                 sortOrder = index,
                 status = status,
                 expectedUnits = expected,
@@ -120,7 +120,7 @@ fun OfflineMapScreen(
         RouteProgress.filter(pointSnapshots, selectedFilter).map { it.id }.toSet()
     }
     val visiblePointGroups = pointGroups.filter { group ->
-        (group.first().storeName + "|" + group.first().address) in visibleIds
+        PhotoRouteTextParser.canonicalAddressKey(group.first().address) in visibleIds
     }
     val mappedGroups = visiblePointGroups.filter { group -> group.firstOrNull()?.let { it.latitude != null && it.longitude != null } == true }
     val lifecycleOwner = LocalLifecycleOwner.current
