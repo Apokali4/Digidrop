@@ -21,6 +21,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -322,18 +324,6 @@ internal object PhotoRouteNavigationUrls {
         return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
     }
 
-    fun google(stops: List<PhotoRouteCoordinate>): String {
-        validate(stops)
-        require(stops.size <= 11) {
-            "Google Карты поддерживают не больше 9 промежуточных точек. Для полного маршрута используйте Яндекс Карты."
-        }
-        val origin = encode("${stops.first().latitude},${stops.first().longitude}")
-        val destination = encode("${stops.last().latitude},${stops.last().longitude}")
-        val waypoints = stops.drop(1).dropLast(1)
-        val waypointPart = if (waypoints.isEmpty()) "" else
-            "&waypoints=${encode(waypoints.joinToString("|") { "${it.latitude},${it.longitude}" })}"
-        return "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination$waypointPart&travelmode=driving"
-    }
 }
 
 private fun openExternalMap(context: android.content.Context, url: String) {
@@ -803,27 +793,9 @@ fun PhotoRoutePlannerScreen(
                     }
                 }
             }
-            Button(
-                onClick = {
-                    runCatching { PhotoRouteNavigationUrls.google(navigationCoordinates) }
-                        .onSuccess { openExternalMap(context, it) }
-                        .onFailure {
-                            android.widget.Toast.makeText(context, it.message ?: "Не удалось открыть Google Карты", android.widget.Toast.LENGTH_LONG).show()
-                        }
-                },
-                enabled = located.size <= 11,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Открыть маршрут в Google Картах") }
-            if (navigationCoordinates.size > 11) {
-                Text(
-                    "В Google Картах ограничено число промежуточных точек. Маршрут в Яндексе разбивается на участки по 20 точек.",
-                    color = TextMuted,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Порядок можно менять вручную. Стрелки перемещают остановку выше или ниже; навигатор получит именно этот порядок.",
+                "Зажмите карточку и перетащите её, чтобы изменить порядок. Навигатор получит именно эту последовательность.",
                 color = TextMuted,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -832,13 +804,41 @@ fun PhotoRoutePlannerScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(BgDark.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                            .background(androidx.compose.ui.graphics.Color(0xFFFFFFFF), RoundedCornerShape(12.dp))
+                            .pointerInput(index) {
+                                var dragDistance = 0f
+                                detectDragGesturesAfterLongPress(
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        dragDistance += amount.y
+                                        if (kotlin.math.abs(dragDistance) >= 65f) {
+                                            val target = (index + if (dragDistance > 0f) 1 else -1)
+                                                .coerceIn(0, located.lastIndex)
+                                            if (target != index) {
+                                                located = located.toMutableList().also { list ->
+                                                    val moved = list.removeAt(index)
+                                                    list.add(target, moved)
+                                                }
+                                            }
+                                            dragDistance = 0f
+                                        }
+                                    }
+                                )
+                            }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text("Точка ${index + 1}", color = TextLight, style = MaterialTheme.typography.labelLarge)
-                            Text(stop.address, color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text("${index + 1}", color = androidx.compose.ui.graphics.Color(0xFF278747),
+                            style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(stop.metadata.storeName.ifBlank { "Точка ${index + 1}" },
+                                color = androidx.compose.ui.graphics.Color(0xFF202820), style = MaterialTheme.typography.titleSmall)
+                            Text(stop.address, color = androidx.compose.ui.graphics.Color(0xFF58645A),
+                                style = MaterialTheme.typography.bodySmall)
+                            val details = listOf(stop.metadata.workingHours, stop.metadata.phone).filter { it.isNotBlank() }.joinToString(" • ")
+                            if (details.isNotBlank()) Text(details, color = androidx.compose.ui.graphics.Color(0xFF278747),
+                                style = MaterialTheme.typography.labelSmall)
                             TextButton(onClick = {
                                 val query = "${stop.latitude},${stop.longitude}"
                                 openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
@@ -853,32 +853,7 @@ fun PhotoRoutePlannerScreen(
                                 updateStopMetadata(index) { metadata -> metadata.copy(comment = value) }
                             }
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            TextButton(onClick = {
-                                located = located.filterIndexed { i, _ -> i != index }
-                                status = "Точка удалена из маршрута."
-                            }) { Text("Убрать") }
-                            TextButton(
-                                enabled = index > 0,
-                                onClick = {
-                                    located = located.toMutableList().also { list ->
-                                        val item = list.removeAt(index)
-                                        list.add(index - 1, item)
-                                    }
-                                    status = "Порядок изменён вручную. Экспортируй маршрут заново в навигатор."
-                                }
-                            ) { Text("↑ Выше") }
-                            TextButton(
-                                enabled = index < located.lastIndex,
-                                onClick = {
-                                    located = located.toMutableList().also { list ->
-                                        val item = list.removeAt(index)
-                                        list.add(index + 1, item)
-                                    }
-                                    status = "Порядок изменён вручную. Экспортируй маршрут заново в навигатор."
-                                }
-                            ) { Text("↓ Ниже") }
-                        }
+                        Text("⠿", color = androidx.compose.ui.graphics.Color(0xFF278747), style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }
