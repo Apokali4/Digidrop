@@ -57,7 +57,7 @@ internal object RouteImportMapper {
         """(?iu)\b(?:ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|ОГРН|ИНН)\b"""
     )
     private val genericStoreNames = setOf("", "точка", "точкабезназвания", "магазин", "получатель")
-    private val supplierBrandPattern = Regex("""(?iu)\\b(?:кока[ -]?кола|coca[ -]?cola|пепси|pepsi|балтика|хайнекен|heineken)\\b""")
+    private val supplierBrandPattern = Regex("""(?iu)\b(?:кока[ -]?кола|coca[ -]?cola|пепси|pepsi|балтика|хайнекен|heineken)\b""")
 
     fun map(items: List<RouteItem>): List<PointImportPlan> =
         items.filter { it.address.isNotBlank() }
