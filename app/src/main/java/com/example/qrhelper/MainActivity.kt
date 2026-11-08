@@ -1034,6 +1034,7 @@ fun DigitDropRoot() {
         AppScreen.PHOTO_ROUTE -> {
             PhotoRoutePlannerScreen(
                 initialAction = photoRouteInitialAction,
+                onInitialActionConsumed = { photoRouteInitialAction = null },
                 onBack = { photoRouteInitialAction = null; currentScreen = AppScreen.HUB },
                 onApplyRoute = { imported ->
                     sessionScanCodes = emptySet()
