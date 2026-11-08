@@ -4,11 +4,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#102F59" android:pathData="M54,13 L88,32 L88,72 L54,92 L20,72 L20,32 Z"/>
-    <path android:fillColor="#00000000" android:strokeColor="#28D9FF" android:strokeWidth="4.5" android:strokeLineJoin="round" android:pathData="M54,15 L86,33 L54,51 L22,33 Z"/>
-    <path android:fillColor="#00000000" android:strokeColor="#18BFFF" android:strokeWidth="4.5" android:strokeLineJoin="round" android:pathData="M22,33 L22,71 L54,90 L54,51"/>
-    <path android:fillColor="#00000000" android:strokeColor="#00E5FF" android:strokeWidth="4.5" android:strokeLineJoin="round" android:pathData="M86,33 L86,71 L54,90"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M47,57 L51,57 L51,76 L47,76 Z M56,57 L61,57 L61,76 L56,76 Z M66,57 L69,57 L69,76 L66,76 Z"/>
-    <path android:fillColor="#27DFFF" android:pathData="M54,15 L54,51 L22,33 Z"/>
-    <path android:fillColor="#0879C8" android:pathData="M54,51 L86,33 L86,71 L54,90 Z"/>
+    <!-- Keep the complete mark inside the adaptive-icon safe zone. -->
+    <path
+        android:fillColor="#22C7D8"
+        android:pathData="M54,23 C39.1,23 27,35.1 27,50 C27,68.2 54,85 54,85 C54,85 81,68.2 81,50 C81,35.1 68.9,23 54,23 Z"/>
+    <path
+        android:fillColor="#07334A"
+        android:pathData="M54,34 C45.2,34 38,41.2 38,50 C38,58.8 45.2,66 54,66 C62.8,66 70,58.8 70,50 C70,41.2 62.8,34 54,34 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51.2,56.9 L43.7,49.4 L47.2,45.9 L51.2,49.9 L60.8,40.3 L64.3,43.8 Z"/>
 </vector>
