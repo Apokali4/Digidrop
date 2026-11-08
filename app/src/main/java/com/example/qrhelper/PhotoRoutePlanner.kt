@@ -134,7 +134,7 @@ internal object PhotoRouteTextParser {
             ?: legalLines.firstOrNull()?.value.orEmpty()
         val phone = Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
-        val hoursPattern = Regex("""(?iu)(?:режим\s+работы\s*)?(?:с\s*)?\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}""")
+        val hoursPattern = Regex("""(?iu)\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}""")
         val hours = hoursPattern.find(block.joinToString(" "))?.value.orEmpty().trim()
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
         val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\w*|Дикси|Красное\s+и\s+Белое|К\s*&?\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
