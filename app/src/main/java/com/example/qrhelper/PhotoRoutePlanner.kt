@@ -628,63 +628,65 @@ fun PhotoRoutePlannerScreen(
             singleLine = true
         )
         Spacer(Modifier.height(8.dp))
-        Text("Адреса для маршрута: ${addresses.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            addresses.forEachIndexed { index, address ->
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { value -> addresses = addresses.toMutableList().also { it[index] = value } },
-                    label = { Text("Точка ${index + 1}") },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        TextButton(onClick = { addresses = addresses.filterIndexed { i, _ -> i != index } }) { Text("Убрать") }
-                    }
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { addresses = addresses + "" }, modifier = Modifier.weight(1f)) { Text("+ Точка") }
-            Button(onClick = {
-                scope.launch {
-                    busy = true
-                    try {
-                        val clean = addresses.map { it.trim() }.filter { it.isNotBlank() }.distinct()
-                        require(clean.size >= 2) { "Добавьте минимум два адреса" }
-                        status = "Ищу координаты адресов…"
-                        val (resolved, failed) = geocodePhotoStops(context, clean, routeCity)
-                        located = resolved.map { stop ->
-                            stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
+        if (located.isEmpty()) {
+            Text("Адреса для маршрута: ${addresses.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                addresses.forEachIndexed { index, address ->
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { value -> addresses = addresses.toMutableList().also { it[index] = value } },
+                        label = { Text("Точка ${index + 1}") },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            TextButton(onClick = { addresses = addresses.filterIndexed { i, _ -> i != index } }) { Text("Убрать") }
                         }
-                        if (failed.isNotEmpty()) {
-                            status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
-                        } else if (resolved.size < 2) {
-                            status = "Найдено меньше двух координат. Проверьте адреса."
-                        } else {
-                            // Сохраняем OCR-метаданные: раньше чистый resolved затирал их после геокодирования.
-                            routeOrigin = null
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { addresses = addresses + "" }, modifier = Modifier.weight(1f)) { Text("+ Точка") }
+                Button(onClick = {
+                    scope.launch {
+                        busy = true
+                        try {
+                            val clean = addresses.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+                            require(clean.size >= 2) { "Добавьте минимум два адреса" }
+                            status = "Ищу координаты адресов…"
+                            val (resolved, failed) = geocodePhotoStops(context, clean, routeCity)
                             located = resolved.map { stop ->
                                 stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
                             }
-                            val duplicateGroups = resolved.groupBy {
-                                "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
-                            }.values.filter { it.size > 1 }
-                            status = if (duplicateGroups.isEmpty()) {
-                                "Найдено точек: ${resolved.size}. Проверьте каждую в Яндекс Картах и при необходимости исправьте адреса."
+                            if (failed.isNotEmpty()) {
+                                status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
+                            } else if (resolved.size < 2) {
+                                status = "Найдено меньше двух координат. Проверьте адреса."
                             } else {
-                                "Найдено точек: ${resolved.size}. ${duplicateGroups.sumOf { it.size - 1 }} точек получили одинаковые координаты. Проверьте их вручную."
+                                // Сохраняем OCR-метаданные: раньше чистый resolved затирал их после геокодирования.
+                                routeOrigin = null
+                                located = resolved.map { stop ->
+                                    stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
+                                }
+                                val duplicateGroups = resolved.groupBy {
+                                    "${"%.5f".format(Locale.US, it.latitude)},${"%.5f".format(Locale.US, it.longitude)}"
+                                }.values.filter { it.size > 1 }
+                                status = if (duplicateGroups.isEmpty()) {
+                                    "Найдено точек: ${resolved.size}. Проверьте каждую в Яндекс Картах и при необходимости исправьте адреса."
+                                } else {
+                                    "Найдено точек: ${resolved.size}. ${duplicateGroups.sumOf { it.size - 1 }} точек получили одинаковые координаты. Проверьте их вручную."
+                                }
                             }
-                        }
-                    } catch (error: Exception) {
-                        status = "Не удалось построить маршрут: ${error.message ?: "ошибка сети"}"
-                    } finally { busy = false }
+                        } catch (error: Exception) {
+                            status = "Не удалось построить маршрут: ${error.message ?: "ошибка сети"}"
+                        } finally { busy = false }
+                    }
+                }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
+                    Text(if (busy) "Подождите…" else "Найти точки", maxLines = 1, softWrap = false, fontSize = 12.sp)
                 }
-            }, enabled = !busy && addresses.count { it.isNotBlank() } >= 2, modifier = Modifier.weight(1f)) {
-                Text(if (busy) "Подождите…" else "Найти точки", maxLines = 1, softWrap = false, fontSize = 12.sp)
             }
         }
         if (located.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
-            Text("Предварительный список: ${located.size} точек", color = TextLight, style = MaterialTheme.typography.titleMedium)
+            Text("Точки маршрута: ${located.size}", color = TextLight, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Проверьте каждую точку в Яндекс Картах. Порядок пока сохранён как в маршрутном листе, оптимизация не запускалась.",
                 color = TextMuted,
@@ -776,22 +778,13 @@ fun PhotoRoutePlannerScreen(
                                 val query = "${stop.latitude},${stop.longitude}"
                                 openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
                             }) { Text("Проверить в Яндекс Картах") }
-                            PhotoMetadataField("Магазин / получатель", stop.metadata.storeName) { value ->
+                            PhotoMetadataField("Магазин", stop.metadata.storeName) { value ->
                                 updateStopMetadata(index) { metadata -> metadata.copy(storeName = value) }
                             }
-                            PhotoMetadataField("ИП / контактное лицо", stop.metadata.ownerName) { value ->
-                                updateStopMetadata(index) { metadata -> metadata.copy(ownerName = value) }
-                            }
-                            PhotoMetadataField("Телефон", stop.metadata.phone) { value ->
-                                updateStopMetadata(index) { metadata -> metadata.copy(phone = value) }
-                            }
-                            PhotoMetadataField("График работы", stop.metadata.workingHours) { value ->
+                            PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value ->
                                 updateStopMetadata(index) { metadata -> metadata.copy(workingHours = value) }
                             }
-                            PhotoMetadataField("Наличные / документы", stop.metadata.cashNote) { value ->
-                                updateStopMetadata(index) { metadata -> metadata.copy(cashNote = value) }
-                            }
-                            PhotoMetadataField("Комментарий / инструкция", stop.metadata.comment) { value ->
+                            PhotoMetadataField("Комментарий", stop.metadata.comment) { value ->
                                 updateStopMetadata(index) { metadata -> metadata.copy(comment = value) }
                             }
                         }
