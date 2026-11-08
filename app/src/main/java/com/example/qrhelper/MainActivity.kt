@@ -2734,29 +2734,27 @@ fun RouteListScreen(
                 verticalArrangement = Arrangement.spacedBy(if (compactMode) 7.dp else 14.dp)
             ) {
                 if (displayedGroups.isEmpty()) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
-                                .border(1.dp, CardBorder, RoundedCornerShape(20.dp)),
-                            colors = CardDefaults.cardColors(containerColor = CardSurface),
-                            shape = RoundedCornerShape(20.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
+                            .border(1.dp, CardBorder, RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(22.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(22.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(10.dp))
-                                Text(
-                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
-                                    color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
-                                    color = TextMuted, fontSize = 13.sp
-                                )
-                            }
+                            Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
+                                color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
+                                color = TextMuted, fontSize = 13.sp
+                            )
                         }
                     }
                 } else {
