@@ -881,8 +881,10 @@ fun PhotoRoutePlannerScreen(
 
             Text("НАВИГАЦИЯ", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
             val coords = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
-            val segments = PhotoRouteNavigationUrls.yandexSegments(coords)
-            if (segments.size == 1) {
+            val segments = if (coords.size >= 2) PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
+            if (segments.isEmpty()) {
+                Text("Для Яндекс Навигатора нужны минимум две точки с координатами.", color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else if (segments.size == 1) {
                 PhotoPlannerTile("Яндекс Навигатор", "Открыть все ${coords.size} точек в заданном порядке") {
                     openExternalMap(context, PhotoRouteNavigationUrls.yandex(segments.first()))
                 }
