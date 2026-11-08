@@ -323,18 +323,6 @@ internal object PhotoRouteNavigationUrls {
         return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
     }
 
-    fun google(stops: List<PhotoRouteCoordinate>): String {
-        validate(stops)
-        require(stops.size <= 11) {
-            "Google Карты поддерживают не больше 9 промежуточных точек. Для полного маршрута используйте Яндекс Карты."
-        }
-        val origin = encode("${stops.first().latitude},${stops.first().longitude}")
-        val destination = encode("${stops.last().latitude},${stops.last().longitude}")
-        val waypoints = stops.drop(1).dropLast(1)
-        val waypointPart = if (waypoints.isEmpty()) "" else
-            "&waypoints=${encode(waypoints.joinToString("|") { "${it.latitude},${it.longitude}" })}"
-        return "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination$waypointPart&travelmode=driving"
-    }
 }
 
 private fun openExternalMap(context: android.content.Context, url: String) {
