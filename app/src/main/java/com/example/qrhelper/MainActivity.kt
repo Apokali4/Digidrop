@@ -51,6 +51,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -1177,12 +1178,9 @@ fun DigitDropRoot() {
                 },
                 onToggleItem = { item -> updateItemStatus(item) },
                 onApplyAlternative = { orderedIds ->
-                    val grouped = routeItems.groupBy { it.storeName to it.address }
-                    val reordered = orderedIds.flatMap { id ->
-                        val split = id.indexOf("|")
-                        val key = if (split >= 0) id.substring(0, split) to id.substring(split + 1) else "" to ""
-                        grouped[key].orEmpty()
-                    } + grouped.filterKeys { key -> key.first + "|" + key.second !in orderedIds }.values.flatten()
+                    val grouped = routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+                    val reordered = orderedIds.flatMap { id -> grouped[id].orEmpty() } +
+                        grouped.filterKeys { key -> key !in orderedIds }.values.flatten()
                     routeItems = reordered
                     importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
                     val saved = reordered.joinToString("\n") { item ->
@@ -1195,7 +1193,7 @@ fun DigitDropRoot() {
                     Toast.makeText(context, "Выбранный порядок точек применён", Toast.LENGTH_SHORT).show()
                 },
                 onMoveGroup = { from, to ->
-                    val groups = routeItems.groupBy { it.storeName to it.address }.toList().toMutableList()
+                    val groups = routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.toList().toMutableList()
                     if (from in groups.indices && to in groups.indices) {
                         val moved = groups.removeAt(from)
                         groups.add(to, moved)
@@ -2670,7 +2668,7 @@ fun RouteListScreen(
         val stops = allGroups.map { (key, group) ->
             val first = group.first()
             com.example.qrhelper.domain.RouteStop(
-                id = key.first + "|" + key.second,
+                id = PhotoRouteTextParser.canonicalAddressKey(first.address),
                 latitude = first.latitude,
                 longitude = first.longitude,
                 completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
@@ -2686,7 +2684,7 @@ fun RouteListScreen(
             val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
             val status = deliveryPointStatus(group)
             DeliveryPointSnapshot(
-                id = entry.first.first + "|" + entry.first.second,
+                id = PhotoRouteTextParser.canonicalAddressKey(group.first().address),
                 sortOrder = index,
                 status = status,
                 expectedUnits = expected,
@@ -2695,7 +2693,7 @@ fun RouteListScreen(
             )
         }
         val visibleIds = RouteProgress.filter(snapshots, pointFilter).map { it.id }.toSet()
-        allGroups.filter { (key, _) -> key.first + "|" + key.second in visibleIds }
+        allGroups.filter { (_, group) -> PhotoRouteTextParser.canonicalAddressKey(group.first().address) in visibleIds }
     }
 
     Box(
@@ -2708,6 +2706,7 @@ fun RouteListScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp)
+                .padding(bottom = 100.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -2735,7 +2734,10 @@ fun RouteListScreen(
                     )
                 }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         listOf(
                             PointFilter.ALL to "Все",
                             PointFilter.ACTIVE to "В пути",
@@ -2824,8 +2826,9 @@ fun RouteListScreen(
             if (showRouteAlternatives) {
                 routeAlternatives.forEachIndexed { alternativeIndex, alternative ->
                     val firstId = alternative.firstOrNull { !it.completed }?.id
-                    val firstName = allGroups.firstOrNull { it.first.first + "|" + it.first.second == firstId }
-                        ?.second?.firstOrNull()?.storeName ?: "Точка старта"
+                    val firstName = allGroups.firstOrNull {
+                        PhotoRouteTextParser.canonicalAddressKey(it.second.first().address) == firstId
+                    }?.second?.firstOrNull()?.storeName ?: "Точка старта"
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
                             .clickable { onApplyAlternative(alternative.map { it.id }) },
@@ -2900,6 +2903,14 @@ fun RouteListScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+        }
+        Box(
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(BgDark)
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+        ) {
             BottomActionButtons(
                 onRouteClick = {
                     val nextPoint = nextPendingPoint(routeItems)?.firstOrNull()?.address.orEmpty()
