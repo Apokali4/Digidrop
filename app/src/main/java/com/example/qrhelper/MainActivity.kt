@@ -1013,10 +1013,21 @@ fun DigitDropRoot() {
             HubScreen(
                 onOpenMenu = { currentScreen = AppScreen.MORE_MENU },
                 onOpenScanner = { openScanner() },
-                onLoadInvoice = {
-                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                onLoadInvoice = { currentScreen = AppScreen.INVOICE_IMPORT },
+                onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
+                onOpenMap = { currentScreen = AppScreen.OFFLINE_MAP },
+                onOpenReports = { currentScreen = AppScreen.REPORTS },
+                onOpenHistory = {
+                    importScope.launch {
+                        archivedRoutes = runCatching { LogisticsRepository(context).history() }
+                            .getOrElse { error ->
+                                Toast.makeText(context, "Не удалось загрузить историю: ${error.message}", Toast.LENGTH_LONG).show()
+                                emptyList()
+                            }
+                        currentScreen = AppScreen.HISTORY
+                    }
                 },
-                onLoadPhotos = { currentScreen = AppScreen.INVOICE_IMPORT }
+                onOpenSettings = { currentScreen = AppScreen.SETTINGS }
             )
         }
         AppScreen.MORE_MENU -> {
@@ -1589,13 +1600,18 @@ fun HubScreen(
     onOpenMenu: () -> Unit,
     onOpenScanner: () -> Unit,
     onLoadInvoice: () -> Unit,
-    onLoadPhotos: () -> Unit
+    onOpenRoute: () -> Unit,
+    onOpenMap: () -> Unit,
+    onOpenReports: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
             .statusBarsPadding().navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 22.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             Modifier.fillMaxWidth(),
@@ -1604,35 +1620,29 @@ fun HubScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Text("Маршруты и доставка", color = TextMuted, fontSize = 14.sp)
+                Text("Рабочая панель водителя", color = TextMuted, fontSize = 14.sp)
             }
             TextButton(onClick = onOpenMenu) {
                 Text("Ещё  ⋯", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        Spacer(Modifier.height(12.dp))
         HubTile(
-            "Загрузить накладную",
-            "Выбрать PDF, Excel или CSV и подготовить маршрут",
-            "▤",
-            EmeraldPrimary,
-            Modifier.fillMaxWidth().heightIn(min = 132.dp),
-            onLoadInvoice
+            "Накладная",
+            "Загрузить или заменить маршрутный лист: фото, PDF, Excel, CSV",
+            "▤", EmeraldPrimary, Modifier.fillMaxWidth().heightIn(min = 112.dp), onLoadInvoice
         )
-        HubTile(
-            "Загрузить фотографии",
-            "Сфотографировать маршрутный лист или выбрать снимки",
-            "▧",
-            Color(0xFF4F8B72),
-            Modifier.fillMaxWidth().heightIn(min = 132.dp),
-            onLoadPhotos
-        )
-        Text(
-            "Сканер коробок доступен внутри рабочего маршрута",
-            color = TextMuted,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Сканер", "Штрихкоды и места", "▦", MintAccent, Modifier.weight(1f), onOpenScanner)
+            HubTile("Рейс и точки", "Список доставок", "⌖", EmeraldPrimary, Modifier.weight(1f), onOpenRoute)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("Карта", "Маршрут и навигация", "◉", Color(0xFF4F8B72), Modifier.weight(1f), onOpenMap)
+            HubTile("Отчёты", "Сверка и экспорт", "▤", Color(0xFF3978A8), Modifier.weight(1f), onOpenReports)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubTile("История", "Завершённые рейсы", "◷", MintAccent, Modifier.weight(1f), onOpenHistory)
+            HubTile("Настройки", "Офлайн и резервная копия", "⚙", Color(0xFF687C70), Modifier.weight(1f), onOpenSettings)
+        }
     }
 }
 
