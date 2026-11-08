@@ -362,6 +362,7 @@ private fun PhotoMetadataField(
 @Composable
 fun PhotoRoutePlannerScreen(
     initialAction: String? = null,
+    onInitialActionConsumed: () -> Unit = {},
     onBack: () -> Unit,
     onApplyRoute: (List<RouteItem>) -> Unit
 ) {
@@ -419,6 +420,7 @@ fun PhotoRoutePlannerScreen(
             "camera" -> cameraPermission.launch(Manifest.permission.CAMERA)
             "gallery" -> photoPicker.launch("image/*")
         }
+        if (initialAction != null) onInitialActionConsumed()
     }
     if (cameraOpen) {
         RouteCameraCaptureScreen(
