@@ -32,7 +32,7 @@ private val DigiDropColorScheme = lightColorScheme(
     inversePrimary = DigiDropPalette.primarySoft
 )
 
-/** Force the approved light green brand theme, regardless of Android system theme. */
+/** Force the approved light green-and-white brand theme on every screen. */
 @Composable
 fun QRHelperTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = DigiDropColorScheme, typography = Typography, content = content)

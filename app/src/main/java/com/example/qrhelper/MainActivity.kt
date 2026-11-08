@@ -1827,15 +1827,15 @@ fun MoreMenuScreen(
             Modifier.fillMaxWidth(), onOpenHistory)
         HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF278747),
             Modifier.fillMaxWidth(), onOpenProducts)
-        HubTile("Неизвестные коды", "Коды вне накладных", "?", Color(0xFF497A43),
+        HubTile("Неизвестные коды", "Коды вне накладных", "?", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenUnknown)
-        HubTile("Настройки и резервная копия", "Автосохранение, офлайн-режим, ZIP", "⚙", Color(0xFF497A43),
+        HubTile("Настройки и резервная копия", "Автосохранение, офлайн-режим, ZIP", "⚙", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenSettings)
         HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF278747),
             Modifier.fillMaxWidth(), onExport)
         HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF278747),
             Modifier.fillMaxWidth(), onCallDispatcher)
-        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFF356B43),
+        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", DigiDropPalette.primaryDark,
             Modifier.fillMaxWidth(), onClick = { confirmReset = true })
     }
     if (confirmReset) {
@@ -2181,7 +2181,7 @@ fun StoreGroupCard(
     val delivered = deliveryPointStatus(items) == DeliveryPointStatus.DELIVERED
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> Color(0xFF356B43); delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
+        modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> DigiDropPalette.primaryDark; delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
             .bounceClick(scaleDown = 0.98f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
         shape = RoundedCornerShape(18.dp)
@@ -2190,7 +2190,7 @@ fun StoreGroupCard(
             Column(Modifier.weight(1f)) {
                 Text(
                     when { hasProblem -> "Проблема / расхождение"; delivered -> "Доставлено"; else -> "В пути" },
-                    color = when { hasProblem -> Color(0xFF356B43); delivered -> MintAccent; else -> EmeraldPrimary },
+                    color = when { hasProblem -> DigiDropPalette.primaryDark; delivered -> MintAccent; else -> EmeraldPrimary },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -2198,7 +2198,7 @@ fun StoreGroupCard(
                 Text(first.address, color = TextMuted, fontSize = 13.sp)
                 if (first.ownerName.isNotBlank()) Text(first.ownerName, color = TextLight, fontSize = 12.sp, maxLines = 1)
                 if (first.workingHours.isNotBlank()) Text("Работа: ${first.workingHours}", color = TextMuted, fontSize = 12.sp, maxLines = 1)
-                if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = Color(0xFF497A43), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = DigiDropPalette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 if (first.note.isNotBlank()) Text(first.note, color = TextMuted, fontSize = 12.sp, maxLines = 2)
                 Spacer(Modifier.height(if (compactMode) 4.dp else 8.dp))
                 Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = if (compactMode) 12.sp else 14.sp, fontWeight = FontWeight.SemiBold)
@@ -2235,7 +2235,7 @@ fun PointGroupScreen(
             if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = TextLight, fontSize = 14.sp)
             if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = TextLight, fontSize = 14.sp)
             if (point.workingHours.isNotBlank()) Text("Время работы: ${point.workingHours}", color = TextLight, fontSize = 14.sp)
-            if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = Color(0xFF497A43), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = TextMuted, fontSize = 13.sp)
             if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = TextMuted, fontSize = 13.sp)
         }
@@ -2266,7 +2266,7 @@ fun PointGroupScreen(
                             Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
                             Text(
                                 when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
-                                color = when { item.discrepancyQty > 0 -> Color(0xFF356B43); item.isDelivered -> MintAccent; else -> EmeraldPrimary },
+                                color = when { item.discrepancyQty > 0 -> DigiDropPalette.primaryDark; item.isDelivered -> MintAccent; else -> EmeraldPrimary },
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -2346,7 +2346,7 @@ fun PointDetailsScreen(
                 ) {
                     Text(
                         text = when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
-                        color = if (item.discrepancyQty > 0) Color(0xFF356B43) else if (item.isDelivered) BgDark else MintAccent,
+                        color = if (item.discrepancyQty > 0) DigiDropPalette.primaryDark else if (item.isDelivered) BgDark else MintAccent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2380,7 +2380,7 @@ fun PointDetailsScreen(
                     if (item.ownerName.isNotBlank()) Text("ИП / контакт: ${item.ownerName}", color = TextLight, fontSize = 15.sp)
                     if (item.phone.isNotBlank()) Text("Телефон: ${item.phone}", color = TextLight, fontSize = 15.sp)
                     if (item.workingHours.isNotBlank()) Text("Время работы: ${item.workingHours}", color = TextLight, fontSize = 15.sp)
-                    if (item.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${item.cashNote}", color = Color(0xFF497A43), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    if (item.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${item.cashNote}", color = DigiDropPalette.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     if (item.extraComment.isNotBlank()) Text("Дополнительно: ${item.extraComment}", color = TextLight, fontSize = 14.sp)
                 }
             }
@@ -2514,12 +2514,12 @@ fun PointDetailsScreen(
                 "Недовоз, брак или излишек",
                 CardSurface,
                 TextLight,
-                Color(0xFF497A43)
+                DigiDropPalette.primary
             ) { showDiscrepancyDialog = true }
             if (item.discrepancyQty > 0) {
                 Text(
                     "Текущее расхождение: ${item.discrepancyReason ?: "причина не указана"} • ${item.discrepancyQty} мест",
-                    color = Color(0xFF497A43),
+                    color = DigiDropPalette.primary,
                     fontSize = 12.sp
                 )
             }
@@ -2610,7 +2610,7 @@ fun PointDetailsScreen(
                             }
                         }
                         if (discrepancyError.isNotBlank()) {
-                            Text(discrepancyError, color = Color(0xFF356B43), fontSize = 12.sp)
+                            Text(discrepancyError, color = DigiDropPalette.primaryDark, fontSize = 12.sp)
                         }
                     }
                 },
@@ -3403,8 +3403,8 @@ fun ReportsScreen(
         Text("Состояние точек", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         ReportStatusBar("Доставлено", delivered, points.size, Color(0xFF278747))
         ReportStatusBar("В работе", inProgressPoints, points.size, Color(0xFF278747))
-        ReportStatusBar("Ожидают", pendingPoints, points.size, Color(0xFF6B945C))
-        ReportStatusBar("Расхождения", problemPoints, points.size, Color(0xFF356B43))
+        ReportStatusBar("Ожидают", pendingPoints, points.size, Color(0xFF4D9B62))
+        ReportStatusBar("Расхождения", problemPoints, points.size, DigiDropPalette.primaryDark)
         Spacer(Modifier.height(8.dp))
         HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
         Spacer(Modifier.height(8.dp))
@@ -3463,11 +3463,11 @@ fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
         HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", CardSurface, TextLight, MintAccent, onRestore)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", CardSurface, TextLight, Color(0xFF497A43)) {
+        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", CardSurface, TextLight, DigiDropPalette.primary) {
             showArchiveConfirmation = true
         }
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, Color(0xFF497A43), onClearUnknown)
+        HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, DigiDropPalette.primary, onClearUnknown)
         Spacer(Modifier.height(14.dp))
         Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = TextMuted, fontSize = 12.sp)
     }
@@ -3572,7 +3572,7 @@ fun UnknownCodesScreen(codes: List<String>, onBack: () -> Unit, onClear: () -> U
                 }
             }
             Spacer(Modifier.height(10.dp))
-            HubActionButton("Очистить список", "Удалить неизвестные сканы", CardSurface, TextLight, Color(0xFF497A43), onClear)
+            HubActionButton("Очистить список", "Удалить неизвестные сканы", CardSurface, TextLight, DigiDropPalette.primary, onClear)
         }
     }
 }

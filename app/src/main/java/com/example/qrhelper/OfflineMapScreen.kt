@@ -140,7 +140,7 @@ fun OfflineMapScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) { Text("← Назад", color = TextLight) }
+            TextButton(onClick = onBack) { Text("← Назад", color = MintAccent) }
             Text("Карта Калужской области", color = TextLight, fontSize = 18.sp)
             TextButton(onClick = onImportMap) { Text("Импорт", color = EmeraldPrimary) }
         }
@@ -283,10 +283,10 @@ fun OfflineMapScreen(
                                     val item = group.first()
                                     val markerNumber = pointGroups.indexOf(group) + 1
                                     val markerColor = when (deliveryPointStatus(group)) {
-                                        DeliveryPointStatus.PROBLEM -> 0xFFC62828.toInt()
-                                        DeliveryPointStatus.DELIVERED -> 0xFF27AE60.toInt()
-                                        DeliveryPointStatus.IN_PROGRESS -> 0xFF2878C8.toInt()
-                                        DeliveryPointStatus.PENDING -> 0xFFE5A000.toInt()
+                                        DeliveryPointStatus.PROBLEM -> 0xFF1F6F39.toInt()
+                                        DeliveryPointStatus.DELIVERED -> 0xFF278747.toInt()
+                                        DeliveryPointStatus.IN_PROGRESS -> 0xFF4D9B62.toInt()
+                                        DeliveryPointStatus.PENDING -> 0xFF79A96F.toInt()
                                     }
                                     val icon = IconFactory.getInstance(context)
                                         .fromBitmap(createNumberedPointMarker(markerNumber, markerColor))
@@ -350,8 +350,8 @@ fun OfflineMapScreen(
                         DeliveryPointStatus.PENDING -> "Ожидает"
                     }
                     val tint = when (pointStatus) {
-                        DeliveryPointStatus.PROBLEM -> Color(0xFF356B43)
-                        DeliveryPointStatus.DELIVERED -> Color(0xFF278747)
+                        DeliveryPointStatus.PROBLEM -> DigiDropPalette.primaryDark
+                        DeliveryPointStatus.DELIVERED -> DigiDropPalette.primary
                         DeliveryPointStatus.IN_PROGRESS -> Color(0xFF4D9B62)
                         DeliveryPointStatus.PENDING -> Color(0xFF79A96F)
                     }

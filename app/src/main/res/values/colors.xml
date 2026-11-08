@@ -2,7 +2,8 @@
 <resources>
     <color name="digidrop_green">#FF278747</color>
     <color name="digidrop_green_dark">#FF1F6F39</color>
-    <color name="digidrop_background">#FFF3F2EA</color>
+    <color name="digidrop_background">#FFFFFFFF</color>
     <color name="digidrop_surface">#FFFFFFFF</color>
-    <color name="digidrop_text">#FF26352C</color>
+    <color name="digidrop_surface_soft">#FFF1F8F2</color>
+    <color name="digidrop_text">#FF1F2D23</color>
 </resources>
