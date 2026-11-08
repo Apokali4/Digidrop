@@ -107,4 +107,15 @@ class PhotoRouteTextParserTest {
         assertEquals("ЧУП Магазин Север", metadata.ownerName)
     }
 
+    @Test fun extractsRouteHeaderFieldsFromTopOfRouteSheet() {
+        val text = """
+            Маршрут № 42-А
+            Водитель: Иванов Иван Иванович
+            Транспортное средство: Газель Next
+            Гос. номер: А123ВС40
+            Калуга, ул. Кирова, д. 12
+        """.trimIndent()
+        assertEquals(PhotoRouteHeader("Иванов Иван Иванович", "Газель Next", "А123ВС40", "42-А"), PhotoRouteHeaderParser.parse(text))
+    }
+
 }
