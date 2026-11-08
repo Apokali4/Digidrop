@@ -14,7 +14,7 @@ internal data class RoutePointDetails(
 )
 
 internal fun groupRouteItems(items: List<RouteItem>): List<List<RouteItem>> =
-    items.groupBy { it.storeName.trim() to it.address.trim() }.values.map { it.toList() }
+    items.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.map { it.toList() }
 
 internal fun moveRoutePointGroup(items: List<RouteItem>, fromIndex: Int, toIndex: Int): List<RouteItem> {
     val groups = groupRouteItems(items).toMutableList()
@@ -30,7 +30,7 @@ internal fun updateRoutePointDetails(
     oldAddress: String,
     details: RoutePointDetails
 ): List<RouteItem> = items.map { item ->
-    if (item.storeName.trim() == oldStoreName.trim() && item.address.trim() == oldAddress.trim()) {
+    if (PhotoRouteTextParser.canonicalAddressKey(item.address) == PhotoRouteTextParser.canonicalAddressKey(oldAddress)) {
         item.copy(
             storeName = details.storeName.trim(),
             address = details.address.trim(),
@@ -51,5 +51,5 @@ internal fun removeRoutePointGroup(
     storeName: String,
     address: String
 ): List<RouteItem> = items.filterNot {
-    it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+    PhotoRouteTextParser.canonicalAddressKey(it.address) == PhotoRouteTextParser.canonicalAddressKey(address)
 }
