@@ -1001,7 +1001,10 @@ fun DigitDropRoot() {
             HubScreen(
                 onOpenMenu = { currentScreen = AppScreen.MORE_MENU },
                 onOpenScanner = { openScanner() },
-                onLoadInvoice = { currentScreen = AppScreen.INVOICE_IMPORT }
+                onLoadInvoice = {
+                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                },
+                onLoadPhotos = { currentScreen = AppScreen.INVOICE_IMPORT }
             )
         }
         AppScreen.MORE_MENU -> {
@@ -1546,7 +1549,8 @@ fun InvoiceLandingScreen(
 fun HubScreen(
     onOpenMenu: () -> Unit,
     onOpenScanner: () -> Unit,
-    onLoadInvoice: () -> Unit
+    onLoadInvoice: () -> Unit,
+    onLoadPhotos: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
@@ -1582,7 +1586,7 @@ fun HubScreen(
             "▧",
             Color(0xFF4F8B72),
             Modifier.fillMaxWidth().heightIn(min = 132.dp),
-            onLoadInvoice
+            onLoadPhotos
         )
         Text(
             "Сканер коробок доступен внутри рабочего маршрута",
