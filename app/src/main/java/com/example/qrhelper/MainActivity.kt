@@ -418,6 +418,7 @@ const val DISPATCHER_PHONE = "+74842998877"
 enum class AppScreen {
     SPLASH,
     HUB,
+    MORE_MENU,
     INVOICE_IMPORT,
     ROUTE_LIST,
     ROUTE_EDITOR,
@@ -957,6 +958,7 @@ fun DigitDropRoot() {
             AppScreen.ROUTE_EDITOR -> AppScreen.ROUTE_LIST
             AppScreen.OFFLINE_MAP -> AppScreen.ROUTE_LIST
             AppScreen.HUB -> AppScreen.HUB
+            AppScreen.MORE_MENU -> AppScreen.HUB
             AppScreen.INVOICE_IMPORT -> AppScreen.HUB
             AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.PRODUCTS, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
             AppScreen.SPLASH -> AppScreen.HUB
@@ -985,14 +987,15 @@ fun DigitDropRoot() {
         }
         AppScreen.HUB -> {
             HubScreen(
-                routeItems = routeItems,
-                onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
-                onOpenPhotoRoute = { currentScreen = AppScreen.PHOTO_ROUTE },
+                onOpenMenu = { currentScreen = AppScreen.MORE_MENU },
                 onOpenScanner = { openScanner() },
-                onLoadFile = { currentScreen = AppScreen.INVOICE_IMPORT },
-                onExportReport = { reportLauncher.launch("DigiDrop_report.csv") },
-                onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
-                onResetRoute = { resetRouteProgress() },
+                onLoadInvoice = { currentScreen = AppScreen.INVOICE_IMPORT }
+            )
+        }
+        AppScreen.MORE_MENU -> {
+            MoreMenuScreen(
+                onBack = { currentScreen = AppScreen.HUB },
+                onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
                 onOpenReports = { currentScreen = AppScreen.REPORTS },
                 onOpenSettings = { currentScreen = AppScreen.SETTINGS },
                 onOpenHistory = {
@@ -1005,13 +1008,19 @@ fun DigitDropRoot() {
                         currentScreen = AppScreen.HISTORY
                     }
                 },
-                onOpenUnknown = { unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty(); currentScreen = AppScreen.UNKNOWN_CODES },
                 onOpenProducts = {
                     importScope.launch {
                         productCatalog = runCatching { LogisticsRepository(context).searchProducts("") }.getOrElse { emptyList() }
                         currentScreen = AppScreen.PRODUCTS
                     }
                 },
+                onOpenUnknown = {
+                    unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty()
+                    currentScreen = AppScreen.UNKNOWN_CODES
+                },
+                onExport = { reportLauncher.launch("DigiDrop_report.csv") },
+                onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
+                onResetRoute = { resetRouteProgress() },
                 onNavigateNext = {
                     val nextItem = nextPendingPoint(routeItems)?.firstOrNull()
                     if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
@@ -1494,194 +1503,126 @@ fun SplashScreen(onFinished: () -> Unit) {
 }
 
 @Composable
-fun InvoiceLandingScreen(hasActiveRoute: Boolean, onBack: () -> Unit, onLoadInvoice: () -> Unit, onAppendInvoice: () -> Unit, onPhotoRoute: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(BgDark)
+fun InvoiceLandingScreen(
+    hasActiveRoute: Boolean,
+    onBack: () -> Unit,
+    onLoadInvoice: () -> Unit,
+    onAppendInvoice: () -> Unit,
+    onPhotoRoute: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
+            .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 26.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                Modifier.size(88.dp).clip(RoundedCornerShape(26.dp)).background(Color(0xFFE5EEFA)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("D", color = Color(0xFF286BC4), fontSize = 48.sp, fontWeight = FontWeight.Bold)
+        Text("← Назад", color = MintAccent, fontSize = 16.sp,
+            modifier = Modifier.bounceClick { onBack() })
+        Spacer(Modifier.height(8.dp))
+        Text("Загрузить накладную", color = TextLight, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+        Text("Выберите источник. После обработки откроется список точек маршрута.",
+            color = TextMuted, fontSize = 15.sp)
+        HubTile("Сфотографировать", "Снять накладную камерой", "◎", EmeraldPrimary,
+            Modifier.fillMaxWidth(), onPhotoRoute)
+        HubTile("Выбрать фото", "Загрузить снимок из галереи", "▧", Color(0xFF3978A8),
+            Modifier.fillMaxWidth(), onPhotoRoute)
+        HubTile("Загрузить файл", "PDF, Excel или CSV", "⇧", MintAccent,
+            Modifier.fillMaxWidth(), onLoadInvoice)
+        if (hasActiveRoute) {
+            Spacer(Modifier.height(6.dp))
+            TextButton(onClick = onAppendInvoice) {
+                Text("Добавить накладную к текущему рейсу", color = MintAccent)
             }
-            Spacer(Modifier.height(22.dp))
-            Text("DigiDrop", color = TextLight, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-            Text("Рабочее место водителя", color = TextMuted, fontSize = 14.sp)
-            Spacer(Modifier.height(44.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth()
-                    .border(1.dp, Color(0xFFB9CBE0), RoundedCornerShape(24.dp))
-                    .bounceClick(scaleDown = 0.965f) { onLoadInvoice() },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF1FA)),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 2.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFDCE8F7)),
-                        contentAlignment = Alignment.Center
-                    ) { Text("⇧", color = Color(0xFF286BC4), fontSize = 31.sp, fontWeight = FontWeight.Bold) }
-                    Spacer(Modifier.width(15.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Загрузить накладную", color = Color(0xFF20364F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Excel XLSX • CSV • TSV", color = Color(0xFF617286), fontSize = 12.sp)
-                    }
-                    Text("›", color = Color(0xFF286BC4), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            if (hasActiveRoute) {
-                Spacer(Modifier.height(14.dp))
-                HubActionButton(
-                    "Добавить ещё одну накладную",
-                    "Объединить с текущим рейсом по точкам и товарам",
-                    Color(0xFFEAF1FA),
-                    Color(0xFF20364F),
-                    Color(0xFF286BC4),
-                    onAppendInvoice
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth()
-                    .border(1.dp, Color(0xFFB9CBE0), RoundedCornerShape(24.dp))
-                    .bounceClick(scaleDown = 0.965f) { onPhotoRoute() },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF1FA)),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 2.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFDCE8F7)),
-                        contentAlignment = Alignment.Center
-                    ) { Text("▧", color = Color(0xFF286BC4), fontSize = 29.sp, fontWeight = FontWeight.Bold) }
-                    Spacer(Modifier.width(15.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Построить по фотографии", color = Color(0xFF20364F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Одна или несколько фотографий листа", color = Color(0xFF617286), fontSize = 12.sp)
-                    }
-                    Text("›", color = Color(0xFF286BC4), fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("Выбери источник данных для маршрута.", color = TextMuted, fontSize = 13.sp)
         }
-        Text(
-            "‹ Назад",
-            color = TextMuted,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 24.dp, top = 18.dp)
-                .bounceClick { onBack() }
-        )
     }
 }
 
 @Composable
 fun HubScreen(
-    routeItems: List<RouteItem>,
-    onOpenRoute: () -> Unit,
+    onOpenMenu: () -> Unit,
     onOpenScanner: () -> Unit,
-    onLoadFile: () -> Unit,
-    onOpenPhotoRoute: () -> Unit,
-    onExportReport: () -> Unit,
-    onCallDispatcher: () -> Unit,
-    onResetRoute: () -> Unit,
+    onLoadInvoice: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(BgDark)
+            .statusBarsPadding().navigationBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("DigiDrop", color = TextLight, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                Text("Рабочее место водителя", color = TextMuted, fontSize = 16.sp)
+            }
+            TextButton(onClick = onOpenMenu) {
+                Text("Меню  ⋯", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        HubTile(
+            "QR-сканер",
+            "Сканировать код накладной",
+            "▦",
+            Color(0xFF3978A8),
+            Modifier.fillMaxWidth().height(190.dp),
+            onOpenScanner
+        )
+        HubTile(
+            "Загрузить накладную",
+            "Фото, галерея или файл",
+            "⇧",
+            EmeraldPrimary,
+            Modifier.fillMaxWidth().height(190.dp),
+            onLoadInvoice
+        )
+    }
+}
+
+@Composable
+fun MoreMenuScreen(
+    onBack: () -> Unit,
+    onOpenRoute: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
-    onOpenUnknown: () -> Unit,
     onOpenProducts: () -> Unit,
+    onOpenUnknown: () -> Unit,
+    onExport: () -> Unit,
+    onCallDispatcher: () -> Unit,
+    onResetRoute: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
-    var confirmReset by remember { mutableStateOf(false) }
-    val points = routeItems.groupBy { it.storeName to it.address }
-    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
-    val problems = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
-    val totalBoxes = routeItems.sumOf { it.totalBoxes.coerceAtLeast(0) }
-    val scannedBoxes = routeItems.sumOf { it.scannedBoxes.coerceAtLeast(0) }
     Column(
-        modifier = Modifier.fillMaxSize().background(BgDark)
-            .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
+            .verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("Рабочая панель доставки", color = TextMuted, fontSize = 14.sp)
-        Card(
-            Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardSurface),
-            shape = RoundedCornerShape(18.dp)
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Текущий маршрут", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    if (routeItems.isEmpty()) "Накладная ещё не загружена"
-                    else "Точек: ${points.size} • доставлено: $delivered • проблемных: $problems",
-                    color = TextMuted,
-                    fontSize = 13.sp
-                )
-                if (routeItems.isNotEmpty()) {
-                    Text("Мест: $scannedBoxes / $totalBoxes", color = MintAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Точки маршрута", "Список, статусы и порядок", "⌖", EmeraldPrimary, Modifier.weight(1f), onOpenRoute)
-            HubTile("Сканер", "Камера и штрихкоды", "▣", Color(0xFF286BC4), Modifier.weight(1f), onOpenScanner)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Загрузить накладную", "CSV, XLSX и PDF", "⇧", Color(0xFF168F78), Modifier.weight(1f), onLoadFile)
-            HubTile("Фото маршрута", "Распознать адреса", "▧", Color(0xFFB27A35), Modifier.weight(1f), onOpenPhotoRoute)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Отчёты", "Сводка, CSV, Excel, PDF", "▤", Color(0xFF3978A8), Modifier.weight(1f), onOpenReports)
-            HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF6E69A8), Modifier.weight(1f), onOpenProducts)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("История", "Архив завершённых рейсов", "◷", Color(0xFF8A745B), Modifier.weight(1f), onOpenHistory)
-            HubTile("Настройки и копия", "Автосохранение и резерв", "⚙", Color(0xFF687C70), Modifier.weight(1f), onOpenSettings)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", Color(0xFF168F78), Modifier.weight(1f), onNavigateNext)
-            HubTile("Неизвестные коды", "Коды вне накладных", "?", Color(0xFFB27A35), Modifier.weight(1f), onOpenUnknown)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4), Modifier.weight(1f), onCallDispatcher)
-            HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF3978A8), Modifier.weight(1f), onExportReport)
-        }
-        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C), Modifier.fillMaxWidth()) {
-            confirmReset = true
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-    if (confirmReset) {
-        AlertDialog(
-            onDismissRequest = { confirmReset = false },
-            title = { Text("Сбросить прогресс рейса?") },
-            text = { Text("Будут очищены отметки сканирования, доставки и расхождения. Сам маршрут останется.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmReset = false
-                    onResetRoute()
-                }) { Text("Сбросить") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmReset = false }) { Text("Отмена") }
-            }
-        )
+        Text("← Назад", color = MintAccent, fontSize = 16.sp,
+            modifier = Modifier.bounceClick { onBack() })
+        Text("Дополнительно", color = TextLight, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        HubTile("Точки и карта маршрута", "Список, статусы, порядок и навигация", "⌖", EmeraldPrimary,
+            Modifier.fillMaxWidth(), onOpenRoute)
+        HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", EmeraldPrimary,
+            Modifier.fillMaxWidth(), onNavigateNext)
+        HubTile("Отчёты и экспорт", "Сводка и выгрузки", "▤", Color(0xFF3978A8),
+            Modifier.fillMaxWidth(), onOpenReports)
+        HubTile("История рейсов", "Архив завершённых маршрутов", "◷", MintAccent,
+            Modifier.fillMaxWidth(), onOpenHistory)
+        HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF6E69A8),
+            Modifier.fillMaxWidth(), onOpenProducts)
+        HubTile("Неизвестные коды", "Коды вне накладных", "?", Color(0xFFB27A35),
+            Modifier.fillMaxWidth(), onOpenUnknown)
+        HubTile("Настройки и резервная копия", "Автосохранение, офлайн-режим, ZIP", "⚙", Color(0xFF687C70),
+            Modifier.fillMaxWidth(), onOpenSettings)
+        HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF3978A8),
+            Modifier.fillMaxWidth(), onExport)
+        HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4),
+            Modifier.fillMaxWidth(), onCallDispatcher)
+        HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C),
+            Modifier.fillMaxWidth(), onResetRoute)
     }
 }
 
@@ -1695,17 +1636,24 @@ fun HubTile(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.height(132.dp).border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-            .bounceClick(scaleDown = 0.97f) { onClick() },
+        modifier = modifier.heightIn(min = 112.dp)
+            .border(1.dp, CardBorder, RoundedCornerShape(22.dp))
+            .bounceClick(scaleDown = 0.985f) { onClick() },
         colors = CardDefaults.cardColors(containerColor = CardSurface),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(22.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp)
     ) {
-        Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(symbol, color = accent, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-            Column {
-                Text(title, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = TextMuted, fontSize = 11.sp, maxLines = 1)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Text(symbol, color = accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = TextLight, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = TextMuted, fontSize = 14.sp, maxLines = 2)
             }
+            Text("›", color = MintAccent, fontSize = 28.sp)
         }
     }
 }
