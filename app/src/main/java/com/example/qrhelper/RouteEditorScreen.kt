@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,17 +78,17 @@ internal fun RouteEditorScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().background(BgDark).padding(16.dp),
+        Modifier.fillMaxSize().background(Color(0xFFF1F5F1)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("← Назад", color = MintAccent) }
+            Button(onClick = onBack) { Text("← Назад") }
             Button(onClick = { onSave(groups.flatten()) }) { Text("Сохранить маршрут") }
         }
-        Text("Редактор маршрута", color = TextLight, fontSize = 24.sp)
+        Text("Редактор маршрута", color = Color(0xFF20352A), fontSize = 24.sp)
         Text(
             "Точек: ${groups.size} • строк груза: ${groups.sumOf { it.size }}. Изменения применятся после сохранения.",
-            color = TextMuted,
+            color = Color(0xFF617268),
             fontSize = 12.sp
         )
         Button(onClick = { openEditor(null) }, modifier = Modifier.fillMaxWidth()) {
@@ -140,7 +141,7 @@ internal fun RouteEditorScreen(
                                 }
                             )
                         },
-                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -154,10 +155,10 @@ internal fun RouteEditorScreen(
                                 Spacer(Modifier.weight(1f))
                                 TextButton(enabled = index > 0, onClick = {
                                     groups = groupRouteItems(moveRoutePointGroup(groups.flatten(), index, index - 1))
-                                }) { Text("↑") }
+                                }) { Text("Поднять") }
                                 TextButton(enabled = index < groups.lastIndex, onClick = {
                                     groups = groupRouteItems(moveRoutePointGroup(groups.flatten(), index, index + 1))
-                                }) { Text("↓") }
+                                }) { Text("Опустить") }
                             }
                         }
                     }
