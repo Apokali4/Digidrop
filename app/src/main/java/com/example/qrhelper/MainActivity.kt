@@ -1601,6 +1601,7 @@ fun MoreMenuScreen(
     onResetRoute: () -> Unit,
     onNavigateNext: () -> Unit
 ) {
+    var confirmReset by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(20.dp),
@@ -1628,7 +1629,20 @@ fun MoreMenuScreen(
         HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF286BC4),
             Modifier.fillMaxWidth(), onCallDispatcher)
         HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", Color(0xFFB45C4C),
-            Modifier.fillMaxWidth(), onResetRoute)
+            Modifier.fillMaxWidth()) { confirmReset = true }
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Сбросить прогресс рейса?") },
+            text = { Text("Будут очищены отметки сканирования, доставки и расхождения. Сам маршрут останется.") },
+            confirmButton = {
+                TextButton(onClick = { confirmReset = false; onResetRoute() }) { Text("Сбросить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReset = false }) { Text("Отмена") }
+            }
+        )
     }
 }
 
