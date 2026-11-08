@@ -60,14 +60,14 @@ internal data class PhotoRouteHeader(
 
 internal object PhotoRouteHeaderParser {
     fun parse(text: String): PhotoRouteHeader {
-        val lines = text.lineSequence().map { it.trim().replace(Regex("""\\s+"""), " ") }.filter { it.isNotBlank() }.toList()
+        val lines = text.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }.filter { it.isNotBlank() }.toList()
         fun value(pattern: Regex): String = lines.firstNotNullOfOrNull { line ->
             pattern.find(line)?.groupValues?.getOrNull(1)?.trim()?.trim(':', '-', '—', '№', '.', ' ')?.takeIf { it.isNotBlank() }
         }.orEmpty()
-        val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\\s*[:№-]?\\s*(.+)$"""))
-        val vehicle = value(Regex("""(?iu)(?:транспортное\\s+средство|автомобиль|машина|марка\\s+авто)\\s*[:№-]?\\s*(.+)$"""))
-        val vehicleNumber = value(Regex("""(?iu)(?:гос(?:ударственный)?\\.?\\s*номер|г\\.?\\s*н\\.?|номер\\s+автомобиля)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9 -]{5,})"""))
-        val routeNumber = value(Regex("""(?iu)(?:номер\\s+маршрута|маршрут\\s*№?|рейс\\s*№?)\\s*[:№-]?\\s*([А-ЯЁA-Z0-9/-]+)"""))
+        val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\s*[:№-]?\s*(.+)$"""))
+        val vehicle = value(Regex("""(?iu)(?:транспортное\s+средство|автомобиль|машина|марка\s+авто)\s*[:№-]?\s*(.+)$"""))
+        val vehicleNumber = value(Regex("""(?iu)(?:гос(?:ударственный)?\.?\s*номер|г\.?\s*н\.?|номер\s+автомобиля)\s*[:№-]?\s*([А-ЯЁA-Z0-9 -]{5,})"""))
+        val routeNumber = value(Regex("""(?iu)(?:номер\s+маршрута|маршрут\s*№?|рейс\s*№?)\s*[:№-]?\s*([А-ЯЁA-Z0-9/-]+)"""))
         return PhotoRouteHeader(driver, vehicle, vehicleNumber, routeNumber)
     }
 }
@@ -132,12 +132,12 @@ internal object PhotoRouteTextParser {
         val owner = legalLines.firstOrNull { Regex("""(?iu)\bИП\b""").containsMatchIn(it.value) }?.value
             ?: legalLines.firstOrNull { it.index + blockStart < index }?.value
             ?: legalLines.firstOrNull()?.value.orEmpty()
-        val phone = Regex("""(?iu)(?:\\+7|8)?[\\s(\\-]*\\d{3}[)\\s\\-]*\\d{3}[\\s\\-]*\\d{2}[\\s\\-]*\\d{2}""")
+        val phone = Regex("""(?iu)(?:\+7|8)?[\s(\-]*\d{3}[)\s\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}""")
             .find(block.joinToString(" "))?.value.orEmpty().trim()
-        val hoursPattern = Regex("""(?iu)(?:режим\\s+работы\\s*)?(?:с\\s*)?\\b\\d{1,2}[:.]?\\d{0,2}\\s*(?:[-–—]|до)\\s*\\d{1,2}[:.]?\\d{0,2}\\b""")
+        val hoursPattern = Regex("""(?iu)(?:режим\s+работы\s*)?(?:с\s*)?\b\d{1,2}[:.]?\d{0,2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]?\d{0,2}\b""")
         val hours = hoursPattern.find(block.joinToString(" "))?.value.orEmpty().trim()
         val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
-        val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\\w*|Дикси|Красное\\s+и\\s+Белое|К\\s*&?\\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
+        val brandPattern = Regex("""(?iu)(Бристоль|Балтика|Магнит|Пят[её]рочк\w*|Дикси|Красное\s+и\s+Белое|К\s*&?\s*Б|Лента|Перекр[её]сток|Чижик|Светофор|Fix\s*Price|ВкусВилл|магазин|маркет|шашлычн|аптек|павильон)""")
         val suffixBrand = afterHouse.takeIf { it.isNotBlank() && !legalPattern.containsMatchIn(it) }
         val beforeAddressLegal = legalLines.firstOrNull { it.index + maxOf(0, index - 3) < index }?.value.orEmpty()
         val nearbyBrand = block.firstOrNull { it != owner && brandPattern.containsMatchIn(it) }.orEmpty()
