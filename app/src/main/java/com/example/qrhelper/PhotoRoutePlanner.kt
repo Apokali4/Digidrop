@@ -530,14 +530,14 @@ private fun PhotoMetadataField(
     value: String,
     onValueChange: (String) -> Unit
 ) {
-    val palette = com.example.qrhelper.ui.theme.DigiDropPalette
+    val palette = MaterialTheme.colorScheme
     Column(
         Modifier.fillMaxWidth()
-            .background(palette.surfaceSoft, RoundedCornerShape(14.dp))
-            .border(1.dp, palette.border, RoundedCornerShape(14.dp))
+            .background(palette.surfaceVariant, RoundedCornerShape(14.dp))
+            .border(1.dp, palette.outline, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Text(title, color = palette.textSecondary, style = MaterialTheme.typography.labelMedium)
+        Text(title, color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -546,7 +546,7 @@ private fun PhotoMetadataField(
             minLines = if (title == "Комментарий") 2 else 1,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = palette.primary,
-                unfocusedBorderColor = palette.border
+                unfocusedBorderColor = palette.outline
             )
         )
     }
@@ -569,16 +569,16 @@ private fun PhotoPlannerTile(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (primary) palette.primary else palette.surface,
-            disabledContainerColor = palette.surfaceSoft
+            disabledContainerColor = palette.surfaceVariant
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (primary) palette.primary else palette.border),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (primary) palette.primary else palette.outline),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, color = if (primary) androidx.compose.ui.graphics.Color.White else palette.text,
+            Text(title, color = if (primary) androidx.compose.ui.graphics.Color.White else palette.onSurface,
                 style = MaterialTheme.typography.titleMedium)
             if (subtitle.isNotBlank()) Text(subtitle,
-                color = if (primary) androidx.compose.ui.graphics.Color.White.copy(alpha = .88f) else palette.textSecondary,
+                color = if (primary) androidx.compose.ui.graphics.Color.White.copy(alpha = .88f) else palette.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -704,18 +704,18 @@ fun PhotoRoutePlannerScreen(
     ) {
         PhotoPlannerTile("← Назад", "Вернуться на главный экран", onClick = onBack)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Маршрут по фотографии", color = palette.text, style = MaterialTheme.typography.headlineSmall)
-            Text("Импортируй лист, проверь каждую точку и выбери навигацию.", color = palette.textSecondary)
+            Text("Маршрут по фотографии", color = palette.onSurface, style = MaterialTheme.typography.headlineSmall)
+            Text("Импортируй лист, проверь каждую точку и выбери навигацию.", color = palette.onSurfaceVariant)
         }
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft),
-            border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
+            colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+            border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
         ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(if (busy) "ОБРАБОТКА" else "СТАТУС", color = palette.primary, style = MaterialTheme.typography.labelLarge)
-                Text(status, color = palette.text, style = MaterialTheme.typography.bodyMedium)
+                Text(status, color = palette.onSurface, style = MaterialTheme.typography.bodyMedium)
                 if (busy) CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = palette.primary)
             }
         }
@@ -773,13 +773,13 @@ fun PhotoRoutePlannerScreen(
             modifier = Modifier.fillMaxWidth(), singleLine = true)
 
         if (located.isEmpty()) {
-            Text("АДРЕСА ДЛЯ МАРШРУТА: ${addresses.size}", color = palette.text, style = MaterialTheme.typography.titleMedium)
+            Text("АДРЕСА ДЛЯ МАРШРУТА: ${addresses.size}", color = palette.onSurface, style = MaterialTheme.typography.titleMedium)
             addresses.forEachIndexed { index, address ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
                 ) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.labelLarge)
@@ -808,9 +808,9 @@ fun PhotoRoutePlannerScreen(
         }
 
         if (located.isNotEmpty()) {
-            Text("МАРШРУТ • ${located.size} ТОЧЕК", color = palette.text, style = MaterialTheme.typography.titleLarge)
+            Text("МАРШРУТ • ${located.size} ТОЧЕК", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
             Text("Зажми плитку и перетащи её, чтобы изменить порядок. Навигатор получит именно эту последовательность.",
-                color = palette.textSecondary, style = MaterialTheme.typography.bodySmall)
+                color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             PhotoPlannerTile("Оптимизировать по дорожной сети", "Если дорожный сервис недоступен, будет честно показана локальная оценка.",
                 enabled = !busy && located.size >= 2, primary = true) {
                 scope.launch {
@@ -853,17 +853,17 @@ fun PhotoRoutePlannerScreen(
                     },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.border),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.titleMedium)
-                            Text("⠿ ПЕРЕТАЩИТЬ", color = palette.textSecondary, style = MaterialTheme.typography.labelSmall)
+                            Text("⠿ ПЕРЕТАЩИТЬ", color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                         Text(stop.metadata.storeName.ifBlank { "Название магазина не распознано" },
-                            color = palette.text, style = MaterialTheme.typography.titleLarge)
-                        Text(stop.address, color = palette.textSecondary, style = MaterialTheme.typography.bodyLarge)
+                            color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
+                        Text(stop.address, color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                         PhotoPlannerTile("Проверить адрес в Яндекс Картах", "Откроется найденная координата") {
                             val query = "${stop.latitude},${stop.longitude}"
                             openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
@@ -880,7 +880,7 @@ fun PhotoRoutePlannerScreen(
                 }
             }
 
-            Text("НАВИГАЦИЯ", color = palette.text, style = MaterialTheme.typography.titleLarge)
+            Text("НАВИГАЦИЯ", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
             PhotoPlannerTile("Локальная офлайн-карта", "Открыть сохранённый маршрут на карте Калуги", primary = true) {
                 val items = located.mapIndexed { index, stop ->
                     RouteItem(
