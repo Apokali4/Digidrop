@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qrhelper.data.ProductEntity
@@ -41,11 +43,11 @@ fun ProductCatalogScreen(
         onSearch(query)
     }
     Column(
-        Modifier.fillMaxSize().background(BgDark).padding(18.dp)
+        Modifier.fillMaxSize().background(Color(0xFFF1F5F1)).padding(18.dp)
     ) {
-        TextButton(onClick = onBack) { Text("← Главная", color = MintAccent) }
-        Text("Каталог товаров", color = TextLight, fontSize = 25.sp)
-        Text("Локальная база штрихкодов из загруженных накладных", color = TextMuted, fontSize = 12.sp)
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("← Главная") }
+        Text("Каталог товаров", color = Color(0xFF20352A), fontSize = 25.sp)
+        Text("Локальная база штрихкодов из загруженных накладных", color = Color(0xFF617268), fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = query,
@@ -63,12 +65,12 @@ fun ProductCatalogScreen(
             items(products, key = { it.barcode }) { product ->
                 Card(
                     Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(product.productName, color = TextLight, fontSize = 15.sp)
-                        Text(product.barcode, color = MintAccent, fontSize = 12.sp)
+                        Text(product.barcode, color = Color(0xFF27834D), fontSize = 12.sp)
                     }
                 }
             }
