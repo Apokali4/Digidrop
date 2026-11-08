@@ -976,7 +976,6 @@ fun DigitDropRoot() {
                 onBack = { currentScreen = AppScreen.HUB },
                 onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; currentScreen = AppScreen.PHOTO_ROUTE },
                 onLoadInvoice = {
-                    appendInvoiceToRoute = false
                     filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 }
             )
