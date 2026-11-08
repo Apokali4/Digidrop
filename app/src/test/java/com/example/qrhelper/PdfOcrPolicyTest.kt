@@ -19,8 +19,8 @@ class PdfOcrPolicyTest {
 
     @Test fun preservesColumnBoundariesWhenOcrUsesRepeatedSpaces() {
         assertEquals(
-            "Штрихкод\\tМагазин\\tАдрес\\n4601234567890\\tМагазин А\\tКалуга, Ленина 1",
-            normalizeOcrTableText("Штрихкод   Магазин  Адрес\\n4601234567890  Магазин А   Калуга, Ленина 1")
+            "Штрихкод\tМагазин\tАдрес\n4601234567890\tМагазин А\tКалуга, Ленина 1",
+            normalizeOcrTableText("Штрихкод   Магазин  Адрес\n4601234567890  Магазин А   Калуга, Ленина 1")
         )
     }
 }

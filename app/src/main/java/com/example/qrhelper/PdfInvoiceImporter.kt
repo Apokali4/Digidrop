@@ -20,8 +20,8 @@ internal fun selectPdfInvoiceText(extractedText: String, recognizedText: String)
 
 internal fun normalizeOcrTableText(text: String): String =
     text.lineSequence().map { line ->
-        line.trim().replace(Regex(" {2,}"), "\\t")
-    }.joinToString("\\n")
+        line.trim().replace(Regex(" {2,}"), "\t")
+    }.joinToString("\n")
 
 internal object PdfInvoiceImporter {
     fun extractText(context: Context, uri: Uri): String {
