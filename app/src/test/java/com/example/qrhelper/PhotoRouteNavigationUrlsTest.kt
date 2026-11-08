@@ -66,4 +66,14 @@ class PhotoRouteNavigationUrlsTest {
         assertEquals(1, PhotoRouteOrdering.farthestStopIndex(depot, points))
     }
 
+    @Test fun localFallbackVisitsEveryPointAndChoosesNearestNextStop() {
+        val points = listOf(
+            PhotoRouteCoordinate(54.51, 36.25),
+            PhotoRouteCoordinate(54.70, 36.40),
+            PhotoRouteCoordinate(54.52, 36.26),
+            PhotoRouteCoordinate(54.55, 36.30)
+        )
+        assertEquals(listOf(0, 2, 3, 1), PhotoRouteOrdering.nearestNeighborOrder(points))
+    }
+
 }
