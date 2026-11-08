@@ -5,7 +5,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main, feature/offline-map-yandex-navigation ]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       build_apk:
@@ -40,29 +40,6 @@ jobs:
           packages: platform-tools
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-      - name: Download bundled Kaluga PMTiles
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: build-kaluga-map.yml
-          run_id: 42376599076
-          name: DigiDrop-Kaluga-Offline-Map
-          path: app/src/main/assets
-      - name: Bundle offline map glyphs
-        run: |
-          set -euo pipefail
-          FONT_DIR="app/src/main/assets/fonts/Noto Sans Regular"
-          mkdir -p "$FONT_DIR"
-          for RANGE in "0-255" "1024-1279" "1280-1535"; do
-            curl --fail --location --retry 3 \
-              "https://protomaps.github.io/basemaps-assets/fonts/Noto%20Sans%20Regular/${RANGE}.pbf" \
-              --output "$FONT_DIR/${RANGE}.pbf"
-            test -s "$FONT_DIR/${RANGE}.pbf"
-          done
-          curl --fail --location --retry 3 \
-            "https://raw.githubusercontent.com/protomaps/basemaps-assets/main/fonts/OFL.txt" \
-            --output "app/src/main/assets/fonts/OFL.txt"
-          test -s "app/src/main/assets/fonts/OFL.txt"
       - name: Download bundled Russian OCR model
         run: |
           mkdir -p app/src/main/assets/tessdata
