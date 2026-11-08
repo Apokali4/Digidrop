@@ -1112,13 +1112,7 @@ fun DigitDropRoot() {
                 onOpenScanner = { openScanner() },
                 onEditRoute = { currentScreen = AppScreen.ROUTE_EDITOR },
                 onNavigateSegment = { index, segment ->
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, PhotoRouteNavigationUrls.yandexNavigator(segment, startsFromPreviousStop = index > 0))
-                            .setPackage("ru.yandex.yandexnavi")
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                        Toast.makeText(context, "Яндекс Навигатор не установлен или не принимает маршрут. Установите приложение и повторите.", Toast.LENGTH_LONG).show()
-                    }
+                    openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
                 },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
