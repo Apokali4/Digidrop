@@ -437,13 +437,13 @@ enum class AppScreen {
 }
 
 // Тёплая песочно-бежeвая палитра DigiDrop.
-val BgDark = Color(0xFFF1EBDD)
-val CardSurface = Color(0xFFFBF7EF)
-val CardBorder = Color(0xFFD8CBB8)
-val EmeraldPrimary = Color(0xFF78866B)
-val MintAccent = Color(0xFF80664E)
-val TextLight = Color(0xFF302B25)
-val TextMuted = Color(0xFF746B60)
+val BgDark = Color(0xFFF3F6F4)
+val CardSurface = Color(0xFFFFFFFF)
+val CardBorder = Color(0xFFE1E8E3)
+val EmeraldPrimary = Color(0xFF278653)
+val MintAccent = Color(0xFF367B59)
+val TextLight = Color(0xFF26332C)
+val TextMuted = Color(0xFF68766E)
 
 @Composable
 fun Modifier.bounceClick(
@@ -1551,39 +1551,47 @@ fun HubScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark)
             .statusBarsPadding().navigationBarsPadding()
-            .padding(horizontal = 22.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("DigiDrop", color = TextLight, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                Text("Рабочее место водителя", color = TextMuted, fontSize = 16.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("DigiDrop", color = TextLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text("Маршруты и доставка", color = TextMuted, fontSize = 14.sp)
             }
             TextButton(onClick = onOpenMenu) {
-                Text("Меню  ⋯", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Ещё  ⋯", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
-        Spacer(Modifier.height(8.dp))
-        HubTile(
-            "QR-сканер",
-            "Сканировать код накладной",
-            "▦",
-            Color(0xFF3978A8),
-            Modifier.fillMaxWidth().height(190.dp),
-            onOpenScanner
-        )
+        Spacer(Modifier.height(12.dp))
         HubTile(
             "Загрузить накладную",
-            "Сфотографировать или загрузить накладную",
-            "⇧",
+            "Выбрать PDF, Excel или CSV и подготовить маршрут",
+            "▤",
             EmeraldPrimary,
-            Modifier.fillMaxWidth().height(190.dp),
+            Modifier.fillMaxWidth().heightIn(min = 132.dp),
             onLoadInvoice
         )
+        HubTile(
+            "Загрузить фотографии",
+            "Сфотографировать маршрутный лист или выбрать снимки",
+            "▧",
+            Color(0xFF4F8B72),
+            Modifier.fillMaxWidth().heightIn(min = 132.dp),
+            onLoadInvoice
+        )
+        if (onOpenScanner != {}) {
+            Text(
+                "Сканер коробок доступен внутри рабочего маршрута",
+                color = TextMuted,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
