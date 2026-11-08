@@ -83,6 +83,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1740,7 +1747,13 @@ private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = M
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            Text(symbol, color = MintAccent, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+            val icon = when (label) {
+                "Сканер" -> Icons.Outlined.QrCodeScanner
+                "Карта" -> Icons.Outlined.Map
+                "Отчёты" -> Icons.Outlined.Assessment
+                else -> Icons.Outlined.Settings
+            }
+            Icon(icon, contentDescription = label, tint = MintAccent, modifier = Modifier.size(27.dp))
             Text(label, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
@@ -1831,7 +1844,11 @@ fun HubTile(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Text(symbol, color = if (primary) Color.White else accent, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            if (primary) {
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
+            } else {
+                Text(symbol, color = accent, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(title, color = foreground, fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = secondary, fontSize = 14.sp, maxLines = 2)
