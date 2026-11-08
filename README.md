@@ -68,3 +68,7 @@ Verification: GitHub Actions unit tests passed on the current main revision. A f
 - The route editor uses the same tile-based controls and drag ordering.
 - Google Maps route launch has been removed from the photo route planner.
 
+
+## Multi-photo route import
+
+The photo route planner accepts multiple images from the gallery in one selection and queues multiple camera captures. All queued images are processed in one OCR batch before address extraction and route geocoding.
