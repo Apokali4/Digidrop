@@ -361,6 +361,7 @@ private fun PhotoMetadataField(
 
 @Composable
 fun PhotoRoutePlannerScreen(
+    initialAction: String? = null,
     onBack: () -> Unit,
     onApplyRoute: (List<RouteItem>) -> Unit
 ) {
@@ -412,6 +413,12 @@ fun PhotoRoutePlannerScreen(
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) cameraOpen = true
         else Toast.makeText(context, "Для съёмки маршрутника нужно разрешение камеры", Toast.LENGTH_LONG).show()
+    }
+    LaunchedEffect(initialAction) {
+        when (initialAction) {
+            "camera" -> cameraPermission.launch(Manifest.permission.CAMERA)
+            "gallery" -> photoPicker.launch("image/*")
+        }
     }
     if (cameraOpen) {
         RouteCameraCaptureScreen(
