@@ -2103,47 +2103,46 @@ fun ScanResultsScreen(
 }
 
 @Composable
+@Composable
 fun StoreGroupCard(
     items: List<RouteItem>,
-    compactMode: Boolean = false,
+    compactMode: Boolean = true,
     onClick: () -> Unit,
     onMapClick: () -> Unit,
     onCallClick: () -> Unit
 ) {
     val first = items.first()
     val total = items.sumOf { it.totalBoxes }
-    val scanned = items.sumOf { it.scannedBoxes }
     val delivered = deliveryPointStatus(items) == DeliveryPointStatus.DELIVERED
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
-        modifier = Modifier.fillMaxWidth().border(1.dp, when { hasProblem -> DigiDropPalette.primaryDark; delivered -> CardBorder; else -> EmeraldPrimary.copy(alpha = 0.6f) }, RoundedCornerShape(18.dp))
-            .bounceClick(scaleDown = 0.98f, onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
-        shape = RoundedCornerShape(18.dp)
+        modifier = Modifier.fillMaxWidth()
+            .border(1.dp, Color(0xFFDCE8DE), RoundedCornerShape(14.dp))
+            .bounceClick(scaleDown = 0.985f, onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(if (compactMode) 10.dp else 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    when { hasProblem -> "Проблема / расхождение"; delivered -> "Доставлено"; else -> "В пути" },
-                    color = when { hasProblem -> DigiDropPalette.primaryDark; delivered -> MintAccent; else -> EmeraldPrimary },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(first.storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(first.address, color = TextMuted, fontSize = 13.sp)
-                if (first.ownerName.isNotBlank()) Text(first.ownerName, color = TextLight, fontSize = 12.sp, maxLines = 1)
-                if (first.workingHours.isNotBlank()) Text("Работа: ${first.workingHours}", color = TextMuted, fontSize = 12.sp, maxLines = 1)
-                if (first.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${first.cashNote}", color = DigiDropPalette.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                if (first.note.isNotBlank()) Text(first.note, color = TextMuted, fontSize = 12.sp, maxLines = 2)
-                Spacer(Modifier.height(if (compactMode) 4.dp else 8.dp))
-                Text("$total мест • ${items.size} строк накладных", color = TextLight, fontSize = if (compactMode) 12.sp else 14.sp, fontWeight = FontWeight.SemiBold)
-                Text("Позиций: ${items.map { it.itemName }.distinct().size} • Учтено сканов: $scanned", color = TextMuted, fontSize = 11.sp)
-                Text(items.take(2).joinToString(" · ") { it.itemName }, color = MintAccent, fontSize = 12.sp, maxLines = 1)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(first.storeName.ifBlank { "Точка доставки" }, color = Color(0xFF202820),
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(first.address, color = Color(0xFF58645A), fontSize = 12.sp, maxLines = 2)
+                val details = listOf(first.workingHours, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
+                if (details.isNotBlank()) Text(details, color = Color(0xFF278747), fontSize = 11.sp, maxLines = 1)
+                Text("$total мест • ${items.size} накладных",
+                    color = Color(0xFF58645A), fontSize = 11.sp)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(38.dp).clip(CircleShape).background(CardBorder).bounceClick { onMapClick() }, contentAlignment = Alignment.Center) { MapIconVector(MintAccent) }
-                Box(Modifier.size(38.dp).clip(CircleShape).background(CardBorder).bounceClick { onCallClick() }, contentAlignment = Alignment.Center) { PhoneIconVector(MintAccent) }
-                Text("Открыть", color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(when { hasProblem -> "Проблема"; delivered -> "Сдано"; else -> "В пути" },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> Color(0xFF278747); else -> Color(0xFF657568) },
+                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE8F3E9))
+                        .bounceClick { onMapClick() }, contentAlignment = Alignment.Center) { MapIconVector(Color(0xFF278747)) }
+                    Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE8F3E9))
+                        .bounceClick { onCallClick() }, contentAlignment = Alignment.Center) { PhoneIconVector(Color(0xFF278747)) }
+                }
             }
         }
     }
@@ -2885,21 +2884,31 @@ fun RouteListScreen(
                 } else {
                     displayedGroups.forEachIndexed { index, group ->
                         val originalIndex = allGroups.indexOfFirst { it.first == group.first }
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                StoreGroupCard(
-                                    items = group.second,
-                                    compactMode = compactMode,
-                                    onClick = { onPointClick(group.second) },
-                                    onMapClick = { onOpenPointMap(group.second.first().address) },
-                                    onCallClick = { onCallClient(group.second.first().phone) }
+                        Row(
+                            Modifier.fillMaxWidth().pointerInput(originalIndex, allGroups.size) {
+                                var dragDistance = 0f
+                                detectDragGesturesAfterLongPress(
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        dragDistance += amount.y
+                                        if (kotlin.math.abs(dragDistance) >= 70f) {
+                                            val target = (originalIndex + if (dragDistance > 0f) 1 else -1)
+                                                .coerceIn(0, allGroups.lastIndex)
+                                            if (target != originalIndex) onMoveGroup(originalIndex, target)
+                                            dragDistance = 0f
+                                        }
+                                    }
                                 )
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex > 0, onClick = { onMoveGroup(originalIndex, originalIndex - 1) }) { Text("↑") }
-                                TextButton(enabled = pointFilter == PointFilter.ALL && originalIndex in 0 until allGroups.lastIndex, onClick = { onMoveGroup(originalIndex, originalIndex + 1) }) { Text("↓") }
-                            }
+                            },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StoreGroupCard(
+                                items = group.second,
+                                compactMode = true,
+                                onClick = { onPointClick(group.second) },
+                                onMapClick = { onOpenPointMap(group.second.first().address) },
+                                onCallClick = { onCallClient(group.second.first().phone) }
+                            )
                         }
                     }
                 }
