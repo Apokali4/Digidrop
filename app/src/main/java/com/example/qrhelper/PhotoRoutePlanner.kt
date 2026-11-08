@@ -195,39 +195,40 @@ internal object PhotoRouteTextParser {
             val street = streetHint.find(address)?.value.orEmpty()
             street.isNotBlank() && line.contains(street, ignoreCase = true)
         }
-        val block = if (index >= 0) {
-            // Ограничиваем метаданные соседними адресами, чтобы магазин/телефон/комментарий
-            // одной точки не перетекал в карточку следующей.
-            val addressIndices = lines.indices.filter { lineIndex ->
-                cleanAddressFragment(lines[lineIndex], "") != null
-            }
-            val previousAddress = addressIndices.lastOrNull { it < index } ?: -1
-            val nextAddress = addressIndices.firstOrNull { it > index } ?: lines.size
-            lines.subList(previousAddress + 1, nextAddress)
-        } else lines
+        val addressIndices = lines.indices.filter { lineIndex -> cleanAddressFragment(lines[lineIndex], "") != null }
+        val previousAddress = addressIndices.lastOrNull { it < index } ?: -1
+        val nextAddress = addressIndices.firstOrNull { it > index } ?: lines.size
+        val blockStart = if (index >= 0) maxOf(previousAddress + 1, index - 3) else 0
+        val blockEnd = if (index >= 0) minOf(nextAddress, index + 7) else lines.size
+        val block = if (index >= 0) lines.subList(blockStart, blockEnd) else lines
         val anchor = lines.getOrNull(index).orEmpty()
         val houseMatch = houseAfterStreet.find(anchor, (streetHint.find(anchor)?.range?.last ?: -1) + 1)
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
 
         val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
-        val companyLine = block.firstOrNull { legalPattern.containsMatchIn(it) && !it.startsWith("ИП", ignoreCase = true) }.orEmpty()
-        val owner = block.firstOrNull { it.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(it) } ?: companyLine
-        val phone = Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""")
-            .find(block.joinToString(" "))?.value.orEmpty().trim()
+        val companyLine = block.withIndex()
+            .filter { (_, line) -> legalPattern.containsMatchIn(line) && !line.startsWith("ИП", ignoreCase = true) }
+            .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
+        val owner = block.withIndex()
+            .filter { (_, line) -> line.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(line) }
+            .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value ?: companyLine
+        val phone = block.withIndex()
+            .mapNotNull { (lineIndex, line) -> Regex("""(?iu)(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""").find(line)?.value?.let { kotlin.math.abs(blockStart + lineIndex - index) to it } }
+            .minByOrNull { it.first }?.second.orEmpty().trim()
 
-        val combined = block.joinToString(" ")
-        val timeRange = Regex("""(?iu)\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
-        val deadline = Regex("""(?iu)до\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
-        val opening = Regex("""(?iu)(?:с|после)\s*\d{1,2}[:.]\d{2}""").find(combined)?.value.orEmpty()
-        val hours = when {
-            timeRange.isNotBlank() -> timeRange
-            deadline.isNotBlank() -> deadline
-            opening.isNotBlank() -> opening
-            else -> ""
-        }
+        val timePatterns = listOf(
+            Regex("""(?iu)\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}"""),
+            Regex("""(?iu)до\s*\d{1,2}[:.]\d{2}"""),
+            Regex("""(?iu)(?:с|после)\s*\d{1,2}[:.]\d{2}""")
+        )
+        val hours = block.withIndex().mapNotNull { (lineIndex, line) ->
+            timePatterns.firstNotNullOfOrNull { it.find(line)?.value }?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
+        }.minByOrNull { it.first }?.second.orEmpty()
 
-        val cash = block.firstOrNull { Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(it) }.orEmpty()
+        val cash = block.withIndex()
+            .filter { (_, line) -> Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(line) }
+            .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
         val suffixBrand = afterHouse.takeIf {
             it.isNotBlank() && !legalPattern.containsMatchIn(it) &&
                 it.length <= 48 && !Regex("""[^А-Яа-яЁёA-Za-z0-9 .&()/-]""").containsMatchIn(it)
@@ -235,16 +236,19 @@ internal object PhotoRouteTextParser {
         val brandInSuffix = suffixBrand?.let { suffix ->
             brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(suffix) }?.second
         }
-        val brandNearby = block.firstNotNullOfOrNull { line ->
+        val brandNearby = block.withIndex().mapNotNull { (lineIndex, line) ->
             brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
-        }
+                ?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
+        }.minByOrNull { it.first }?.second
         val store = brandInSuffix ?: suffixBrand ?: brandNearby ?: companyLine
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
-        val comment = block.filter { line ->
-            line != cash && !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
+        val comment = block.withIndex().filter { (lineIndex, line) ->
+            val absoluteIndex = blockStart + lineIndex
+            absoluteIndex > index && absoluteIndex < nextAddress && line != cash &&
+                !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
                 (instructionPattern.containsMatchIn(line) ||
                     line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
-        }.distinct().joinToString("; ")
+        }.map { it.value }.distinct().joinToString("; ")
         return PhotoStopMetadata(store, owner, phone, hours, cash, comment)
     }
 }
