@@ -45,6 +45,7 @@ jobs:
             --force \
             --minzoom=0 \
             --maxzoom=15 \
+            --tile-format=mvt \
             --building-merge-z13=false \
             --water-polygons-url=https://github.com/onthegomap/planetiler/raw/main/planetiler-core/src/test/resources/water-polygons-split-3857.zip \
             --natural-earth-url=https://github.com/onthegomap/planetiler/raw/main/planetiler-core/src/test/resources/natural_earth_vector.sqlite.zip
