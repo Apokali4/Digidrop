@@ -48,6 +48,7 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.annotations.IconFactory
@@ -263,10 +264,21 @@ fun OfflineMapScreen(
                                 lineGeoJson = lineGeoJson.toString()
                             )
                             map.setStyle(Style.Builder().fromJson(styleJson)) {
-                                map.cameraPosition = CameraPosition.Builder()
-                                    .target(LatLng(54.5138, 36.2612))
-                                    .zoom(10.0)
-                                    .build()
+                                val mappedCoordinates = mappedGroups.mapNotNull { group ->
+                                    val point = group.first()
+                                    if (point.latitude != null && point.longitude != null) LatLng(point.latitude!!, point.longitude!!) else null
+                                }
+                                if (mappedCoordinates.size >= 2) {
+                                    val bounds = LatLngBounds.Builder().also { builder ->
+                                        mappedCoordinates.forEach(builder::include)
+                                    }.build()
+                                    map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 64))
+                                } else {
+                                    map.cameraPosition = CameraPosition.Builder()
+                                        .target(mappedCoordinates.firstOrNull() ?: LatLng(54.5138, 36.2612))
+                                        .zoom(12.0)
+                                        .build()
+                                }
                                 mappedGroups.forEach { group ->
                                     val item = group.first()
                                     val markerNumber = pointGroups.indexOf(group) + 1
@@ -325,7 +337,7 @@ fun OfflineMapScreen(
             }
             }
             LazyRow(
-                modifier = Modifier.fillMaxWidth().height(92.dp).padding(top = 6.dp),
+                modifier = Modifier.fillMaxWidth().height(112.dp).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 itemsIndexed(visiblePointGroups) { index, group ->
@@ -344,8 +356,8 @@ fun OfflineMapScreen(
                         DeliveryPointStatus.PENDING -> Color(0xFFE5A000)
                     }
                     Card(
-                        Modifier.width(190.dp).clickable {
-                            selectedPointId = first.storeName + "|" + first.address
+                        Modifier.width(220.dp).clickable {
+                            selectedPointId = PhotoRouteTextParser.canonicalAddressKey(first.address)
                             val lat = first.latitude
                             val lon = first.longitude
                             if (lat != null && lon != null) {
@@ -357,7 +369,7 @@ fun OfflineMapScreen(
                                 onSelectPoint(group)
                             }
                         },
-                        colors = CardDefaults.cardColors(containerColor = if (selectedPointId == first.storeName + "|" + first.address) Color(0xFFE8F4EC) else CardSurface),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedPointId == PhotoRouteTextParser.canonicalAddressKey(first.address)) Color(0xFF294735) else CardSurface),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
