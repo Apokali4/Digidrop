@@ -1418,7 +1418,7 @@ fun DigitDropRoot() {
                             selectedItem = matchedItem
                             currentScreen = AppScreen.DETAILS
                         }
-                        (matchedItem.totalBoxes - matchedItem.scannedBoxes - matchedItem.discrepancyQty) <= 0 -> {
+                        remainingBoxes(matchedItem) == 0 -> {
                             Toast.makeText(
                                 context,
                                 "${matchedItem.storeName}: все места по этой позиции уже учтены (${matchedItem.totalBoxes}). Повторный скан не засчитываю.",
