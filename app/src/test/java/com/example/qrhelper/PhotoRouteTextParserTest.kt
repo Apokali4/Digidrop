@@ -152,6 +152,25 @@ class PhotoRouteTextParserTest {
             PhotoRouteTextParser.extractCandidates(text, "Калуга")
         )
     }
+    @Test fun keepsMetadataFromAdjacentDeliveryPointsSeparate() {
+        val text = """
+            Красное и Белое
+            Калуга, ул. Ленина, д. 10
+            Доставить до 10:00
+            Бристоль
+            Калуга, ул. Победы, д. 2
+            Открывается с 12:00
+        """.trimIndent()
+
+        val first = PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Ленина, д. 10")
+        val second = PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Победы, д. 2")
+
+        assertEquals("Красное и Белое", first.storeName)
+        assertEquals("Бристоль", second.storeName)
+        assertEquals("до 10:00", first.workingHours)
+        assertEquals("с 12:00", second.workingHours)
+        assertEquals("", second.comment)
+    }
     @Test fun extractsHeaderFieldsFromRealisticShipmentTaskOcr() {
         val text = """
             Задание на отгрузку №Л00000006924 (07.11.2026)
