@@ -74,7 +74,7 @@ internal object PhotoRouteHeaderParser {
         }.orEmpty()
 
         val driver = value(Regex("""(?iu)(?:водитель|экспедитор)\s*[:№-]?\s*(.+)$"""))
-            .substringBefore(Regex("""(?iu)\s+(?:экспедитор|водитель)\s*:"""))
+            .replace(Regex("""(?iu)\s+(?:экспедитор|водитель)\s*:.*$"""), "")
             .trim()
 
         var vehicle = ""
