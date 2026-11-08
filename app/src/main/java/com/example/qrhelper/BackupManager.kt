@@ -15,7 +15,8 @@ internal data class BackupSnapshot(
     val autoSave: Boolean = true,
     val compactMode: Boolean = false,
     val unknownCodes: List<String> = emptyList(),
-    val scanCodes: List<String> = emptyList()
+    val scanCodes: List<String> = emptyList(),
+    val catalog: List<ProductCatalogRecord> = emptyList()
 )
 
 internal object BackupManager {
@@ -56,6 +57,11 @@ internal object BackupManager {
                     .put("compactMode", snapshot.compactMode))
                 .put("unknownCodes", JSONArray(snapshot.unknownCodes))
                 .put("scanCodes", JSONArray(snapshot.scanCodes))
+                .put("products", JSONArray().apply {
+                    snapshot.catalog.forEach { product ->
+                        put(JSONObject().put("barcode", product.barcode).put("productName", product.productName))
+                    }
+                })
                 .put("routeItems", items)
             zip.putNextEntry(ZipEntry("backup.json"))
             zip.write(json.toString().toByteArray(Charsets.UTF_8))
@@ -110,7 +116,8 @@ internal object BackupManager {
             autoSave = settings.optBoolean("autoSave", true),
             compactMode = settings.optBoolean("compactMode", false),
             unknownCodes = root.optJSONArray("unknownCodes").toStringList(),
-            scanCodes = root.optJSONArray("scanCodes").toStringList()
+            scanCodes = root.optJSONArray("scanCodes").toStringList(),
+            catalog = root.optJSONArray("products").toProductCatalog()
         )
     }
 
@@ -137,4 +144,13 @@ internal object BackupManager {
 
     private fun JSONArray?.toStringList(): List<String> =
         if (this == null) emptyList() else (0 until length()).map { optString(it) }
+
+    private fun JSONArray?.toProductCatalog(): List<ProductCatalogRecord> =
+        if (this == null) emptyList() else (0 until length()).mapNotNull { index ->
+            optJSONObject(index)?.let { item ->
+                val barcode = item.optString("barcode").trim()
+                val name = item.optString("productName").trim()
+                if (barcode.isNotBlank() && name.isNotBlank()) ProductCatalogRecord(barcode, name) else null
+            }
+        }
 }
