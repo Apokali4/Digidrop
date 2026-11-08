@@ -344,7 +344,19 @@ fun OfflineMapScreen(
                         DeliveryPointStatus.PENDING -> Color(0xFFE5A000)
                     }
                     Card(
-                        Modifier.width(190.dp).clickable { onSelectPoint(group) },
+                        Modifier.width(190.dp).clickable {
+                            selectedPointId = first.storeName + "|" + first.address
+                            val lat = first.latitude
+                            val lon = first.longitude
+                            if (lat != null && lon != null) {
+                                liveMap?.animateCamera(
+                                    CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 15.0),
+                                    650
+                                )
+                            } else {
+                                onSelectPoint(group)
+                            }
+                        },
                         colors = CardDefaults.cardColors(containerColor = if (selectedPointId == first.storeName + "|" + first.address) Color(0xFFE8F4EC) else CardSurface),
                         shape = RoundedCornerShape(12.dp)
                     ) {
