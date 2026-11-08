@@ -1,5 +1,6 @@
 name: Android CI
 
+# Final APK build trigger for the validated 1.2.5 release.
 on:
   push:
     branches: [ main ]
@@ -50,8 +51,8 @@ jobs:
       - name: Download bundled Russian OCR model
         run: |
           mkdir -p app/src/main/assets/tessdata
-          curl --fail --location --retry 3 \
-            "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata" \
+          curl --fail --location --retry 3 \\
+            "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata" \\
             --output app/src/main/assets/tessdata/rus.traineddata
           test "$(stat -c%s app/src/main/assets/tessdata/rus.traineddata)" -gt 1000000
       - name: Set up Gradle
