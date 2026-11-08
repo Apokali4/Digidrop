@@ -2058,7 +2058,7 @@ fun ScanResultsScreen(
     onBack: () -> Unit,
     onOpenPoint: (RouteItem) -> Unit
 ) {
-    val groups = matches.groupBy { it.storeName to it.address }.toList()
+    val groups = matches.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.map { it.first().storeName to it }.toList()
     Column(
         modifier = Modifier.fillMaxSize().background(BgDark).padding(18.dp)
     ) {
