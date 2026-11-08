@@ -11,3 +11,6 @@ internal fun deliveryPointStatus(items: List<RouteItem>): DeliveryPointStatus {
     val scanned = items.sumOf { it.scannedBoxes.coerceAtLeast(0) }
     return RouteProgress.status(expected, scanned, 0)
 }
+
+internal fun remainingBoxes(item: RouteItem): Int =
+    (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0)
