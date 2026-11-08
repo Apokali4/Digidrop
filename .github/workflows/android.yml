@@ -48,6 +48,17 @@ jobs:
           run_id: 42376599076
           name: DigiDrop-Kaluga-Offline-Map
           path: app/src/main/assets
+      - name: Bundle offline map glyphs
+        run: |
+          set -euo pipefail
+          FONT_DIR="app/src/main/assets/fonts/Noto Sans Regular"
+          mkdir -p "$FONT_DIR"
+          for RANGE in "0-255" "1024-1279" "1280-1535"; do
+            curl --fail --location --retry 3 \
+              "https://protomaps.github.io/basemaps-assets/fonts/Noto%20Sans%20Regular/${RANGE}.pbf" \
+              --output "$FONT_DIR/${RANGE}.pbf"
+            test -s "$FONT_DIR/${RANGE}.pbf"
+          done
       - name: Download bundled Russian OCR model
         run: |
           mkdir -p app/src/main/assets/tessdata
