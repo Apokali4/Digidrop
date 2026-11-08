@@ -591,8 +591,7 @@ fun PhotoRoutePlannerScreen(
     onInitialActionConsumed: () -> Unit = {},
     onInitialImageConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    onApplyRoute: (List<RouteItem>, PhotoRouteHeader) -> Unit,
-    onOpenOfflineMap: () -> Unit = {}
+    onApplyRoute: (List<RouteItem>, PhotoRouteHeader) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -881,27 +880,6 @@ fun PhotoRoutePlannerScreen(
             }
 
             Text("НАВИГАЦИЯ", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
-            PhotoPlannerTile("Локальная офлайн-карта", "Открыть сохранённый маршрут на карте Калуги", primary = true) {
-                val items = located.mapIndexed { index, stop ->
-                    RouteItem(
-                        barcode = "PHOTO-${index + 1}",
-                        storeName = stop.metadata.storeName.ifBlank { "Точка ${index + 1}" },
-                        address = stop.address,
-                        itemName = "Доставка по маршрутному листу",
-                        totalBoxes = 0,
-                        phone = stop.metadata.phone,
-                        note = stop.metadata.comment.ifBlank { "Импортировано из фотографии" },
-                        latitude = stop.latitude,
-                        longitude = stop.longitude,
-                        ownerName = stop.metadata.ownerName,
-                        workingHours = stop.metadata.workingHours,
-                        cashNote = stop.metadata.cashNote,
-                        extraComment = stop.metadata.comment
-                    )
-                }
-                onApplyRoute(items, routeHeader)
-                onOpenOfflineMap()
-            }
             val coords = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
             val segments = PhotoRouteNavigationUrls.yandexSegments(coords)
             if (segments.size == 1) {
