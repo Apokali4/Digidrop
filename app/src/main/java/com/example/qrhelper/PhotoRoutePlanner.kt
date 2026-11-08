@@ -127,7 +127,12 @@ private suspend fun runRussianOcr(
     onProgress: suspend (String) -> Unit
 ): String = RussianOcrEngine.recognizeUri(context, imageUri, onProgress)
 
-private data class LocatedPhotoStop(val address: String, val latitude: Double, val longitude: Double)
+private data class LocatedPhotoStop(
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    val metadata: PhotoStopMetadata = PhotoStopMetadata()
+)
 
 internal data class PhotoRouteCoordinate(val latitude: Double, val longitude: Double)
 
@@ -339,6 +344,22 @@ private fun RouteCameraCaptureScreen(
 }
 
 @Composable
+private fun PhotoMetadataField(
+    title: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    val reviewLabel = if (value.isBlank()) "не распознано • заполнить" else "распознано • проверить"
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("$title • $reviewLabel", fontSize = 11.sp) },
+        singleLine = true
+    )
+}
+
+@Composable
 fun PhotoRoutePlannerScreen(
     onBack: () -> Unit,
     onApplyRoute: (List<RouteItem>) -> Unit
@@ -354,6 +375,12 @@ fun PhotoRoutePlannerScreen(
     var busy by remember { mutableStateOf(false) }
     var cameraOpen by remember { mutableStateOf(false) }
     var capturedUris by remember { mutableStateOf(listOf<Uri>()) }
+    fun updateStopMetadata(index: Int, transform: (PhotoStopMetadata) -> PhotoStopMetadata) {
+        if (index !in located.indices) return
+        val updated = located.toMutableList()
+        updated[index] = updated[index].copy(metadata = transform(updated[index].metadata))
+        located = updated
+    }
     fun processPhotoUris(uris: List<Uri>) {
         if (uris.isNotEmpty()) scope.launch {
             busy = true
@@ -471,7 +498,9 @@ fun PhotoRoutePlannerScreen(
                         require(clean.size >= 2) { "Добавьте минимум два адреса" }
                         status = "Ищу координаты адресов…"
                         val (resolved, failed) = geocodePhotoStops(context, clean, routeCity)
-                        located = resolved
+                        located = resolved.map { stop ->
+                            stop.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address))
+                        }
                         if (failed.isNotEmpty()) {
                             status = "Не удалось определить адреса: ${failed.joinToString("; ")}. Исправьте их и повторите."
                         } else if (resolved.size < 2) {
@@ -579,13 +608,31 @@ fun PhotoRoutePlannerScreen(
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text("Точка ${index + 1}", color = TextLight, style = MaterialTheme.typography.labelLarge)
                             Text(stop.address, color = TextMuted, style = MaterialTheme.typography.bodyMedium)
                             TextButton(onClick = {
                                 val query = "${stop.latitude},${stop.longitude}"
                                 openExternalMap(context, "https://yandex.ru/maps/?text=" + java.net.URLEncoder.encode(query, "UTF-8"))
                             }) { Text("Проверить в Яндекс Картах") }
+                            PhotoMetadataField("Магазин / получатель", stop.metadata.storeName) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(storeName = value) }
+                            }
+                            PhotoMetadataField("ИП / контактное лицо", stop.metadata.ownerName) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(ownerName = value) }
+                            }
+                            PhotoMetadataField("Телефон", stop.metadata.phone) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(phone = value) }
+                            }
+                            PhotoMetadataField("График работы", stop.metadata.workingHours) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(workingHours = value) }
+                            }
+                            PhotoMetadataField("Наличные / документы", stop.metadata.cashNote) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(cashNote = value) }
+                            }
+                            PhotoMetadataField("Комментарий / инструкция", stop.metadata.comment) { value ->
+                                updateStopMetadata(index) { metadata -> metadata.copy(comment = value) }
+                            }
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             TextButton(
@@ -615,7 +662,7 @@ fun PhotoRoutePlannerScreen(
             OutlinedButton(
                 onClick = {
                     val items = located.mapIndexed { index, stop ->
-                        val metadata = PhotoRouteTextParser.extractMetadata(rawText, stop.address)
+                        val metadata = stop.metadata
                         RouteItem(
                             barcode = "PHOTO-${index + 1}",
                             storeName = metadata.storeName.ifBlank { "Точка ${index + 1}" },

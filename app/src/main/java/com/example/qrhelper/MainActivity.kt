@@ -3137,7 +3137,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(18.dp))
         Text("Настройки", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
-        SettingToggleRow("Офлайн-режим", "Не требует учётной записи или сервера; карты могут требовать интернет", offlineMode, onOfflineChange)
+        SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте. Встроенная карта работает без сети.", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
