@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -91,6 +92,7 @@ fun OfflineMapScreen(
     onBack: () -> Unit,
     onImportMap: () -> Unit,
     onGeocodeMissing: () -> Unit,
+    onOpenScanner: () -> Unit,
     onSelectPoint: (List<RouteItem>) -> Unit
 ) {
     val context = LocalContext.current
@@ -192,6 +194,7 @@ fun OfflineMapScreen(
                     }
                 }
             }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
             key(refreshKey, visiblePointGroups, activeMapFile.absolutePath) {
                 val mapView = androidx.compose.runtime.remember {
                     MapLibre.getInstance(context)
@@ -304,8 +307,17 @@ fun OfflineMapScreen(
                         }
                         mapView
                     },
-                    modifier = Modifier.fillMaxWidth().weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 )
+            }
+            FloatingActionButton(
+                onClick = onOpenScanner,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                containerColor = EmeraldPrimary,
+                contentColor = Color.White
+            ) {
+                Text("⌗", fontSize = 25.sp)
+            }
             }
             LazyRow(
                 modifier = Modifier.fillMaxWidth().height(92.dp).padding(top = 6.dp),
