@@ -437,14 +437,16 @@ enum class AppScreen {
     OFFLINE_MAP
 }
 
-// Тёплая песочно-бежeвая палитра DigiDrop.
-val BgDark = Color(0xFFF3F6F4)
-val CardSurface = Color(0xFFFFFFFF)
-val CardBorder = Color(0xFFE1E8E3)
-val EmeraldPrimary = Color(0xFF278653)
-val MintAccent = Color(0xFF367B59)
-val TextLight = Color(0xFF26332C)
-val TextMuted = Color(0xFF68766E)
+// Industrial Graphite: матовый графит, спокойный зелёный, высокий контраст.
+val BgDark = Color(0xFF151A1D)
+val CardSurface = Color(0xFF222A2E)
+val CardBorder = Color(0xFF39454A)
+val EmeraldPrimary = Color(0xFF43B85B)
+val MintAccent = Color(0xFF91D99A)
+val TextLight = Color(0xFFF1F4F2)
+val TextMuted = Color(0xFFADB8B2)
+val IndustrialPanel = Color(0xFF1B2226)
+val IndustrialDivider = Color(0xFF303A3F)
 
 @Composable
 fun Modifier.bounceClick(
@@ -1647,7 +1649,8 @@ fun HubScreen(
             "Загрузить или заменить маршрутный лист: фото, PDF, Excel или CSV",
             "▤", EmeraldPrimary,
             Modifier.fillMaxWidth().heightIn(min = 132.dp),
-            onLoadInvoice
+            primary = true,
+            onClick = onLoadInvoice
         )
     }
 }
@@ -1718,27 +1721,31 @@ fun HubTile(
     symbol: String,
     accent: Color,
     modifier: Modifier = Modifier,
+    primary: Boolean = false,
     onClick: () -> Unit
 ) {
+    val tileColor = if (primary) Color(0xFF247A3C) else CardSurface
+    val foreground = if (primary) Color.White else TextLight
+    val secondary = if (primary) Color(0xFFDDF5E0) else TextMuted
     Card(
-        modifier = modifier.heightIn(min = 112.dp)
-            .border(1.dp, CardBorder, RoundedCornerShape(22.dp))
+        modifier = modifier.heightIn(min = if (primary) 132.dp else 112.dp)
+            .border(1.dp, if (primary) EmeraldPrimary else CardBorder, RoundedCornerShape(22.dp))
             .bounceClick(scaleDown = 0.985f) { onClick() },
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        colors = CardDefaults.cardColors(containerColor = tileColor),
         shape = RoundedCornerShape(22.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 0.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Text(symbol, color = accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = TextLight, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, color = TextMuted, fontSize = 14.sp, maxLines = 2)
+            Text(symbol, color = if (primary) Color.White else accent, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(title, color = foreground, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = secondary, fontSize = 14.sp, maxLines = 2)
             }
-            Text("›", color = MintAccent, fontSize = 28.sp)
+            Text("›", color = foreground, fontSize = 30.sp)
         }
     }
 }
@@ -1849,7 +1856,7 @@ fun LiveCameraScannerScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F9FC)),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Row(
@@ -1859,20 +1866,20 @@ fun LiveCameraScannerScreen(
                 ) {
                     Text(
                         text = "← Назад",
-                        color = Color(0xFF1F2B36),
+                        color = TextLight,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.bounceClick { onBack() }
                     )
-                    Text("СКАНЕР", color = Color(0xFF586979), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("СКАНЕР", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Box(
                         modifier = Modifier.size(44.dp).clip(CircleShape)
-                            .background(if (isFlashOn) Color(0xFFDDF5E7) else Color(0xFFE7ECF1))
-                            .border(1.dp, if (isFlashOn) Color(0xFF34C759) else Color(0xFFC9D3DB), CircleShape)
+                            .background(if (isFlashOn) Color(0xFF285B35) else CardSurface)
+                            .border(1.dp, if (isFlashOn) EmeraldPrimary else CardBorder, CircleShape)
                             .bounceClick { onFlashToggle() },
                         contentAlignment = Alignment.Center
                     ) {
-                        FlashlightVector(tint = if (isFlashOn) Color(0xFF16834A) else Color(0xFF586979))
+                        FlashlightVector(tint = if (isFlashOn) MintAccent else TextMuted)
                     }
                 }
             }
