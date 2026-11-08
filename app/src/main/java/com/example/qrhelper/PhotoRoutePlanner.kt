@@ -323,6 +323,30 @@ internal object PhotoRouteNavigationUrls {
         return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
     }
 
+    fun yandexNavigator(stops: List<PhotoRouteCoordinate>, startsFromPreviousStop: Boolean = false): Uri {
+        validate(stops)
+        require(stops.size <= YANDEX_MAX_STOPS) {
+            "Яндекс Навигатор принимает не больше 20 точек за один участок"
+        }
+        val route = Uri.parse("yandexnavi://build_route_on_map").buildUpon()
+        val destinations = if (startsFromPreviousStop) {
+            route.appendQueryParameter("lat_from", stops.first().latitude.toString())
+                .appendQueryParameter("lon_from", stops.first().longitude.toString())
+            stops.drop(1)
+        } else stops
+        require(destinations.size >= 2 || (startsFromPreviousStop && destinations.size == 1)) {
+            "Для маршрута нужны минимум две точки"
+        }
+        destinations.dropLast(1).forEachIndexed { index, point ->
+            route.appendQueryParameter("lat_via_$index", point.latitude.toString())
+                .appendQueryParameter("lon_via_$index", point.longitude.toString())
+        }
+        val destination = destinations.last()
+        route.appendQueryParameter("lat_to", destination.latitude.toString())
+            .appendQueryParameter("lon_to", destination.longitude.toString())
+        return route.build()
+    }
+
 }
 
 private fun openExternalMap(context: android.content.Context, url: String) {
