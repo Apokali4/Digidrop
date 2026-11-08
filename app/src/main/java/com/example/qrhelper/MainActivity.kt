@@ -813,7 +813,23 @@ fun DigitDropRoot() {
                     )
                 }
                 if (InvoiceImportKind.isImage(mime, uriText)) {
-                    photoRouteInitialUri = uri
+                    // Copy the provider-backed image while the picker grant is still active.
+                    // OCR then reads a stable app-owned file instead of a temporary gallery URI.
+                    val cachedPhoto = withContext(Dispatchers.IO) {
+                        val extension = when {
+                            mime.contains("png", ignoreCase = true) -> ".png"
+                            mime.contains("webp", ignoreCase = true) -> ".webp"
+                            mime.contains("heic", ignoreCase = true) || mime.contains("heif", ignoreCase = true) -> ".heic"
+                            else -> ".jpg"
+                        }
+                        val target = File(context.cacheDir, "route_import_${System.currentTimeMillis()}$extension")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            target.outputStream().use { output -> input.copyTo(output) }
+                        } ?: error("Android не предоставил доступ к выбранной фотографии")
+                        check(target.length() > 0L) { "Выбранная фотография оказалась пустой" }
+                        target
+                    }
+                    photoRouteInitialUri = Uri.fromFile(cachedPhoto)
                     photoRouteInitialAction = null
                     currentScreen = AppScreen.PHOTO_ROUTE
                     return@launch
