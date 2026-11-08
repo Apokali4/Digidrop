@@ -1978,12 +1978,12 @@ fun LiveCameraScannerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F9FC)),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Text(
                     text = "Наведите рамку на штрихкод накладной",
-                    color = Color(0xFF1F2B36),
+                    color = TextLight,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp)
