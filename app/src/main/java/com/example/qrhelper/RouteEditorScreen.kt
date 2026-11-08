@@ -20,6 +20,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,7 +78,7 @@ internal fun RouteEditorScreen(
         validationError = ""
     }
 
-    val palette = com.example.qrhelper.ui.theme.DigiDropPalette
+    val palette = MaterialTheme.colorScheme
     Column(
         Modifier.fillMaxSize().background(palette.background).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -87,8 +88,8 @@ internal fun RouteEditorScreen(
                 onClick = onBack, modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = palette.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
-            ) { Text("← НАЗАД", Modifier.padding(16.dp), color = palette.text) }
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) { Text("← НАЗАД", Modifier.padding(16.dp), color = palette.onSurface) }
             Card(
                 onClick = { onSave(groups.flatten()) }, modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
@@ -99,11 +100,11 @@ internal fun RouteEditorScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft),
+            colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
             border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
         ) {
             Text("ТОЧЕК: ${groups.size}   •   СТРОК ГРУЗА: ${groups.sumOf { it.size }}",
-                Modifier.padding(14.dp), color = palette.textSecondary)
+                Modifier.padding(14.dp), color = palette.onSurfaceVariant)
         }
         Card(
             onClick = { openEditor(null) }, modifier = Modifier.fillMaxWidth(),
@@ -169,8 +170,8 @@ internal fun RouteEditorScreen(
                                 Card(
                                     onClick = { openEditor(group) }, modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = palette.primarySoft)
-                                ) { Text("ИЗМЕНИТЬ", Modifier.padding(12.dp), color = palette.primaryDark) }
+                                    colors = CardDefaults.cardColors(containerColor = palette.secondaryContainer)
+                                ) { Text("ИЗМЕНИТЬ", Modifier.padding(12.dp), color = palette.primary) }
                                 Card(
                                     onClick = { deletingGroup = group }, modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
@@ -202,13 +203,13 @@ internal fun RouteEditorScreen(
                     OutlinedTextField(note, { note = it }, label = { Text("Инструкция к заезду") })
                     OutlinedTextField(extraComment, { extraComment = it }, label = { Text("Дополнительный комментарий") })
                     if (adding) {
-                        Text("Груз для новой точки", color = MintAccent, fontSize = 13.sp)
+                        Text("Груз для новой точки", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                         OutlinedTextField(barcode, { barcode = it }, label = { Text("Штрихкод (необязательно)") }, singleLine = true)
                         OutlinedTextField(itemName, { itemName = it }, label = { Text("Название товара") }, singleLine = true)
                         OutlinedTextField(quantity, { quantity = it.filter(Char::isDigit).take(6) }, label = { Text("Количество мест") }, singleLine = true)
                     }
                     if (validationError.isNotBlank()) {
-                        Text(validationError, color = EmeraldPrimary, fontSize = 12.sp)
+                        Text(validationError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                     }
                 }
             },
