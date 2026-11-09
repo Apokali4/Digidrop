@@ -999,9 +999,10 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             else -> ".jpg"
                         }
                         val target = File(context.cacheDir, "route_import_${System.currentTimeMillis()}$extension")
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            target.outputStream().use { output -> input.copyTo(output) }
+                        val imageBytes = context.contentResolver.openInputStream(uri)?.use {
+                            it.readInvoiceBytes()
                         } ?: error("Android не предоставил доступ к выбранной фотографии")
+                        target.writeBytes(imageBytes)
                         check(target.length() > 0L) { "Выбранная фотография оказалась пустой" }
                         target
                     }
@@ -1019,8 +1020,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         }
                     } else {
                         context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                            if (isExcel) parseXlsx(inputStream)
-                            else parseManifest(inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+                            val bytes = inputStream.readInvoiceBytes()
+                            if (isExcel) parseXlsx(bytes.inputStream())
+                            else parseManifest(bytes.toString(Charsets.UTF_8))
                         }.orEmpty()
                     }
                 }
