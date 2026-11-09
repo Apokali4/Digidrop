@@ -17,14 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Assessment
-import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Warehouse
+import androidx.compose.ui.res.painterResource
+import com.example.qrhelper.R
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,14 +38,14 @@ import androidx.compose.ui.unit.sp
 enum class DigiDropIcon { HUB, MANIFEST, ROUTE, SCAN, REPORTS, SETTINGS, INVENTORY }
 
 object DigiDropIcons {
-    fun image(icon: DigiDropIcon): ImageVector = when (icon) {
-        DigiDropIcon.HUB -> Icons.Outlined.Warehouse
-        DigiDropIcon.MANIFEST -> Icons.Outlined.ReceiptLong
-        DigiDropIcon.ROUTE -> Icons.Outlined.Map
-        DigiDropIcon.SCAN -> Icons.Outlined.QrCodeScanner
-        DigiDropIcon.REPORTS -> Icons.Outlined.Assessment
-        DigiDropIcon.SETTINGS -> Icons.Outlined.Settings
-        DigiDropIcon.INVENTORY -> Icons.Outlined.Inventory2
+    fun resource(icon: DigiDropIcon): Int = when (icon) {
+        DigiDropIcon.HUB -> R.drawable.tabler_home
+        DigiDropIcon.MANIFEST -> R.drawable.tabler_invoice
+        DigiDropIcon.ROUTE -> R.drawable.tabler_route
+        DigiDropIcon.SCAN -> R.drawable.tabler_scan
+        DigiDropIcon.REPORTS -> R.drawable.tabler_barcode
+        DigiDropIcon.SETTINGS -> R.drawable.tabler_settings
+        DigiDropIcon.INVENTORY -> R.drawable.tabler_package
     }
 }
 
@@ -93,7 +86,7 @@ fun DigiDropActionTile(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = DigiDropIcons.image(icon),
+                    painter = painterResource(DigiDropIcons.resource(icon)),
                     contentDescription = title,
                     tint = accent,
                     modifier = Modifier.size(30.dp)
