@@ -32,3 +32,8 @@ internal fun nextPendingPoint(items: List<RouteItem>): List<RouteItem>? =
 internal fun isDifferentDeliveryPoint(scanned: RouteItem, current: RouteItem?): Boolean =
     current != null && (scanned.storeName.trim().equals(current.storeName.trim(), ignoreCase = true).not() ||
         scanned.address.trim().equals(current.address.trim(), ignoreCase = true).not())
+
+
+/** Advances through Yandex route segments and wraps only after the final segment. */
+internal fun nextNavigationSegmentIndex(currentIndex: Int, segmentCount: Int): Int =
+    if (segmentCount <= 0) 0 else (currentIndex + 1).mod(segmentCount)
