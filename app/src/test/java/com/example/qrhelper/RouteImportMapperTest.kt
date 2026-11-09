@@ -135,14 +135,15 @@ class RouteImportMapperTest {
     }
 
 
-    @Test fun keepsDifferentShopNamesAtTheSameAddressAsSeparateStops() {
+    @Test fun groupsDifferentShopNamesAtTheSamePhysicalAddressIntoOneStop() {
         val items = listOf(
             RouteItem("a", "Красное и Белое", "Калуга, ул. Кирова, 1", "Пиво", 2, ""),
             RouteItem("b", "Продукты", "Калуга, ул. Кирова, 1", "Хлеб", 3, "")
         )
         val points = RouteImportMapper.map(items)
-        assertEquals(2, points.size)
-        assertEquals(listOf(2, 3), points.map { it.cargo.sumOf { cargo -> cargo.expectedQty } })
+        assertEquals(1, points.size)
+        assertEquals(2, points.single().cargo.size)
+        assertEquals(5, points.single().cargo.sumOf { it.expectedQty })
     }
 
     @Test fun normalizesMinorPunctuationDifferencesInTheSameStoreName() {
@@ -162,20 +163,24 @@ class RouteImportMapperTest {
         assertEquals(1, RouteImportMapper.map(items).size)
     }
 
-    @Test fun fallsBackToLegalEntityWhenStoreNameIsMissing() {
+    @Test fun keepsDifferentLegalEntitiesAsSeparateDeliveriesAtOnePhysicalStop() {
         val items = listOf(
             RouteItem("a", "Точка без названия", "Калуга, ул. Кирова, 1", "Хлеб", 2, "89000000001", ownerName = "ИП Иванов"),
             RouteItem("b", "Точка без названия", "Калуга, ул. Кирова, 1", "Молоко", 3, "89000000002", ownerName = "ИП Петров")
         )
-        assertEquals(2, RouteImportMapper.map(items).size)
+        val point = RouteImportMapper.map(items).single()
+        assertEquals(2, point.cargo.size)
+        assertEquals(listOf("ИП Иванов", "ИП Петров"), point.cargo.map { it.ownerName })
     }
 
-    @Test fun doesNotMergeUnidentifiedRecipientsOnlyBecauseAddressMatches() {
+    @Test fun groupsUnidentifiedDeliveriesByPhysicalAddressWithoutDroppingRows() {
         val items = listOf(
             RouteItem("barcode-1", "Точка без названия", "Калуга, ул. Кирова, 1", "Хлеб", 2, ""),
             RouteItem("barcode-2", "Точка без названия", "Калуга, ул. Кирова, 1", "Молоко", 3, "")
         )
-        assertEquals(2, RouteImportMapper.map(items).size)
+        val point = RouteImportMapper.map(items).single()
+        assertEquals(2, point.cargo.size)
+        assertEquals(5, point.cargo.sumOf { it.expectedQty })
     }
 
     @Test fun rejectsRouteReplacementWhenAnyImportedRowWouldBeSilentlyDropped() {
