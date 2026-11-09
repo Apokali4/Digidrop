@@ -54,10 +54,12 @@ internal object RouteSheetParser {
     }
 
     private fun detectDelimiter(lines: List<String>): Char {
-        val candidates = listOf('\t', ';', '|', ',')
-        return candidates.maxByOrNull { delimiter ->
-            lines.take(30).sumOf { line -> (splitRow(line, delimiter).size - 1).coerceAtLeast(0) }
-        } ?: '\t'
+        if (lines.any { it.contains('\t') }) return '\t'
+        if (lines.any { it.contains(';') }) return ';'
+        if (lines.any { it.contains('|') }) return '|'
+        if (lines.any { Regex("\\s{2,}").containsMatchIn(it) }) return ' '
+        if (lines.any { it.contains(',') }) return ','
+        return '\t'
     }
 
     private fun splitRow(line: String, delimiter: Char): List<String> {
@@ -130,14 +132,14 @@ internal object RouteSheetParser {
 
     private fun parseOcrLines(lines: List<String>): List<RouteItem> {
         val result = mutableListOf<RouteItem>()
-        val rowStart = Regex("""^\\s*(\\d{1,3})\\s+(\\d{2,8})\\s+(.+)$""")
+        val rowStart = Regex("""^\s*(\d{1,3})\s+(\d{2,8})\s+(.+)$""")
         for (line in lines) {
             val match = rowStart.find(line) ?: continue
             val tail = match.groupValues[3]
             val addressMatch = addressHint.find(tail) ?: continue
-            val client = tail.substring(0, addressMatch.range.first).trim(' ', '\\t', '-', '|')
+            val client = tail.substring(0, addressMatch.range.first).trim(' ', '\t', '-', '|')
             val addressAndComment = tail.substring(addressMatch.range.first).trim()
-            val commentBoundary = Regex("""(?iu)\\s{2,}(?=(?:акция|забрать|доставить|региональное|безнал|налич|комментар))""")
+            val commentBoundary = Regex("""(?iu)\s{2,}(?=(?:акция|забрать|доставить|региональное|безнал|налич|комментар))""")
                 .find(addressAndComment)
             val address = if (commentBoundary != null) addressAndComment.substring(0, commentBoundary.range.first).trim()
                 else addressAndComment
