@@ -81,4 +81,46 @@ class BackupManagerTest {
         requireBackupEntryCount(2048)
     }
 
+    @Test fun cleanupRemovesOnlyTheDedicatedRestoredEvidenceDirectory() {
+        val root = createTempDir(prefix = "backup-evidence-")
+        try {
+            val restored = File(root, "delivery-evidence/restored_123")
+            check(restored.mkdirs())
+            val evidence = File(restored, "photo_0").apply { writeBytes(byteArrayOf(1)) }
+            val unrelated = File(root, "delivery-evidence/photo_keep.jpg").apply {
+                parentFile?.mkdirs()
+                writeBytes(byteArrayOf(2))
+            }
+            val snapshot = BackupSnapshot(
+                routeItems = listOf(RouteItem("", "", "Адрес", "Товар", 1, "", photoDocUri = evidence.absolutePath))
+            )
+
+            BackupManager.cleanupRestoredEvidence(snapshot, root)
+
+            org.junit.Assert.assertFalse(restored.exists())
+            org.junit.Assert.assertTrue(unrelated.exists())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun cleanupIgnoresEvidenceOutsideRestoredDirectory() {
+        val root = createTempDir(prefix = "backup-evidence-")
+        try {
+            val evidence = File(root, "delivery-evidence/photo_keep.jpg").apply {
+                parentFile?.mkdirs()
+                writeBytes(byteArrayOf(1))
+            }
+            val snapshot = BackupSnapshot(
+                routeItems = listOf(RouteItem("", "", "Адрес", "Товар", 1, "", photoDocUri = evidence.absolutePath))
+            )
+
+            BackupManager.cleanupRestoredEvidence(snapshot, root)
+
+            org.junit.Assert.assertTrue(evidence.exists())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }
