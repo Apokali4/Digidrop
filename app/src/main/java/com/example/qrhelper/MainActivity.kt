@@ -585,6 +585,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         runCatching {
             val repository = LogisticsRepository(context)
             val restored = repository.activeRouteItems()
+            val databaseScanCodes = repository.activeUniqueScanCodes()
+            if (databaseScanCodes.isNotEmpty()) {
+                sessionScanCodes = databaseScanCodes + sessionScanCodes
+                prefs.edit().putStringSet("scan_codes", sessionScanCodes).apply()
+            }
             if (restored.isNotEmpty()) {
                 routeItems = restored
                 if (currentScreen == AppScreen.HUB || currentScreen == AppScreen.SPLASH) {
@@ -837,6 +842,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     .apply()
                 val repository = LogisticsRepository(context)
                 repository.replaceActiveRoute(snapshot.routeItems)
+                repository.restoreUniqueScanCodes(snapshot.scanCodes.toSet())
                 repository.restoreProducts(snapshot.catalog)
                 Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
             }.onFailure { error ->
