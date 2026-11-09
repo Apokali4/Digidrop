@@ -580,6 +580,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             }
         )
     }
+    var isUpdatingItemStatus by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -615,6 +616,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 
     fun updateItemStatus(item: RouteItem) {
+        if (isUpdatingItemStatus) return
         val nextStatus = !item.isDelivered
         val accountedBoxes = item.scannedBoxes + item.discrepancyQty
         if (nextStatus && item.totalBoxes > 0 && accountedBoxes < item.totalBoxes) {
@@ -626,19 +628,35 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             ).show()
             return
         }
-        if (settingsAutoSave) prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
         val updatedItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
         }
-        routeItems = updatedItems
+        isUpdatingItemStatus = true
         importScope.launch {
-            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedItems) } }
-                .onFailure { error ->
-                    Toast.makeText(context, "Не удалось сохранить статус в базе: ${error.message}", Toast.LENGTH_SHORT).show()
+            try {
+                val repository = LogisticsRepository(context)
+                persistRouteProgress { repository.syncProgress(updatedItems) }
+                val authoritativeItems = repository.activeRouteItems()
+                routeItems = authoritativeItems
+                selectedItem = selectedItem?.let { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
                 }
-        }
-        if (selectedItem?.let(::routeItemKey) == routeItemKey(item)) {
-            selectedItem = selectedItem?.copy(isDelivered = nextStatus)
+                if (settingsAutoSave) {
+                    val editor = prefs.edit()
+                    authoritativeItems.forEach { saved ->
+                        editor.putBoolean("delivered_" + routeItemKey(saved), saved.isDelivered)
+                    }
+                    editor.apply()
+                }
+            } catch (error: Exception) {
+                Toast.makeText(
+                    context,
+                    "Не удалось сохранить статус в базе: ${error.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                isUpdatingItemStatus = false
+            }
         }
     }
 
