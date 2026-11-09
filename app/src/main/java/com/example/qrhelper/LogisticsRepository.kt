@@ -7,6 +7,7 @@ import com.example.qrhelper.data.DeliveryPointEntity
 import com.example.qrhelper.data.DeliveryRouteEntity
 import com.example.qrhelper.data.LogisticsDatabase
 import com.example.qrhelper.data.ProductEntity
+import com.example.qrhelper.data.ScanCodeEntity
 
 /**
  * Mirrors an imported manifest into the local Room database.
@@ -166,6 +167,30 @@ internal class LogisticsRepository(context: Context) {
         return items
     }
 
+    suspend fun registerUniqueScan(code: String): Boolean = database.withTransaction {
+        val normalized = code.trim()
+        require(normalized.isNotEmpty()) { "Пустой код упаковки" }
+        val dao = database.dao()
+        val route = checkNotNull(dao.activeRouteOnce()) { "Нет активного рейса для регистрации скана" }
+        dao.insertScanCode(ScanCodeEntity(routeId = route.id, code = normalized)) != -1L
+    }
+
+    suspend fun activeUniqueScanCodes(): Set<String> {
+        val dao = database.dao()
+        val route = dao.activeRouteOnce() ?: return emptySet()
+        return dao.scanCodes(route.id).toSet()
+    }
+
+    suspend fun restoreUniqueScanCodes(codes: Set<String>) {
+        if (codes.isEmpty()) return
+        database.withTransaction {
+            val dao = database.dao()
+            val route = checkNotNull(dao.activeRouteOnce()) { "Нет активного рейса для восстановления кодов" }
+            codes.map { it.trim() }.filter { it.isNotEmpty() }.distinct().forEach { code ->
+                dao.insertScanCode(ScanCodeEntity(routeId = route.id, code = code))
+            }
+        }
+    }
     suspend fun restoreArchivedRoute(routeId: Long): List<RouteItem> {
         database.withTransaction {
             val dao = database.dao()
