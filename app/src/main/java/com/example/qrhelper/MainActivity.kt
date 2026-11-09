@@ -1115,7 +1115,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         .putString("route_header_vehicle_number", header.vehicleNumber)
                         .apply()
                     sessionScanCodes = emptySet()
-                    prefs.edit().remove("scan_codes").apply()
+                    val resetSession = prefs.edit()
+                        .remove("scan_codes")
+                        .remove("unknown_codes")
+                    (routeItems + imported).distinctBy(::routeItemKey).forEach { item ->
+                        resetSession
+                            .remove("delivered_" + routeItemKey(item))
+                            .remove("scanned_" + routeItemKey(item))
+                    }
+                    resetSession.apply()
+                    unknownCodes = emptyList()
+                    selectedItem = null
+                    selectedPointItems = emptyList()
                     val content = imported.joinToString("\n") { item ->
                         listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
                             item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
