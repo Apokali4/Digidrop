@@ -598,7 +598,7 @@ private fun PhotoPlannerTile(
     primary: Boolean = false,
     onClick: () -> Unit
 ) {
-    val palette = com.example.qrhelper.ui.theme.DigiDropPalette
+    val palette = MaterialTheme.colorScheme
     Card(
         onClick = onClick,
         enabled = enabled,
