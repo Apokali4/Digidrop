@@ -584,6 +584,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var isUpdatingDiscrepancy by remember { mutableStateOf(false) }
     var isUpdatingScan by remember { mutableStateOf(false) }
     var isResettingProgress by remember { mutableStateOf(false) }
+    var isUpdatingRouteOrder by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -718,6 +719,40 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 Toast.makeText(context, "Рейс отправлен в историю", Toast.LENGTH_LONG).show()
             }.onFailure { error ->
                 Toast.makeText(context, "Не удалось архивировать рейс: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun persistRouteOrder(items: List<RouteItem>, manualOrder: Boolean, successMessage: String? = null) {
+        if (isUpdatingRouteOrder) return
+        isUpdatingRouteOrder = true
+        importScope.launch {
+            try {
+                val repository = LogisticsRepository(context)
+                repository.syncOrder(items)
+                val authoritativeItems = repository.activeRouteItems()
+                routeItems = authoritativeItems
+                selectedItem = selectedItem?.let { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                }
+                selectedPointItems = selectedPointItems.mapNotNull { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                }
+                val manifest = authoritativeItems.joinToString("\\n") { item ->
+                    listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                        .joinToString("\\t") { it.replace("\\t", " ") }
+                }
+                prefs.edit().putString("active_manifest", manifest)
+                    .putBoolean("manual_route_order", manualOrder).apply()
+                if (successMessage != null) {
+                    Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+                }
+            } catch (error: Exception) {
+                Toast.makeText(context, "Не удалось сохранить порядок маршрута: ${error.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                isUpdatingRouteOrder = false
             }
         }
     }
@@ -1228,15 +1263,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     val manualOrder = prefs.getBoolean("manual_route_order", false)
                     val navigationItems = routeForNavigation(routeItems, manualOrder)
                     if (!manualOrder && navigationItems.map(::routeItemKey) != routeItems.map(::routeItemKey)) {
-                        routeItems = navigationItems
-                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(navigationItems) } }
-                        val saved = navigationItems.joinToString("\n") { item ->
-                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                item.ownerName, item.workingHours, item.cashNote, item.extraComment)
-                                .joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", saved).apply()
+                        persistRouteOrder(navigationItems, manualOrder = false)
                     }
                     val pending = navigationItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
                         .values.filter { group -> deliveryPointStatus(group) != DeliveryPointStatus.DELIVERED }
@@ -1256,17 +1283,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
                         Toast.makeText(context, "Маршрут уже оптимален или не хватает координат точек", Toast.LENGTH_LONG).show()
                     } else {
-                        routeItems = reordered
-                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
-                        val saved = reordered.joinToString("\n") { item ->
-                            listOf(
-                                item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                item.ownerName, item.workingHours, item.cashNote, item.extraComment
-                            ).joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", saved).apply()
-                        Toast.makeText(context, "Оставшийся маршрут перестроен", Toast.LENGTH_SHORT).show()
+                        persistRouteOrder(reordered, manualOrder = false, successMessage = "Оставшийся маршрут перестроен")
                     }
                 },
                 onOpenPointMap = { address ->
@@ -1284,16 +1301,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     val grouped = routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
                     val reordered = orderedIds.flatMap { id -> grouped[id].orEmpty() } +
                         grouped.filterKeys { key -> key !in orderedIds }.values.flatten()
-                    routeItems = reordered
-                    importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reordered) } }
-                    val saved = reordered.joinToString("\n") { item ->
-                        listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                            item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                            item.ownerName, item.workingHours, item.cashNote, item.extraComment)
-                            .joinToString("\t") { it.replace("\t", " ") }
-                    }
-                    prefs.edit().putString("active_manifest", saved).apply()
-                    Toast.makeText(context, "Выбранный порядок точек применён", Toast.LENGTH_SHORT).show()
+                    persistRouteOrder(reordered, manualOrder = true, successMessage = "Выбранный порядок точек применён")
                 },
                 onMoveGroup = { from, to ->
                     val groups = routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.toList().toMutableList()
@@ -1301,16 +1309,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         val moved = groups.removeAt(from)
                         groups.add(to, moved)
                         val reorderedItems = groups.flatMap { it.second }
-                        routeItems = reorderedItems
-                        prefs.edit().putBoolean("manual_route_order", true).apply()
-                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reorderedItems) } }
-                        val saved = routeItems.joinToString("\n") { item ->
-                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                item.ownerName, item.workingHours, item.cashNote, item.extraComment)
-                                .joinToString("\t") { it.replace("\t", " ") }
-                        }
-                        prefs.edit().putString("active_manifest", saved).apply()
+                        persistRouteOrder(reorderedItems, manualOrder = true)
                     }
                 }
             )
