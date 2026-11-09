@@ -42,6 +42,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -91,6 +92,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Map
@@ -508,6 +510,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
     var settingsDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", false)) }
+    val screenBackgroundColor = MaterialTheme.colorScheme.background
 
     SideEffect {
         val activity = windowContext as? Activity
@@ -515,7 +518,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             val systemBarColor = if (currentScreen == AppScreen.SPLASH) {
                 DigiDropPalette.darkBackground
             } else {
-                MaterialTheme.colorScheme.background
+                screenBackgroundColor
             }
             window.statusBarColor = systemBarColor.toArgb()
             window.navigationBarColor = systemBarColor.toArgb()
@@ -1794,6 +1797,7 @@ fun LiveCameraScannerScreen(
     onBack: () -> Unit,
     onBarcodeScanned: (String) -> Unit
 ) {
+    val palette = MaterialTheme.colorScheme
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasScanned by remember { mutableStateOf(false) }
@@ -1910,11 +1914,11 @@ fun LiveCameraScannerScreen(
                     Box(
                         modifier = Modifier.size(44.dp).clip(CircleShape)
                             .background(if (isFlashOn) DigiDropPalette.accentDark else MaterialTheme.colorScheme.surface)
-                            .border(1.dp, if (isFlashOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
+                            .border(1.dp, if (isFlashOn) palette.primary else MaterialTheme.colorScheme.outline, CircleShape)
                             .bounceClick { onFlashToggle() },
                         contentAlignment = Alignment.Center
                     ) {
-                        FlashlightVector(tint = if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlashlightVector(tint = if (isFlashOn) palette.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -1947,21 +1951,21 @@ fun LiveCameraScannerScreen(
                     val cornerLen = 36.dp.toPx()
                     val stroke = 4.dp.toPx()
 
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, 0f), Offset(cornerLen, 0f), strokeWidth = stroke)
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, 0f), Offset(0f, cornerLen), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(0f, 0f), Offset(cornerLen, 0f), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(0f, 0f), Offset(0f, cornerLen), strokeWidth = stroke)
 
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, 0f), Offset(w - cornerLen, 0f), strokeWidth = stroke)
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, 0f), Offset(w, cornerLen), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(w, 0f), Offset(w - cornerLen, 0f), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(w, 0f), Offset(w, cornerLen), strokeWidth = stroke)
 
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, h), Offset(cornerLen, h), strokeWidth = stroke)
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, h), Offset(0f, h - cornerLen), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(0f, h), Offset(cornerLen, h), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(0f, h), Offset(0f, h - cornerLen), strokeWidth = stroke)
 
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, h), Offset(w - cornerLen, h), strokeWidth = stroke)
-                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, h), Offset(w, h - cornerLen), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(w, h), Offset(w - cornerLen, h), strokeWidth = stroke)
+                    drawLine(palette.secondary, Offset(w, h), Offset(w, h - cornerLen), strokeWidth = stroke)
 
                     val currentLaserY = h * laserY
                     drawLine(
-                        color = MaterialTheme.colorScheme.primary,
+                        color = palette.primary,
                         start = Offset(12.dp.toPx(), currentLaserY),
                         end = Offset(w - 12.dp.toPx(), currentLaserY),
                         strokeWidth = 3.dp.toPx(),
@@ -1983,13 +1987,13 @@ fun LiveCameraScannerScreen(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(palette.primary))
                         Text("Готов к сканированию", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                     Text("Наведите камеру на код коробки. DigiDrop автоматически найдёт накладную и точку доставки.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     Text("Поддерживаются: EAN-13 • Data Matrix • QR • Code 128",
-                        color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        color = palette.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -2778,6 +2782,7 @@ fun TopBarSection(
     isFlashOn: Boolean,
     onFlashToggle: () -> Unit
 ) {
+    val palette = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2820,7 +2825,7 @@ fun TopBarSection(
                             path = path,
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.55f),
+                                    palette.secondary.copy(alpha = 0.55f),
                                     Color.Transparent
                                 )
                             )
@@ -2834,10 +2839,10 @@ fun TopBarSection(
                     .size(42.dp)
                     .clip(CircleShape)
                     .background(if (isFlashOn) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent)
-                    .border(1.dp, if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, CircleShape),
+                    .border(1.dp, if (isFlashOn) palette.secondary else MaterialTheme.colorScheme.outline, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                FlashlightVector(tint = if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
+                FlashlightVector(tint = if (isFlashOn) palette.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -2994,6 +2999,7 @@ fun RouteItemCard(
 
 @Composable
 fun MapIconVector(tint: Color) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
     Canvas(modifier = Modifier.size(16.dp)) {
         val w = size.width
         val h = size.height
