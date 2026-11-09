@@ -13,13 +13,13 @@ object DigiDropPalette {
     val onAccent = Color(0xFF17191B)
 
     // Warm neutral light appearance.
-    val lightBackground = Color(0xFFF0EFEC)
-    val lightSurface = Color(0xFFFAF9F6)
-    val lightSurfaceSoft = Color(0xFFE7E5E0)
-    val lightBorder = Color(0xFFC9C6BF)
+    val lightBackground = Color(0xFFECEAE5)
+    val lightSurface = Color(0xFFF8F6F1)
+    val lightSurfaceSoft = Color(0xFFE2DFD8)
+    val lightBorder = Color(0xFFBDB8AE)
     val lightText = Color(0xFF242629)
     val lightTextSecondary = Color(0xFF65676A)
-    val lightDivider = Color(0xFFD9D6D0)
+    val lightDivider = Color(0xFFD0CCC3)
 
     // Graphite dark appearance, never pure black.
     val darkBackground = Color(0xFF1D2023)
