@@ -1058,7 +1058,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         }
                         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
                             ?: error("Не удалось открыть файл №${index + 1}")
-                        when (format) {
+                        val parsedRows = when (format) {
                             InvoiceDocumentFormat.IMAGE -> {
                                 val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
                                     withContext(Dispatchers.Main) {
@@ -1079,6 +1079,8 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
                             else -> ExtendedInvoiceParser.parse(format, bytes)
                         }
+                        check(parsedRows.isNotEmpty()) { "Файл №${index + 1}: строки накладной не распознаны. Проверьте заголовки, адреса и количества." }
+                        parsedRows
                         } catch (error: Exception) {
                             importErrors += "Файл №${index + 1}: ${error.message ?: "ошибка чтения"}"
                             emptyList()
