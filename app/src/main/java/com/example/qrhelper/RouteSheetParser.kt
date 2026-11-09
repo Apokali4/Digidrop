@@ -93,9 +93,34 @@ internal object RouteSheetParser {
         if (delimiter == '\t' && !line.contains('\t') && line.contains(Regex("\\s{2,}"))) {
             return line.split(Regex("\\s{2,}")).map(String::trim)
         }
-        if (delimiter == ',') return splitCsvLine(line, delimiter)
+        if (delimiter == ',') return splitQuotedLine(line, delimiter)
         if (delimiter == ';') return splitCsvLine(line, delimiter)
         return line.split(delimiter).map { it.trim().trim('"') }
+    }
+
+    private fun splitQuotedLine(line: String, delimiter: Char): List<String> {
+        val result = mutableListOf<String>()
+        val cell = StringBuilder()
+        var quoted = false
+        var index = 0
+        while (index < line.length) {
+            val char = line[index]
+            when {
+                char == '"' && quoted && line.getOrNull(index + 1) == '"' -> {
+                    cell.append('"')
+                    index++
+                }
+                char == '"' -> quoted = !quoted
+                char == delimiter && !quoted -> {
+                    result += cell.toString().trim()
+                    cell.setLength(0)
+                }
+                else -> cell.append(char)
+            }
+            index++
+        }
+        result += cell.toString().trim()
+        return result
     }
 
     private fun isRouteHeader(row: List<String>): Boolean {
