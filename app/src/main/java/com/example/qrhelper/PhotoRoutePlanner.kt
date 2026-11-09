@@ -392,8 +392,18 @@ private data class LocatedPhotoStop(
     val address: String,
     val latitude: Double,
     val longitude: Double,
-    val metadata: PhotoStopMetadata = PhotoStopMetadata()
-)
+    val metadata: PhotoStopMetadata = PhotoStopMetadata(),
+    val additionalDeliveries: List<PhotoStopMetadata> = emptyList()
+) {
+    val deliveries: List<PhotoStopMetadata>
+        get() = listOf(metadata) + additionalDeliveries
+}
+
+/** Groups delivery rows by physical address while preserving every supplier row. */
+internal fun groupPhotoRouteAddresses(addresses: List<String>): List<List<String>> =
+    addresses.filter(String::isNotBlank)
+        .groupBy { PhotoRouteTextParser.canonicalAddressKey(it) }
+        .values.toList()
 
 data class PhotoRouteCoordinate(val latitude: Double, val longitude: Double)
 
@@ -788,7 +798,21 @@ fun PhotoRoutePlannerScreen(
                     workingHours = metadata.optString("workingHours"),
                     cashNote = metadata.optString("cashNote"),
                     comment = metadata.optString("comment")
-                )
+                ),
+                additionalDeliveries = item.optJSONArray("additionalDeliveries")?.let { deliveries ->
+                    (0 until deliveries.length()).mapNotNull { deliveryIndex ->
+                        deliveries.optJSONObject(deliveryIndex)?.let { delivery ->
+                            PhotoStopMetadata(
+                                storeName = delivery.optString("storeName"),
+                                ownerName = delivery.optString("ownerName"),
+                                phone = delivery.optString("phone"),
+                                workingHours = delivery.optString("workingHours"),
+                                cashNote = delivery.optString("cashNote"),
+                                comment = delivery.optString("comment")
+                            )
+                        }
+                    }
+                }.orEmpty()
             ).takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
         }
     }.getOrDefault(emptyList())
@@ -830,6 +854,18 @@ fun PhotoRoutePlannerScreen(
                         put("workingHours", stop.metadata.workingHours)
                         put("cashNote", stop.metadata.cashNote)
                         put("comment", stop.metadata.comment)
+                    })
+                    put("additionalDeliveries", org.json.JSONArray().apply {
+                        stop.additionalDeliveries.forEach { delivery ->
+                            put(org.json.JSONObject().apply {
+                                put("storeName", delivery.storeName)
+                                put("ownerName", delivery.ownerName)
+                                put("phone", delivery.phone)
+                                put("workingHours", delivery.workingHours)
+                                put("cashNote", delivery.cashNote)
+                                put("comment", delivery.comment)
+                            })
+                        }
                     })
                 })
             }
@@ -892,19 +928,25 @@ fun PhotoRoutePlannerScreen(
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
                 } else {
-                    status = "Распознано фотографий ${uris.size}. Определяю координаты точек…"
-                    val (resolved, failed) = geocodePhotoStops(context, addresses, routeCity)
-                    val occurrences = mutableMapOf<String, Int>()
+                    val addressGroups = groupPhotoRouteAddresses(addresses)
+                    status = "Распознано фотографий ${uris.size}. Объединяю ${addresses.size} записей в ${addressGroups.size} адресных остановок…"
+                    val (resolved, failed) = geocodePhotoStops(context, addressGroups.map { it.first() }, routeCity)
                     located = resolved.map { stop ->
-                        val key = PhotoRouteTextParser.canonicalAddressKey(stop.address)
-                        val occurrence = occurrences.getOrDefault(key, 0)
-                        occurrences[key] = occurrence + 1
-                        stop.copy(metadata = PhotoRouteTextParser.extractMetadataForOccurrence(rawText, stop.address, occurrence))
+                        val group = addressGroups.firstOrNull {
+                            PhotoRouteTextParser.canonicalAddressKey(it.first()) == PhotoRouteTextParser.canonicalAddressKey(stop.address)
+                        }.orEmpty()
+                        val deliveries = group.mapIndexed { occurrence, address ->
+                            PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                        }
+                        stop.copy(
+                            metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
+                            additionalDeliveries = deliveries.drop(1)
+                        )
                     }
                     status = when {
                         located.isEmpty() -> "Адресов: ${addresses.size}, но координаты не определились. Проверьте интернет и адреса."
-                        failed.isNotEmpty() -> "Добавлено ${located.size} точек. Не найдены координаты: ${failed.joinToString("; ")}."
-                        else -> "Готово: ${located.size} точек распознаны и собраны в маршрут."
+                        failed.isNotEmpty() -> "Подготовлено ${located.size} остановок из ${addresses.size} записей. Не найдены координаты: ${failed.joinToString("; ")}."
+                        else -> "Готово: ${located.size} уникальных остановок из ${addresses.size} записей доставки."
                     }
                 }
             } catch (error: Exception) {
@@ -1100,16 +1142,22 @@ fun PhotoRoutePlannerScreen(
                     scope.launch {
                         busy = true
                         try {
-                            val (resolved, failed) = geocodePhotoStops(context, addresses, routeCity)
-                            val occurrences = mutableMapOf<String, Int>()
+                            val addressGroups = groupPhotoRouteAddresses(addresses)
+                            val (resolved, failed) = geocodePhotoStops(context, addressGroups.map { it.first() }, routeCity)
                             located = resolved.map { stop ->
-                                val key = PhotoRouteTextParser.canonicalAddressKey(stop.address)
-                                val occurrence = occurrences.getOrDefault(key, 0)
-                                occurrences[key] = occurrence + 1
-                                stop.copy(metadata = PhotoRouteTextParser.extractMetadataForOccurrence(rawText, stop.address, occurrence))
+                                val group = addressGroups.firstOrNull {
+                                    PhotoRouteTextParser.canonicalAddressKey(it.first()) == PhotoRouteTextParser.canonicalAddressKey(stop.address)
+                                }.orEmpty()
+                                val deliveries = group.mapIndexed { occurrence, address ->
+                                    PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                                }
+                                stop.copy(
+                                    metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
+                                    additionalDeliveries = deliveries.drop(1)
+                                )
                             }
-                            status = if (failed.isEmpty()) "Координаты найдены для всех ${located.size} точек."
-                                else "Координаты найдены для ${located.size}. Не найдены: ${failed.joinToString("; ")}."
+                            status = if (failed.isEmpty()) "Координаты найдены для ${located.size} уникальных остановок из ${addresses.size} записей."
+                                else "Координаты найдены для ${located.size} остановок. Не найдены: ${failed.joinToString("; ")}."
                         } finally { busy = false }
                     }
                 }
@@ -1123,22 +1171,26 @@ fun PhotoRoutePlannerScreen(
                 color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             PhotoPlannerTile("Показать список точек", "Дальше все действия будут на одном экране маршрута",
                 enabled = !busy, primary = true) {
-                val items = located.mapIndexed { index, stop ->
-                    RouteItem(
-                        barcode = "PHOTO-${index + 1}",
-                        storeName = stop.metadata.storeName.ifBlank { "Точка ${index + 1}" },
-                        address = stop.address,
-                        itemName = "Доставка по маршрутному листу",
-                        totalBoxes = 0,
-                        phone = stop.metadata.phone,
-                        note = stop.metadata.comment.ifBlank { "Импортировано из маршрутного листа" },
-                        latitude = stop.latitude,
-                        longitude = stop.longitude,
-                        ownerName = stop.metadata.ownerName,
-                        workingHours = stop.metadata.workingHours,
-                        cashNote = stop.metadata.cashNote,
-                        extraComment = stop.metadata.comment
-                    )
+                val items = located.flatMapIndexed { index, stop ->
+                    stop.deliveries.mapIndexed { deliveryIndex, delivery ->
+                        RouteItem(
+                            barcode = "",
+                            storeName = delivery.storeName.ifBlank { "Точка ${index + 1}" },
+                            address = stop.address,
+                            itemName = delivery.ownerName.takeIf(String::isNotBlank)
+                                ?.let { "Доставка по маршрутному листу • $it" }
+                                ?: "Доставка по маршрутному листу • запись ${deliveryIndex + 1}",
+                            totalBoxes = 0,
+                            phone = delivery.phone,
+                            note = delivery.comment.ifBlank { "Импортировано из маршрутного листа" },
+                            latitude = stop.latitude,
+                            longitude = stop.longitude,
+                            ownerName = delivery.ownerName,
+                            workingHours = delivery.workingHours,
+                            cashNote = delivery.cashNote,
+                            extraComment = delivery.comment
+                        )
+                    }
                 }
                 onApplyRoute(items, routeHeader)
             }
