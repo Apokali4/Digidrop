@@ -14,3 +14,11 @@ internal fun deliveryPointStatus(items: List<RouteItem>): DeliveryPointStatus {
 
 internal fun remainingBoxes(item: RouteItem): Int =
     (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0)
+
+
+internal fun deliveryItemStatusLabel(item: RouteItem): String = when {
+    item.discrepancyQty > 0 -> "Расхождение"
+    item.isDelivered -> "Доставлено"
+    item.scannedBoxes > 0 -> "В работе"
+    else -> "Ожидает"
+}
