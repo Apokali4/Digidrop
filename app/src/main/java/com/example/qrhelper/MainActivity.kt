@@ -1055,96 +1055,100 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) importScope.launch {
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) importScope.launch {
             try {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                uris.forEach { uri ->
+                    runCatching {
+                        context.contentResolver.takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    }
                 }
-                val parsedRows = withContext(Dispatchers.IO) {
-                    val mime = context.contentResolver.getType(uri).orEmpty()
-                    val format = InvoiceImportKind.detect(mime, uri.toString())
-                    require(format != InvoiceDocumentFormat.UNKNOWN) {
-                        "Формат не распознан. Поддерживаются PDF, фото, XLS/XLSX, CSV/TSV/TXT, DOC/DOCX, RTF, ODS/ODT, XML, JSON и HTML."
-                    }
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Читаю накладную…", Toast.LENGTH_SHORT).show()
-                    }
-                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
-                        ?: error("Не удалось открыть выбранный файл")
-                    val rows = when (format) {
-                        InvoiceDocumentFormat.IMAGE -> {
-                            val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                val imported = withContext(Dispatchers.IO) {
+                    uris.flatMapIndexed { index, uri ->
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "Читаю файл маршрута ${index + 1} из ${uris.size}…",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        val mime = context.contentResolver.getType(uri).orEmpty()
+                        val format = InvoiceImportKind.detect(mime, uri.toString())
+                        require(format != InvoiceDocumentFormat.UNKNOWN) {
+                            "Файл №${index + 1}: формат не распознан. Поддерживаются фото, PDF, Excel, CSV, DOC/DOCX, RTF, ODS/ODT, XML, JSON и HTML."
+                        }
+                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
+                            ?: error("Не удалось открыть файл №${index + 1}")
+                        val rows = when (format) {
+                            InvoiceDocumentFormat.IMAGE -> {
+                                val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Файл ${index + 1}: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                val routeRows = RouteSheetParser.parse(normalizeOcrTableText(recognized))
+                                routeRows.ifEmpty { RouteSheetParser.parse(recognized) }
+                                    .ifEmpty { parseManifest(normalizeOcrTableText(recognized)) }
+                            }
+                            InvoiceDocumentFormat.PDF -> {
+                                val extracted = PdfInvoiceImporter.extractText(context, uri)
+                                val routeRows = RouteSheetParser.parse(extracted)
+                                if (routeRows.isNotEmpty()) routeRows
+                                else PdfInvoiceImporter.parse(context, uri) { message ->
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
-                            parseManifest(normalizeOcrTableText(recognized))
+                            InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
+                            else -> ExtendedInvoiceParser.parse(format, bytes)
+                                .let { parsed -> parsed }
                         }
-                        InvoiceDocumentFormat.PDF -> PdfInvoiceImporter.parse(context, uri) { message ->
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            }
+                        check(rows.isNotEmpty()) {
+                            "Файл №${index + 1}: маршрутные строки не найдены. Проверьте, что в документе есть клиенты и адреса доставки."
                         }
-                        InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
-                        else -> ExtendedInvoiceParser.parse(format, bytes)
+                        rows
                     }
-                    check(rows.isNotEmpty()) {
-                        "Не удалось найти строки накладной. Проверьте адреса, штрихкоды и количество мест."
-                    }
-                    rows
                 }
-                val mergeResult = mergeInvoiceImport(routeItems, parsedRows)
-                if (mergeResult.isDuplicate) {
-                    Toast.makeText(context, "Эта накладная уже загружена. Прогресс рейса сохранён.", Toast.LENGTH_LONG).show()
-                    navigateTo(AppScreen.ROUTE_LIST)
-                } else {
-                    val withProgress = mergeResult.items
-                    val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
-                    val repository = LogisticsRepository(context)
-                    repository.replaceActiveRoute(ordered)
-                    val authoritativeItems = repository.activeRouteItems()
-                    val authoritativeCodes = repository.activeUniqueScanCodes()
-                    routeHeader = PhotoRouteHeader()
-                    sessionScanCodes = authoritativeCodes
-                    unknownCodes = emptyList()
-                    routeItems = authoritativeItems
-                    selectedItem = null
-                    selectedPointItems = emptyList()
-                    val manifest = authoritativeItems.joinToString("\n") { item ->
-                        listOf(
-                            item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                            item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                            item.ownerName, item.workingHours, item.cashNote, item.extraComment
-                        ).joinToString("\t") { it.replace("\t", " ") }
-                    }
-                    prefs.edit()
-                        .remove("route_header_number")
-                        .remove("route_header_driver")
-                        .remove("route_header_vehicle")
-                        .remove("route_header_vehicle_number")
-                        .remove("unknown_codes")
-                        .putString("active_manifest", manifest)
-                        .putStringSet("scan_codes", authoritativeCodes)
-                        .apply()
-                    navigateTo(AppScreen.ROUTE_LIST)
-                    val optimized = ordered.map(::routeItemKey) != withProgress.map(::routeItemKey)
-                    val geocoded = ordered.count { it.latitude != null && it.longitude != null }
-                    Toast.makeText(
-                        context,
-                        "Загружено позиций: ${ordered.size}" + when {
-                            optimized -> " • точки упорядочены примерно по расстоянию"
-                            geocoded == ordered.size && ordered.size > 1 -> " • координаты найдены, порядок уже близкий"
-                            else -> " • порядок из накладной сохранён"
-                        },
-                        Toast.LENGTH_LONG
-                    ).show()
+                check(imported.isNotEmpty()) { "В выбранных файлах не найдено ни одной точки маршрута" }
+                val ordered = if (settingsOffline) imported else geocodeRoute(context, imported)
+                val repository = LogisticsRepository(context)
+                repository.replaceActiveRoute(ordered)
+                val authoritativeItems = repository.activeRouteItems()
+                val authoritativeCodes = repository.activeUniqueScanCodes()
+                routeHeader = PhotoRouteHeader()
+                sessionScanCodes = authoritativeCodes
+                unknownCodes = emptyList()
+                routeItems = authoritativeItems
+                selectedItem = null
+                selectedPointItems = emptyList()
+                val manifest = authoritativeItems.joinToString("\n") { item ->
+                    listOf(
+                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                    ).joinToString("\t") { it.replace("\t", " ") }
                 }
+                prefs.edit()
+                    .remove("route_header_number")
+                    .remove("route_header_driver")
+                    .remove("route_header_vehicle")
+                    .remove("route_header_vehicle_number")
+                    .remove("unknown_codes")
+                    .putString("active_manifest", manifest)
+                    .putStringSet("scan_codes", authoritativeCodes)
+                    .apply()
+                navigateTo(AppScreen.ROUTE_LIST)
+                Toast.makeText(
+                    context,
+                    "Загружено точек маршрута: ${authoritativeItems.size} из ${uris.size} файлов",
+                    Toast.LENGTH_LONG
+                ).show()
             } catch (ex: Exception) {
-                Toast.makeText(context, "Ошибка чтения: " + ex.message, Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Ошибка чтения маршрутного списка: " + ex.message, Toast.LENGTH_LONG).show()
             }
         }
     }
