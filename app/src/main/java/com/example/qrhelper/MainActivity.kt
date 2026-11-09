@@ -3023,6 +3023,7 @@ fun RouteListScreen(
     onApplyAlternative: (List<String>) -> Unit
 ) {
     val context = LocalContext.current
+    val navigationScope = rememberCoroutineScope()
     val groups = remember(routeItems) {
         routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.toList()
     }
@@ -3116,14 +3117,45 @@ fun RouteListScreen(
                         Text("Оптимизировать маршрут", fontWeight = FontWeight.Bold)
                     }
                     Button(onClick = {
-                        if (segments.isNotEmpty()) {
-                            val index = navigationSegmentIndex.coerceIn(0, segments.lastIndex)
-                            onNavigateSegment(index, segments[index])
-                            navigationSegmentIndex = nextNavigationSegmentIndex(index, segments.size)
-                        } else Toast.makeText(context,
-                            if (missingCoordinates) "Не у всех незавершённых точек определены координаты" else "Нужны минимум две незавершённые точки",
-                            Toast.LENGTH_LONG).show()
-                    }, enabled = segments.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(46.dp),
+                        navigationScope.launch {
+                            val index = navigationSegmentIndex.coerceAtLeast(0)
+                            val allCoordinates = pendingGroups.mapNotNull { group ->
+                                val point = group.firstOrNull() ?: return@mapNotNull null
+                                val existing = if (point.latitude != null && point.longitude != null)
+                                    PhotoRouteCoordinate(point.latitude, point.longitude) else null
+                                if (existing != null) existing else withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        if (!Geocoder.isPresent()) null else {
+                                            val geocoder = Geocoder(context, Locale("ru", "RU"))
+                                            val query = if (point.address.contains("Калуж", ignoreCase = true))
+                                                point.address else "${point.address}, Калужская область, Россия"
+                                            geocoder.getFromLocationName(query, 1)?.firstOrNull()?.let {
+                                                PhotoRouteCoordinate(it.latitude, it.longitude)
+                                            }
+                                        }
+                                    }.getOrNull()
+                                }
+                            }
+                            val missingCount = pendingGroups.size - allCoordinates.size
+                            if (allCoordinates.size >= 2) {
+                                val readySegments = PhotoRouteNavigationUrls.yandexSegments(allCoordinates)
+                                val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
+                                onNavigateSegment(chosenIndex, readySegments[chosenIndex])
+                                navigationSegmentIndex = nextNavigationSegmentIndex(chosenIndex, readySegments.size)
+                                if (missingCount > 0) Toast.makeText(
+                                    context,
+                                    "Не удалось определить координаты для $missingCount точек. Остальные точки отправлены в Навигатор.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                val nextAddress = pendingGroups.firstOrNull()?.firstOrNull()?.address.orEmpty()
+                                Toast.makeText(context,
+                                    if (nextAddress.isNotBlank()) "Не удалось определить координаты маршрута. Проверьте адрес: $nextAddress"
+                                    else "Нужны минимум две незавершённые точки",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }, enabled = pendingGroups.size >= 2, modifier = Modifier.fillMaxWidth().height(46.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(13.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
