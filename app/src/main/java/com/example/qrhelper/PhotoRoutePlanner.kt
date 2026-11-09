@@ -321,7 +321,7 @@ internal object PhotoRouteTextParser {
         val brandInSuffix = suffixBrand?.let { suffix ->
             val recognizedBrand = brandFromLine(suffix)
             if (recognizedBrand != null) {
-                val trailingNumber = Regex("""\\b\\d{1,3}\\s*$""").find(suffix)?.value?.trim().orEmpty()
+                val trailingNumber = Regex("""\b\d{1,3}\s*$""").find(suffix)?.value?.trim().orEmpty()
                 if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
             } else cleanStoreName(suffix)
         }
