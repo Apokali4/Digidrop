@@ -1028,7 +1028,8 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         navigateTo(AppScreen.HISTORY)
                     }
                 },
-                onOpenSettings = { navigateTo(AppScreen.SETTINGS) }
+                onOpenSettings = { navigateTo(AppScreen.SETTINGS) },
+                onThemeToggle = { settingsDarkTheme = !settingsDarkTheme; onThemeChange(settingsDarkTheme); prefs.edit().putBoolean("dark_theme", settingsDarkTheme).apply() }
             )
         }
         AppScreen.MORE_MENU -> {
@@ -1605,25 +1606,44 @@ fun HubScreen(
     onOpenRoute: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenHistory: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onThemeToggle: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .statusBarsPadding().navigationBarsPadding().padding(22.dp),
         contentAlignment = Alignment.Center
     ) {
-        Button(
-            onClick = onLoadInvoice,
-            modifier = Modifier.fillMaxWidth().height(76.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = DigiDropPalette.accent, contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
-            Spacer(Modifier.width(12.dp))
-            Text("Загрузить накладную", fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Box(Modifier.size(42.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .clickable { onThemeToggle() }, contentAlignment = Alignment.Center) {
+                    Text("◐", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp)
+                }
+            }
+            Button(onClick = onLoadInvoice, modifier = Modifier.fillMaxWidth().height(76.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = DigiDropPalette.accent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
+                shape = RoundedCornerShape(20.dp)) {
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Маршрут по фото / накладной", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(onClick = onOpenScanner, modifier = Modifier.fillMaxWidth().height(68.dp),
+                shape = RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Сканер", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (routeItems.isNotEmpty()) {
+                TextButton(onClick = onOpenRoute) {
+                    Text("Открыть текущий маршрут • ${routeItems.size} позиций")
+                }
+            }
         }
     }
 }
