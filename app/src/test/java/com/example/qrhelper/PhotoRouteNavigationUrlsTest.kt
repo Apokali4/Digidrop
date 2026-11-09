@@ -44,7 +44,7 @@ class PhotoRouteNavigationUrlsTest {
         val uri = URI(PhotoRouteNavigationUrls.yandexNavigatorUrl(stops))
         val params = uri.rawQuery.split("&").associate { it.substringBefore("=") to it.substringAfter("=") }
         assertEquals("yandexnavi", uri.scheme)
-        assertEquals("build_route_on_map", uri.host)
+        assertEquals("build_route_on_map", uri.rawAuthority)
         // The driver's current location is implicit. Every planned stop except
         // the final destination must remain in the ordered via list.
         assertEquals("55.78", params["lat_to"])
