@@ -1,5 +1,7 @@
 package com.example.qrhelper
 
+import org.apache.poi.hssf.usermodel.HSSFWorkbook
+import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,4 +29,30 @@ class ExtendedInvoiceParserTest {
         )
         assertTrue(rows.any { it.storeName == "Магазин В" && it.totalBoxes == 2 })
     }
+    @Test fun parsesLegacyXlsWorkbookRows() {
+        val bytes = ByteArrayOutputStream().use { output ->
+            HSSFWorkbook().use { workbook ->
+                val sheet = workbook.createSheet("Накладная")
+                val header = sheet.createRow(0)
+                listOf("Штрихкод", "Магазин", "Адрес", "Товар", "Количество").forEachIndexed { index, value ->
+                    header.createCell(index).setCellValue(value)
+                }
+                val row = sheet.createRow(1)
+                listOf("4601234567890", "Магазин Г", "Калуга, Мира 4", "Вода", "5").forEachIndexed { index, value ->
+                    row.createCell(index).setCellValue(value)
+                }
+                workbook.write(output)
+            }
+            output.toByteArray()
+        }
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.XLS, bytes)
+        assertTrue(rows.any { it.storeName == "Магазин Г" && it.totalBoxes == 5 })
+    }
+
+    @Test fun parsesRtfTabularInvoiceText() {
+        val rtf = """{\\rtf1\\ansi Штрихкод\\tab Магазин\\tab Адрес\\tab Товар\\tab Количество\\par 4601234567890\\tab Магазин Д\\tab Калуга, Победы 5\\tab Чай\\tab 6}"""
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
+        assertTrue(rows.any { it.storeName == "Магазин Д" && it.totalBoxes == 6 })
+    }
+
 }
