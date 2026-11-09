@@ -2644,16 +2644,16 @@ private fun RoutePhotoThumbnail(uri: Uri) {
 
 private fun formatCompactRouteAddress(rawAddress: String): String {
     val cleaned = rawAddress
-        .replace(Regex("""(?iu)\\b(?:контакт|телефон|оплата|комментарий|доставка|штрихкод)\\b.*$"""), "")
+        .replace(Regex("""(?iu)\b(?:контакт|телефон|оплата|комментарий|доставка|штрихкод)\b.*$"""), "")
         .replace(Regex("""[=|]+"""), " ")
-        .replace(Regex("""\\s+"""), " ")
+        .replace(Regex("""\s+"""), " ")
         .trim(' ', ',', ';', '.', ':')
-    val streetMatch = Regex("""(?iu)(?:ул\\.?|улица|пр-т|проспект|пер\\.?|переулок|шоссе|наб\\.?|набережная|б-р|бульвар)\\s*[^,;]+""").find(cleaned)
+    val streetMatch = Regex("""(?iu)(?:ул\.?|улица|пр-т|проспект|пер\.?|переулок|шоссе|наб\.?|набережная|б-р|бульвар)\s*[^,;]+""").find(cleaned)
         ?: return cleaned.take(1).uppercase() + cleaned.drop(1)
     val streetPart = streetMatch.value.trim()
-    val houseMatch = Regex("""(?iu)(?:д\\.?\\s*)?[-–—]?\\s*(\\d{1,4}\\s*[а-яa-z]?)(?:\\s*(?:к\\.?|корп\\.?|стр\\.?|строение)\\s*\\d+[а-яa-z]?)?""")
+    val houseMatch = Regex("""(?iu)(?:д\.?\s*)?[-–—]?\s*(\d{1,4}\s*[а-яa-z]?)(?:\s*(?:к\.?|корп\.?|стр\.?|строение)\s*\d+[а-яa-z]?)?""")
         .find(cleaned, streetMatch.range.last + 1)
-    val house = houseMatch?.groupValues?.getOrNull(1)?.replace(Regex("""\\s+"""), "")?.trim()
+    val house = houseMatch?.groupValues?.getOrNull(1)?.replace(Regex("""\s+"""), "")?.trim()
     return if (house.isNullOrBlank()) streetPart else "$streetPart, $house"
 }
 
