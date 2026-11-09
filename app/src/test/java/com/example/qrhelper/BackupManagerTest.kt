@@ -68,4 +68,17 @@ class BackupManagerTest {
             // Expected: a backup must contain its manifest.
         }
     }
+    @Test fun refusesToWriteBackupThatWouldExceedSupportedArchiveEntryCount() {
+        try {
+            requireBackupEntryCount(2049)
+            fail("Ожидалось ограничение количества ZIP-записей")
+        } catch (expected: IllegalArgumentException) {
+            // Writer and reader must agree on the same archive entry ceiling.
+        }
+    }
+
+    @Test fun acceptsBackupAtMaximumArchiveEntryCount() {
+        requireBackupEntryCount(2048)
+    }
+
 }
