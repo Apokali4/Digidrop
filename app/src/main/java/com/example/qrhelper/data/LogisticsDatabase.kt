@@ -34,6 +34,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun upsertProducts(v:List<ProductEntity>)
  @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertScanCode(v:ScanCodeEntity):Long
  @Query("SELECT code FROM scan_codes WHERE routeId=:routeId ORDER BY scannedAt") suspend fun scanCodes(routeId:Long):List<String>
+ @Query("DELETE FROM scan_codes WHERE routeId=:routeId") suspend fun clearScanCodes(routeId:Long)
  @Query("SELECT * FROM products WHERE barcode LIKE '%' || :query || '%' OR productName LIKE '%' || :query || '%' ORDER BY productName COLLATE NOCASE") suspend fun searchProducts(query:String):List<ProductEntity>
  @Query("SELECT * FROM products ORDER BY productName COLLATE NOCASE") suspend fun allProducts():List<ProductEntity>
  @Query("UPDATE delivery_routes SET active=0 WHERE active=1") suspend fun deactivateRoutes()
