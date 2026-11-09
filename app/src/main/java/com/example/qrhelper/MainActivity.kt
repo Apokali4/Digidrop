@@ -1033,20 +1033,29 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) importScope.launch {
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) importScope.launch {
             try {
-                val mime = context.contentResolver.getType(uri).orEmpty()
-                val uriText = uri.toString().lowercase()
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                uris.forEach { uri ->
+                    runCatching {
+                        context.contentResolver.takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    }
+                }
+                val imageUris = uris.filter { uri ->
+                    InvoiceImportKind.isImage(
+                        context.contentResolver.getType(uri),
+                        uri.toString().lowercase()
                     )
                 }
-                if (InvoiceImportKind.isImage(mime, uriText)) {
-                    // Copy the provider-backed image while the picker grant is still active.
-                    // OCR then reads a stable app-owned file instead of a temporary gallery URI.
+                require(imageUris.isEmpty() || uris.size == 1) {
+                    "Фотографии накладных пока обрабатываются отдельно. Выберите одну фотографию или пакет файлов PDF/Excel/CSV."
+                }
+                if (imageUris.size == 1) {
+                    val uri = imageUris.single()
+                    val mime = context.contentResolver.getType(uri).orEmpty()
                     val cachedPhoto = withContext(Dispatchers.IO) {
                         val extension = when {
                             mime.contains("png", ignoreCase = true) -> ".png"
@@ -1067,19 +1076,43 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     navigateTo(AppScreen.PHOTO_ROUTE)
                     return@launch
                 }
-                val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
-                val isExcel = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
+
                 val imported = withContext(Dispatchers.IO) {
-                    if (isPdf) {
-                        PdfInvoiceImporter.parse(context, uri) { message ->
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    uris.flatMapIndexed { index, uri ->
+                        val mime = context.contentResolver.getType(uri).orEmpty()
+                            .substringBefore(';').trim().lowercase()
+                        val uriText = uri.toString().substringBefore('?').lowercase()
+                        val isPdf = mime == "application/pdf" || uriText.endsWith(".pdf")
+                        val isXlsx = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
+                        val isLegacyXls = uriText.endsWith(".xls") ||
+                            mime == "application/vnd.ms-excel"
+                        require(!isLegacyXls) {
+                            "Файл №${index + 1}: формат .xls пока не поддерживается. Сохраните его как .xlsx или CSV."
                         }
-                    } else {
-                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                            val bytes = inputStream.readInvoiceBytes()
-                            if (isExcel) parseXlsx(bytes.inputStream())
-                            else parseManifest(bytes.toString(Charsets.UTF_8))
-                        }.orEmpty()
+                        require(isPdf || isXlsx || uriText.endsWith(".csv") ||
+                            mime.startsWith("text/") || mime == "application/csv") {
+                            "Файл №${index + 1}: неподдерживаемый формат. Используйте PDF, XLSX или CSV."
+                        }
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "Читаю файл ${index + 1} из ${uris.size}…",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        if (isPdf) {
+                            PdfInvoiceImporter.parse(context, uri) { message ->
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                                val bytes = inputStream.readInvoiceBytes()
+                                if (isXlsx) parseXlsx(bytes.inputStream())
+                                else parseManifest(bytes.toString(Charsets.UTF_8))
+                            }.orEmpty()
+                        }
                     }
                 }
                 if (imported.isNotEmpty()) {
