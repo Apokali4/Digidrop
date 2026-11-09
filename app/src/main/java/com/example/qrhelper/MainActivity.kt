@@ -2838,22 +2838,47 @@ fun RouteListScreen(
                                     )
                                 }
                             }
-                            if (point.address.isNotBlank()) {
-                                Text(
-                                    formatCompactRouteAddress(point.address),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                if (point.phone.isNotBlank()) {
-                                    Text("Позвонить", modifier = Modifier.clickable { onCallClient(point.phone) }.padding(vertical = 2.dp),
-                                        color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (point.address.isNotBlank()) {
+                                    Text(
+                                        formatCompactRouteAddress(point.address),
+                                        modifier = Modifier.weight(1f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else {
+                                    Spacer(Modifier.weight(1f))
                                 }
-                                Text("Проверить в Яндексе", modifier = Modifier.clickable { onOpenPointMap(point.address) }.padding(vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                        .clickable { onOpenPointMap(point.address) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Map,
+                                        contentDescription = "Открыть точку в Яндекс Картах",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+                            }
+                            if (point.phone.isNotBlank()) {
+                                Text(
+                                    "Позвонить",
+                                    modifier = Modifier.clickable { onCallClient(point.phone) }.padding(vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                             if (expanded) {
                                 Text("Открыть документы и товары точки",
