@@ -52,7 +52,7 @@ class ExtendedInvoiceParserTest {
     }
 
     @Test fun parsesRtfTabularInvoiceText() {
-        val rtf = """{\\rtf1\\ansi Штрихкод\\tab Магазин\\tab Адрес\\tab Товар\\tab Количество\\par 4601234567890\\tab Магазин Д\\tab Калуга, Победы 5\\tab Чай\\tab 6}"""
+        val rtf = "{\\rtf1\\ansi Штрихкод\\tab Магазин\\tab Адрес\\tab Товар\\tab Количество\\par 4601234567890\\tab Магазин Д\\tab Калуга, Победы 5\\tab Чай\\tab 6}"
         val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
         assertTrue(rows.any { it.storeName == "Магазин Д" && it.totalBoxes == 6 })
     }
