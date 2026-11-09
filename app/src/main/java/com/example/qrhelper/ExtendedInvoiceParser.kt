@@ -17,14 +17,14 @@ internal object ExtendedInvoiceParser {
             InvoiceDocumentFormat.XLS -> legacyXlsToTsv(bytes)
             InvoiceDocumentFormat.DOC -> legacyDocToText(bytes)
             InvoiceDocumentFormat.DOCX -> docxToTsv(bytes)
-            InvoiceDocumentFormat.RTF -> rtfToText(bytes.toString(Charsets.UTF_8))
+            InvoiceDocumentFormat.RTF -> rtfToText(decodeInvoiceText(bytes))
             InvoiceDocumentFormat.ODS -> openDocumentTable(bytes, "content.xml", true)
             InvoiceDocumentFormat.ODT -> openDocumentTable(bytes, "content.xml", false)
-            InvoiceDocumentFormat.XML -> xmlToTsv(bytes.toString(Charsets.UTF_8))
-            InvoiceDocumentFormat.JSON -> jsonToTsv(bytes.toString(Charsets.UTF_8))
-            InvoiceDocumentFormat.HTML -> htmlToTsv(bytes.toString(Charsets.UTF_8))
+            InvoiceDocumentFormat.XML -> xmlToTsv(decodeInvoiceText(bytes))
+            InvoiceDocumentFormat.JSON -> jsonToTsv(decodeInvoiceText(bytes))
+            InvoiceDocumentFormat.HTML -> htmlToTsv(decodeInvoiceText(bytes))
             InvoiceDocumentFormat.TEXT, InvoiceDocumentFormat.CSV, InvoiceDocumentFormat.TSV ->
-                bytes.toString(Charsets.UTF_8)
+                decodeInvoiceText(bytes)
             else -> error("Формат не поддерживается этим обработчиком: $format")
         }
         return parseManifest(text)
@@ -80,9 +80,9 @@ internal object ExtendedInvoiceParser {
             result
         }
         require(xml.isNotBlank()) { "В OpenDocument-файле не найден $entryName" }
-        val rows = Regex("<table:table-row\\b[^>]*>(.*?)</table:table-row>", RegexOption.DOT_MATCHES_ALL)
+        val rows = Regex("<(?:table:table-row|text:table-row)\\b[^>]*>(.*?)</(?:table:table-row|text:table-row)>", RegexOption.DOT_MATCHES_ALL)
             .findAll(xml).map { row ->
-                Regex("<table:table-cell\\b[^>]*>(.*?)</table:table-cell>|<table:covered-table-cell\\b[^>]*/>", RegexOption.DOT_MATCHES_ALL)
+                Regex("<(?:table:table-cell|text:table-cell)\\b[^>]*>(.*?)</(?:table:table-cell|text:table-cell)>|<table:covered-table-cell\\b[^>]*/>", RegexOption.DOT_MATCHES_ALL)
                     .findAll(row.groupValues[1]).joinToString("\\t") { cell ->
                         val raw = cell.groupValues[1]
                         Regex("<text:p\\b[^>]*>(.*?)</text:p>", RegexOption.DOT_MATCHES_ALL)
