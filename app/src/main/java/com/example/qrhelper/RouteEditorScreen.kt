@@ -111,7 +111,7 @@ internal fun RouteEditorScreen(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = palette.primary)
         ) {
-            Text("+ ДОБАВИТЬ ТОЧКУ", Modifier.padding(16.dp), color = Color.White)
+            Text("+ ДОБАВИТЬ ТОЧКУ", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimary)
         }
         if (groups.isEmpty()) {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
@@ -122,7 +122,7 @@ internal fun RouteEditorScreen(
             val listState = rememberLazyListState()
             var draggedIndex by remember { mutableStateOf<Int?>(null) }
             var dragDelta by remember { mutableStateOf(0f) }
-            Text("Зажми плитку и перетащи для изменения порядка.", color = palette.textSecondary, fontSize = 12.sp)
+            Text("Зажми плитку и перетащи для изменения порядка.", color = palette.onSurfaceVariant, fontSize = 12.sp)
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
@@ -157,15 +157,15 @@ internal fun RouteEditorScreen(
                         },
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = palette.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.border),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("ТОЧКА ${index + 1}  •  ⠿ ПЕРЕТАЩИТЬ", color = palette.primary, fontSize = 12.sp)
-                            Text(first.storeName.ifBlank { "Магазин не указан" }, color = palette.text, fontSize = 19.sp)
-                            Text(first.address, color = palette.textSecondary, fontSize = 14.sp)
+                            Text(first.storeName.ifBlank { "Магазин не указан" }, color = palette.onSurface, fontSize = 19.sp)
+                            Text(first.address, color = palette.onSurfaceVariant, fontSize = 14.sp)
                             Text("${group.size} строк груза • мест: ${group.sumOf { it.totalBoxes }} • сканов: ${group.sumOf { it.scannedBoxes }}",
-                                color = palette.textSecondary, fontSize = 12.sp)
+                                color = palette.onSurfaceVariant, fontSize = 12.sp)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Card(
                                     onClick = { openEditor(group) }, modifier = Modifier.weight(1f),
@@ -175,8 +175,8 @@ internal fun RouteEditorScreen(
                                 Card(
                                     onClick = { deletingGroup = group }, modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft)
-                                ) { Text("УДАЛИТЬ", Modifier.padding(12.dp), color = palette.text) }
+                                    colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant)
+                                ) { Text("УДАЛИТЬ", Modifier.padding(12.dp), color = palette.onSurface) }
                             }
                         }
                     }
