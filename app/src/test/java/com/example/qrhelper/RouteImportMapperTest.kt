@@ -194,7 +194,7 @@ class RouteImportMapperTest {
             requireCompleteRouteImport(emptyList(), emptyList())
             throw AssertionError("Expected empty route import to be rejected")
         } catch (expected: IllegalArgumentException) {
-            assertEquals("Нельзя заменить активный рейс пустой накладной", expected.message)
+            assertEquals("Нельзя заменить маршрут пустым списком", expected.message)
         }
     }
 
