@@ -229,7 +229,11 @@ internal class LogisticsRepository(context: Context) {
                             val reason = item.discrepancyReason?.let {
                                 runCatching { com.example.qrhelper.data.DiscrepancyReason.valueOf(it) }.getOrNull()
                             }
-                            dao.updateDiscrepancy(cargo.id, item.discrepancyQty.coerceAtLeast(0), reason)
+                            check(
+                                dao.updateDiscrepancy(cargo.id, item.discrepancyQty.coerceAtLeast(0), reason) == 1
+                            ) {
+                                "Не удалось сохранить расхождение для товара: ${item.itemName}"
+                            }
                         }
                     }
                 }
