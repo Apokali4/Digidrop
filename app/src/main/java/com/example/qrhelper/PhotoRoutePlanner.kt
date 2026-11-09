@@ -614,7 +614,7 @@ private fun PhotoPlannerTile(
             disabledContainerColor = palette.surfaceVariant
         ),
         border = androidx.compose.foundation.BorderStroke(1.dp, if (primary) palette.primary else palette.outline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = if (primary) androidx.compose.ui.graphics.Color.White else palette.onSurface,
@@ -895,7 +895,7 @@ fun PhotoRoutePlannerScreen(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
