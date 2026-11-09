@@ -128,6 +128,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
@@ -2905,10 +2906,10 @@ fun SignatureCaptureDialog(
                         }
                 ) {
                     strokes.forEach { points ->
-                        if (points.size == 1) {
+                        if (points == 1) {
                             drawCircle(Color.Black, radius = 2.dp.toPx(), center = points.first())
                         } else {
-                            for (index in 1 until points.size) {
+                            for (index in 1 until points) {
                                 drawLine(Color.Black, points[index - 1], points[index], strokeWidth = 3.dp.toPx())
                             }
                         }
@@ -3000,9 +3001,9 @@ fun RouteListScreen(
         val first = group.firstOrNull() ?: return@mapNotNull null
         if (first.latitude != null && first.longitude != null) PhotoRouteCoordinate(first.latitude, first.longitude) else null
     }
-    val missingCoordinates = points.size != pendingGroups.size
+    val missingCoordinates = points != pendingGroups.size
     val segments = remember(points, missingCoordinates) {
-        if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
+        if (!missingCoordinates && points >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
     }
     var navigationSegmentIndex by remember(segments) { mutableStateOf(0) }
     val photoPrefs = remember { context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE) }
@@ -3631,8 +3632,8 @@ fun ReportsScreen(
         Text("Отчёты и сверка", color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         val stats = listOf(
-            "Точек всего" to points.size.toString(),
-            "Точек доставлено" to "$delivered / ${points.size}",
+            "Точек всего" to points.toString(),
+            "Точек доставлено" to "$delivered / ${points}",
             "Точек с расхождениями" to problemPoints.toString(),
             "Мест по накладным" to totalBoxes.toString(),
             "Отсканировано" to scanned.toString(),
@@ -3651,10 +3652,10 @@ fun ReportsScreen(
             }
         }
         Text("Состояние точек", color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        ReportStatusBar("Доставлено", delivered, points.size, DigiDropPalette.accent)
-        ReportStatusBar("В работе", inProgressPoints, points.size, DigiDropPalette.accent)
-        ReportStatusBar("Ожидают", pendingPoints, points.size, DigiDropPalette.accentDark)
-        ReportStatusBar("Расхождения", problemPoints, points.size, DigiDropPalette.primaryDark)
+        ReportStatusBar("Доставлено", delivered, points, DigiDropPalette.accent)
+        ReportStatusBar("В работе", inProgressPoints, points, DigiDropPalette.accent)
+        ReportStatusBar("Ожидают", pendingPoints, points, DigiDropPalette.accentDark)
+        ReportStatusBar("Расхождения", problemPoints, points, DigiDropPalette.primaryDark)
         Spacer(Modifier.height(8.dp))
         HubActionButton("Экспорт CSV", "Универсальный табличный формат", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onExport)
         Spacer(Modifier.height(8.dp))
