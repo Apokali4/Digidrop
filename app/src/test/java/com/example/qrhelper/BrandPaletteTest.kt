@@ -5,6 +5,7 @@ import com.example.qrhelper.ui.theme.DigiDropPalette
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+/** Guards the approved graphite-and-safety-orange brand colors against regressions. */
 class BrandPaletteTest {
     @Test
     fun appPaletteUsesGraphiteSurfacesAndSafetyOrangeActions() {
