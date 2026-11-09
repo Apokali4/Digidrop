@@ -37,3 +37,8 @@ internal fun isDifferentDeliveryPoint(scanned: RouteItem, current: RouteItem?): 
 /** Advances through Yandex route segments and wraps only after the final segment. */
 internal fun nextNavigationSegmentIndex(currentIndex: Int, segmentCount: Int): Int =
     if (segmentCount <= 0) 0 else (currentIndex + 1).mod(segmentCount)
+
+
+/** Manual order is authoritative; otherwise prepare the route with the optimizer. */
+internal fun routeForNavigation(items: List<RouteItem>, manualOrder: Boolean): List<RouteItem> =
+    if (manualOrder) items else rebuildRemainingRoute(items)
