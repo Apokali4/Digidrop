@@ -44,8 +44,12 @@ internal object RouteSheetParser {
 
     fun parseOcrText(text: String, city: String = "Калуга"): List<RouteItem> {
         val addresses = PhotoRouteTextParser.extractRouteAddressRows(text, city)
+        val occurrences = mutableMapOf<String, Int>()
         return addresses.mapIndexed { index, address ->
-            val metadata = PhotoRouteTextParser.extractMetadata(text, address)
+            val key = PhotoRouteTextParser.canonicalAddressKey(address)
+            val occurrence = occurrences.getOrDefault(key, 0)
+            occurrences[key] = occurrence + 1
+            val metadata = PhotoRouteTextParser.extractMetadataForOccurrence(text, address, occurrence)
             RouteItem(
                 barcode = "",
                 storeName = metadata.storeName.ifBlank { "Точка ${index + 1}" },
