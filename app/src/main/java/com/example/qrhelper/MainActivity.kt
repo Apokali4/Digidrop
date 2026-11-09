@@ -971,16 +971,21 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) importScope.launch {
+            var pendingSnapshot: BackupSnapshot? = null
             try {
                 val snapshot = context.contentResolver.openInputStream(uri)?.use {
                     BackupManager.readBackup(it, context.filesDir)
                 } ?: error("Не удалось прочитать резервную копию")
+                pendingSnapshot = snapshot
                 val repository = LogisticsRepository(context)
                 repository.replaceActiveRoute(
                     items = snapshot.routeItems,
                     scanCodes = snapshot.scanCodes.toSet(),
                     catalog = snapshot.catalog
                 )
+                // Room now references these files. From this point onward they
+                // belong to the restored route and must not be rolled back here.
+                pendingSnapshot = null
                 val authoritativeItems = repository.activeRouteItems()
                 val authoritativeCodes = repository.activeUniqueScanCodes()
                 val manifest = authoritativeItems.joinToString("\n") { item ->
@@ -1008,6 +1013,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 sessionScanCodes = authoritativeCodes
                 Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
             } catch (error: Exception) {
+                pendingSnapshot?.let { snapshot ->
+                    runCatching { BackupManager.cleanupRestoredEvidence(snapshot, context.filesDir) }
+                }
                 Toast.makeText(
                     context,
                     "Не удалось восстановить копию: ${error.message}",
