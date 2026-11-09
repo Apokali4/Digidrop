@@ -2725,6 +2725,28 @@ fun RouteListScreen(
                         .filter { it.isNotBlank() }.joinToString(" • ")
                     if (header.isNotBlank()) Text(header, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    val deliveredCount = groups.size - pendingGroups.size
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Сдано $deliveredCount из ${groups.size}", color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                Text("Осталось ${pendingGroups.size} точек", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text("${if (groups.isEmpty()) 0 else deliveredCount * 100 / groups.size}%",
+                                color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                     Button(onClick = onRebuildRoute, enabled = groups.size >= 2,
                         modifier = Modifier.fillMaxWidth().height(46.dp), shape = RoundedCornerShape(13.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
@@ -2743,8 +2765,12 @@ fun RouteListScreen(
                         shape = RoundedCornerShape(13.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
                         Text(
-                            if (segments.size > 1 && navigationSegmentIndex > 0) "Следующий участок ${navigationSegmentIndex + 1} из ${segments.size}"
-                            else "В Яндекс Навигатор",
+                            when {
+                                segments.size > 1 && navigationSegmentIndex > 0 ->
+                                    "Следующий участок ${navigationSegmentIndex + 1} из ${segments.size}"
+                                deliveredCount > 0 -> "Обновить маршрут в Яндексе"
+                                else -> "В Яндекс Навигатор"
+                            },
                             fontWeight = FontWeight.Bold
                         )
                     }
