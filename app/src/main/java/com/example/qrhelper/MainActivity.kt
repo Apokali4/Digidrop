@@ -497,6 +497,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    var screenHistory by remember { mutableStateOf(emptyList<AppScreen>()) }
+    fun navigateTo(screen: AppScreen) {
+        if (screen != currentScreen) {
+            screenHistory = AppScreenHistory.push(screenHistory, currentScreen, screen)
+            currentScreen = screen
+        }
+    }
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
     var photoRouteInitialUri by remember { mutableStateOf<Uri?>(null) }
     val windowContext = LocalContext.current
@@ -643,7 +650,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 routeItems = emptyList()
                 selectedItem = null
                 selectedPointItems = emptyList()
-                currentScreen = AppScreen.HUB
+                navigateTo(AppScreen.HUB)
                 Toast.makeText(context, "Рейс отправлен в историю", Toast.LENGTH_LONG).show()
             }.onFailure { error ->
                 Toast.makeText(context, "Не удалось архивировать рейс: ${error.message}", Toast.LENGTH_LONG).show()
@@ -848,7 +855,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     }
                     photoRouteInitialUri = Uri.fromFile(cachedPhoto)
                     photoRouteInitialAction = null
-                    currentScreen = AppScreen.PHOTO_ROUTE
+                    navigateTo(AppScreen.PHOTO_ROUTE)
                     return@launch
                 }
                 val isPdf = mime.contains("pdf") || uriText.endsWith(".pdf")
@@ -882,7 +889,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
                         )
                     }
-                    currentScreen = AppScreen.ROUTE_LIST
+                    navigateTo(AppScreen.ROUTE_LIST)
                     val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
                     routeItems = ordered
                     val manifest = ordered.joinToString("\n") { item ->
@@ -935,7 +942,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            currentScreen = AppScreen.SCANNER
+            navigateTo(AppScreen.SCANNER)
         } else {
             Toast.makeText(context, "Разрешите доступ к камере", Toast.LENGTH_SHORT).show()
         }
@@ -944,7 +951,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     fun openScanner() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             previousScreen = currentScreen
-            currentScreen = AppScreen.SCANNER
+            navigateTo(AppScreen.SCANNER)
         } else {
             previousScreen = currentScreen
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -992,30 +999,20 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 
     BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
-        currentScreen = when (currentScreen) {
-            AppScreen.SCANNER -> previousScreen
-            AppScreen.SCAN_RESULTS -> AppScreen.SCANNER
-            AppScreen.POINT_DETAILS -> AppScreen.ROUTE_LIST
-            AppScreen.DETAILS -> AppScreen.ROUTE_LIST
-            AppScreen.ROUTE_LIST -> AppScreen.HUB
-            AppScreen.ROUTE_EDITOR -> AppScreen.ROUTE_LIST
-            AppScreen.HUB -> AppScreen.HUB
-            AppScreen.MORE_MENU -> AppScreen.HUB
-            AppScreen.INVOICE_IMPORT -> AppScreen.HUB
-            AppScreen.REPORTS, AppScreen.SETTINGS, AppScreen.HISTORY, AppScreen.PRODUCTS, AppScreen.UNKNOWN_CODES, AppScreen.PHOTO_ROUTE -> AppScreen.HUB
-            AppScreen.SPLASH -> AppScreen.HUB
-        }
+        val (remainingHistory, destination) = AppScreenHistory.pop(screenHistory, currentScreen)
+        screenHistory = remainingHistory
+        currentScreen = destination
     }
 
     Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
     when (screen) {
         AppScreen.SPLASH -> {
-            SplashScreen(onFinished = { currentScreen = AppScreen.HUB })
+            SplashScreen(onFinished = { navigateTo(AppScreen.HUB) })
         }
         AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
-                onBack = { currentScreen = AppScreen.HUB },
-                onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; currentScreen = AppScreen.PHOTO_ROUTE },
+                onBack = { navigateTo(AppScreen.HUB) },
+                onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; navigateTo(AppScreen.PHOTO_ROUTE) },
                 onLoadInvoice = {
                     filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 }
@@ -1025,11 +1022,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             HubScreen(
                 routeItems = routeItems,
                 routeHeader = routeHeader,
-                onOpenMenu = { currentScreen = AppScreen.MORE_MENU },
+                onOpenMenu = { navigateTo(AppScreen.MORE_MENU) },
                 onOpenScanner = { openScanner() },
-                onLoadInvoice = { currentScreen = AppScreen.INVOICE_IMPORT },
-                onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
-                onOpenReports = { currentScreen = AppScreen.REPORTS },
+                onLoadInvoice = { navigateTo(AppScreen.INVOICE_IMPORT) },
+                onOpenRoute = { navigateTo(AppScreen.ROUTE_LIST) },
+                onOpenReports = { navigateTo(AppScreen.REPORTS) },
                 onOpenHistory = {
                     importScope.launch {
                         archivedRoutes = runCatching { LogisticsRepository(context).history() }
@@ -1037,18 +1034,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 Toast.makeText(context, "Не удалось загрузить историю: ${error.message}", Toast.LENGTH_LONG).show()
                                 emptyList()
                             }
-                        currentScreen = AppScreen.HISTORY
+                        navigateTo(AppScreen.HISTORY)
                     }
                 },
-                onOpenSettings = { currentScreen = AppScreen.SETTINGS }
+                onOpenSettings = { navigateTo(AppScreen.SETTINGS) }
             )
         }
         AppScreen.MORE_MENU -> {
             MoreMenuScreen(
-                onBack = { currentScreen = AppScreen.HUB },
-                onOpenRoute = { currentScreen = AppScreen.ROUTE_LIST },
-                onOpenReports = { currentScreen = AppScreen.REPORTS },
-                onOpenSettings = { currentScreen = AppScreen.SETTINGS },
+                onBack = { navigateTo(AppScreen.HUB) },
+                onOpenRoute = { navigateTo(AppScreen.ROUTE_LIST) },
+                onOpenReports = { navigateTo(AppScreen.REPORTS) },
+                onOpenSettings = { navigateTo(AppScreen.SETTINGS) },
                 onOpenHistory = {
                     importScope.launch {
                         archivedRoutes = runCatching { LogisticsRepository(context).history() }
@@ -1056,18 +1053,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 Toast.makeText(context, "Не удалось загрузить историю: ${error.message}", Toast.LENGTH_LONG).show()
                                 emptyList()
                             }
-                        currentScreen = AppScreen.HISTORY
+                        navigateTo(AppScreen.HISTORY)
                     }
                 },
                 onOpenProducts = {
                     importScope.launch {
                         productCatalog = runCatching { LogisticsRepository(context).searchProducts("") }.getOrElse { emptyList() }
-                        currentScreen = AppScreen.PRODUCTS
+                        navigateTo(AppScreen.PRODUCTS)
                     }
                 },
                 onOpenUnknown = {
                     unknownCodes = prefs.getStringSet("unknown_codes", emptySet())?.toList().orEmpty()
-                    currentScreen = AppScreen.UNKNOWN_CODES
+                    navigateTo(AppScreen.UNKNOWN_CODES)
                 },
                 onExport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onCallDispatcher = { makePhoneCall(DISPATCHER_PHONE) },
@@ -1085,7 +1082,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 initialImageUri = photoRouteInitialUri,
                 onInitialActionConsumed = { photoRouteInitialAction = null },
                 onInitialImageConsumed = { photoRouteInitialUri = null },
-                onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; currentScreen = AppScreen.INVOICE_IMPORT },
+                onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; navigateTo(AppScreen.INVOICE_IMPORT) },
                 onApplyRoute = { imported, header ->
                     routeHeader = header
                     prefs.edit()
@@ -1109,7 +1106,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 Toast.makeText(context, "Маршрут добавлен, но база не обновлена: ${error.message}", Toast.LENGTH_LONG).show()
                             }
                     }
-                    currentScreen = AppScreen.ROUTE_LIST
+                    navigateTo(AppScreen.ROUTE_LIST)
                     Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}", Toast.LENGTH_LONG).show()
                 },
             )
@@ -1119,9 +1116,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 routeItems = routeItems,
                 routeHeader = routeHeader,
                 compactMode = settingsCompact,
-                onBackToHub = { currentScreen = AppScreen.HUB },
+                onBackToHub = { navigateTo(AppScreen.HUB) },
                 onOpenScanner = { openScanner() },
-                onEditRoute = { currentScreen = AppScreen.ROUTE_EDITOR },
+                onEditRoute = { navigateTo(AppScreen.ROUTE_EDITOR) },
                 onNavigateSegment = { index, segment ->
                     openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
                 },
@@ -1147,7 +1144,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onCallClient = { phone -> makePhoneCall(phone) },
                 onPointClick = { pointItems ->
                     selectedPointItems = pointItems
-                    currentScreen = AppScreen.POINT_DETAILS
+                    navigateTo(AppScreen.POINT_DETAILS)
                 },
                 onToggleItem = { item -> updateItemStatus(item) },
                 onApplyAlternative = { orderedIds ->
@@ -1187,7 +1184,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         AppScreen.ROUTE_EDITOR -> {
             RouteEditorScreen(
                 routeItems = routeItems,
-                onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                onBack = { navigateTo(AppScreen.ROUTE_LIST) },
                 onSave = { editedItems ->
                     importScope.launch {
                         runCatching { LogisticsRepository(context).updateActiveRoute(editedItems) }
@@ -1201,7 +1198,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     ).joinToString("\t") { it.replace("\t", " ") }
                                 }
                                 prefs.edit().putString("active_manifest", manifest).remove("scan_codes").apply()
-                                currentScreen = AppScreen.ROUTE_LIST
+                                navigateTo(AppScreen.ROUTE_LIST)
                                 Toast.makeText(context, "Маршрут сохранён", Toast.LENGTH_SHORT).show()
                             }
                             .onFailure { error ->
@@ -1215,7 +1212,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             selectedItem?.let { item ->
                 PointDetailsScreen(
                     item = item,
-                    onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                    onBack = { navigateTo(AppScreen.ROUTE_LIST) },
                     onNavigate = { launchNavigation(item.address, item.latitude, item.longitude) },
                     onCall = { makePhoneCall(item.phone) },
                     onToggleDelivered = { updateItemStatus(item) },
@@ -1243,16 +1240,16 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     }
                 )
             } ?: run {
-                currentScreen = AppScreen.ROUTE_LIST
+                navigateTo(AppScreen.ROUTE_LIST)
             }
         }
         AppScreen.POINT_DETAILS -> {
             PointGroupScreen(
                 items = selectedPointItems,
-                onBack = { currentScreen = AppScreen.ROUTE_LIST },
+                onBack = { navigateTo(AppScreen.ROUTE_LIST) },
                 onOpenInvoice = { item ->
                     selectedItem = item
-                    currentScreen = AppScreen.DETAILS
+                    navigateTo(AppScreen.DETAILS)
                 },
                 onNavigate = {
                     val item = selectedPointItems.firstOrNull()
@@ -1289,17 +1286,17 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             ScanResultsScreen(
                 code = scanMatches.firstOrNull()?.barcode.orEmpty(),
                 matches = scanMatches,
-                onBack = { currentScreen = AppScreen.SCANNER },
+                onBack = { navigateTo(AppScreen.SCANNER) },
                 onOpenPoint = { item ->
                     selectedItem = item
-                    currentScreen = AppScreen.DETAILS
+                    navigateTo(AppScreen.DETAILS)
                 }
             )
         }
         AppScreen.REPORTS -> {
             ReportsScreen(
                 routeItems,
-                onBack = { currentScreen = AppScreen.HUB },
+                onBack = { navigateTo(AppScreen.HUB) },
                 onExport = { reportLauncher.launch("DigiDrop_report.csv") },
                 onExportExcel = { reportExcelLauncher.launch("DigiDrop_report.xlsx") },
                 onExportPdf = { reportPdfLauncher.launch("DigiDrop_report.pdf") }
@@ -1309,7 +1306,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             SettingsScreen(
                 offlineMode = settingsOffline, autoSave = settingsAutoSave, compactMode = settingsCompact,
                 darkTheme = settingsDarkTheme,
-                onBack = { currentScreen = AppScreen.HUB },
+                onBack = { navigateTo(AppScreen.HUB) },
                 onDarkThemeChange = { enabled ->
                     settingsDarkTheme = enabled
                     onThemeChange(enabled)
@@ -1326,7 +1323,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         AppScreen.HISTORY -> {
             HistoryScreen(
                 routes = archivedRoutes,
-                onBack = { currentScreen = AppScreen.HUB },
+                onBack = { navigateTo(AppScreen.HUB) },
                 onRestoreRoute = { routeId ->
                     importScope.launch {
                         runCatching { LogisticsRepository(context).restoreArchivedRoute(routeId) }
@@ -1341,7 +1338,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     ).joinToString("\t") { it.replace("\t", " ") }
                                 }
                                 prefs.edit().putString("active_manifest", manifest).apply()
-                                currentScreen = AppScreen.ROUTE_LIST
+                                navigateTo(AppScreen.ROUTE_LIST)
                                 Toast.makeText(context, "Архивный рейс восстановлен", Toast.LENGTH_LONG).show()
                             }
                             .onFailure { error ->
@@ -1354,7 +1351,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         AppScreen.PRODUCTS -> {
             ProductCatalogScreen(
                 products = productCatalog,
-                onBack = { currentScreen = AppScreen.HUB },
+                onBack = { navigateTo(AppScreen.HUB) },
                 onSearch = { query ->
                     importScope.launch {
                         productCatalog = runCatching { LogisticsRepository(context).searchProducts(query) }
@@ -1367,7 +1364,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             )
         }
         AppScreen.UNKNOWN_CODES -> {
-            UnknownCodesScreen(unknownCodes, onBack = { currentScreen = AppScreen.HUB }, onClear = {
+            UnknownCodesScreen(unknownCodes, onBack = { navigateTo(AppScreen.HUB) }, onClear = {
                 prefs.edit().remove("unknown_codes").apply(); unknownCodes = emptyList()
             })
         }
@@ -1387,14 +1384,14 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     when {
                         matches.size > 1 -> {
                             scanMatches = matches
-                            currentScreen = AppScreen.SCAN_RESULTS
+                            navigateTo(AppScreen.SCAN_RESULTS)
                         }
                         matchedItem == null -> {
                             val unknown = prefs.getStringSet("unknown_codes", emptySet())?.toMutableSet() ?: mutableSetOf()
                             unknown.add(normalizedCode)
                             prefs.edit().putStringSet("unknown_codes", unknown).apply()
                             Toast.makeText(context, "Неизвестный код: $normalizedCode", Toast.LENGTH_LONG).show()
-                            currentScreen = AppScreen.HUB
+                            navigateTo(AppScreen.HUB)
                         }
                         isPlainProductCode -> {
                             val remaining = (matchedItem.totalBoxes - matchedItem.scannedBoxes).coerceAtLeast(0)
@@ -1404,7 +1401,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 Toast.LENGTH_LONG
                             ).show()
                             selectedItem = matchedItem
-                            currentScreen = AppScreen.DETAILS
+                            navigateTo(AppScreen.DETAILS)
                         }
                         remainingBoxes(matchedItem) == 0 -> {
                             Toast.makeText(
@@ -1413,11 +1410,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 Toast.LENGTH_LONG
                             ).show()
                             selectedItem = matchedItem
-                            currentScreen = AppScreen.DETAILS
+                            navigateTo(AppScreen.DETAILS)
                         }
                         normalizedCode in savedCodes -> {
                             Toast.makeText(context, "Дубликат уникального кода упаковки: $normalizedCode", Toast.LENGTH_LONG).show()
-                            currentScreen = AppScreen.HUB
+                            navigateTo(AppScreen.HUB)
                         }
                         else -> {
                             savedCodes.add(normalizedCode)
@@ -1438,7 +1435,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
                             } catch (_: Exception) {}
                             Toast.makeText(context, "Скан принят: ${updated.scannedBoxes} / ${updated.totalBoxes}", Toast.LENGTH_SHORT).show()
-                            currentScreen = AppScreen.DETAILS
+                            navigateTo(AppScreen.DETAILS)
                         }
                     }
                 }
