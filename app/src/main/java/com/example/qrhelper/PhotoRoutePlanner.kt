@@ -623,7 +623,8 @@ private fun RouteCameraCaptureScreen(
                     if (capture == null) {
                         message = "Камера ещё запускается"
                     } else {
-                        val file = File(context.cacheDir, "route_photo_${System.currentTimeMillis()}.jpg")
+                        val photoDirectory = File(context.filesDir, "route-manifest-photos").apply { mkdirs() }
+                        val file = File(photoDirectory, "route_photo_${System.currentTimeMillis()}.jpg")
                         val options = ImageCapture.OutputFileOptions.Builder(file).build()
                         capture.takePicture(options, ContextCompat.getMainExecutor(context),
                             object : ImageCapture.OnImageSavedCallback {
@@ -722,6 +723,20 @@ fun PhotoRoutePlannerScreen(
         val array = org.json.JSONArray(plannerPrefs.getString(key, "[]").orEmpty())
         (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
     }.getOrDefault(emptyList())
+
+    suspend fun copyPhotoIntoRouteStorage(source: Uri): Uri = withContext(Dispatchers.IO) {
+        val directory = java.io.File(context.filesDir, "route-manifest-photos").apply { mkdirs() }
+        val extension = when (context.contentResolver.getType(source)?.lowercase()) {
+            "image/png" -> ".png"
+            "image/webp" -> ".webp"
+            else -> ".jpg"
+        }
+        val target = java.io.File(directory, "manifest_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(1000, 9999)}$extension")
+        context.contentResolver.openInputStream(source)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: error("Не удалось сохранить фотографию накладной")
+        Uri.fromFile(target)
+    }
     fun readLocatedStops(): List<LocatedPhotoStop> = runCatching {
         val array = org.json.JSONArray(plannerPrefs.getString("located_stops", "[]").orEmpty())
         (0 until array.length()).mapNotNull { index ->
@@ -865,9 +880,13 @@ fun PhotoRoutePlannerScreen(
     val galleryPhotosLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) {
-            capturedUris = capturedUris + uris
-            status = "Добавлено фотографий: ${capturedUris.size}. Можно выбрать ещё или запустить общее распознавание."
+        if (uris.isNotEmpty()) scope.launch {
+            runCatching { uris.map { copyPhotoIntoRouteStorage(it) } }
+                .onSuccess { saved ->
+                    capturedUris = capturedUris + saved
+                    status = "Фото сохранены в памяти DigiDrop: ${capturedUris.size}. Их можно распознать позже."
+                }
+                .onFailure { error -> status = "Не удалось сохранить фото: ${error.message}" }
         }
     }
 
