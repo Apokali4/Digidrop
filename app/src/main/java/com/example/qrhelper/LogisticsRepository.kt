@@ -99,6 +99,9 @@ internal class LogisticsRepository(context: Context) {
      */
     suspend fun updateActiveRoute(items: List<RouteItem>) {
         val points = RouteImportMapper.map(items)
+        // Validate before deleting the current points. Room can roll back SQL
+        // failures, but it cannot protect against a logically incomplete import.
+        requireCompleteRouteImport(items, points)
         database.withTransaction {
             val dao = database.dao()
             val activeRoute = dao.activeRouteOnce()
