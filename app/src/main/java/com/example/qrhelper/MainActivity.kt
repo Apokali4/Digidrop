@@ -814,10 +814,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     val reportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? ->
-        if (uri != null) {
+        if (uri != null) importScope.launch {
             try {
+                val reportItems = LogisticsRepository(context).activeRouteItems()
                 val header = "Штрихкод;Точка;Адрес;Товар;Всего мест;Отсканировано;Расхождение;Причина;Осталось;Статус\n"
-                val rows = routeItems.joinToString("\n") { item ->
+                val rows = reportItems.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName,
                         item.totalBoxes.toString(), item.scannedBoxes.toString(),
@@ -835,10 +836,10 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     writer.write("\uFEFF")
                     writer.write(header)
                     writer.write(rows)
-                }
+                } ?: error("Не удалось открыть CSV для записи")
                 Toast.makeText(context, "Отчёт сохранён", Toast.LENGTH_SHORT).show()
-            } catch (ex: Exception) {
-                Toast.makeText(context, "Не удалось сохранить отчёт: " + ex.message, Toast.LENGTH_LONG).show()
+            } catch (error: Exception) {
+                Toast.makeText(context, "Не удалось сохранить отчёт: ${error.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -874,24 +875,30 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     val reportExcelLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     ) { uri: Uri? ->
-        if (uri != null) runCatching {
-            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writeXlsx(it, routeItems) }
-                ?: error("Не удалось открыть файл для записи")
-            Toast.makeText(context, "Excel-отчёт сохранён", Toast.LENGTH_SHORT).show()
-        }.onFailure { error ->
-            Toast.makeText(context, "Ошибка Excel-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        if (uri != null) importScope.launch {
+            try {
+                val reportItems = LogisticsRepository(context).activeRouteItems()
+                context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writeXlsx(it, reportItems) }
+                    ?: error("Не удалось открыть файл для записи")
+                Toast.makeText(context, "Excel-отчёт сохранён", Toast.LENGTH_SHORT).show()
+            } catch (error: Exception) {
+                Toast.makeText(context, "Ошибка Excel-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
     val reportPdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/pdf")
     ) { uri: Uri? ->
-        if (uri != null) runCatching {
-            context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writePdf(it, routeItems) }
-                ?: error("Не удалось открыть файл для записи")
-            Toast.makeText(context, "PDF-отчёт сохранён", Toast.LENGTH_SHORT).show()
-        }.onFailure { error ->
-            Toast.makeText(context, "Ошибка PDF-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+        if (uri != null) importScope.launch {
+            try {
+                val reportItems = LogisticsRepository(context).activeRouteItems()
+                context.contentResolver.openOutputStream(uri)?.use { ReportExporter.writePdf(it, reportItems) }
+                    ?: error("Не удалось открыть файл для записи")
+                Toast.makeText(context, "PDF-отчёт сохранён", Toast.LENGTH_SHORT).show()
+            } catch (error: Exception) {
+                Toast.makeText(context, "Ошибка PDF-экспорта: ${error.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
