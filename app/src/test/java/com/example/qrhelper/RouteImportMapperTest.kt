@@ -178,4 +178,32 @@ class RouteImportMapperTest {
         assertEquals(2, RouteImportMapper.map(items).size)
     }
 
+    @Test fun rejectsRouteReplacementWhenAnyImportedRowWouldBeSilentlyDropped() {
+        val valid = RouteItem("a", "Магазин", "Адрес", "Товар", 2, "")
+        val invalid = valid.copy(address = "   ")
+        try {
+            requireCompleteRouteImport(listOf(valid, invalid), RouteImportMapper.map(listOf(valid, invalid)))
+            throw AssertionError("Expected incomplete route import to be rejected")
+        } catch (expected: IllegalArgumentException) {
+            assertEquals("В накладной есть строки без адреса точки доставки", expected.message)
+        }
+    }
+
+    @Test fun rejectsEmptyRouteReplacement() {
+        try {
+            requireCompleteRouteImport(emptyList(), emptyList())
+            throw AssertionError("Expected empty route import to be rejected")
+        } catch (expected: IllegalArgumentException) {
+            assertEquals("Нельзя заменить активный рейс пустой накладной", expected.message)
+        }
+    }
+
+    @Test fun acceptsRouteWhenEveryImportedRowHasAnAddress() {
+        val items = listOf(
+            RouteItem("a", "Магазин", "Адрес 1", "Товар 1", 2, ""),
+            RouteItem("b", "Магазин", "Адрес 2", "Товар 2", 3, "")
+        )
+        requireCompleteRouteImport(items, RouteImportMapper.map(items))
+    }
+
 }
