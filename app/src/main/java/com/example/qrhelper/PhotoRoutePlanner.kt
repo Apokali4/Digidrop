@@ -124,7 +124,7 @@ internal object PhotoRouteTextParser {
     private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор)""")
     // Preserve корпус/строение/литера so separate buildings never collapse into one stop.
     private val buildingSuffixPattern = Regex(
-        """(?iu)\\s*[,;]?\\s*(?:корп(?:ус)?\\.?|крп\\.?|строен(?:ие)?\\.?|стр\\.?|лит(?:ера)?\\.?)\\s*№?\\s*[0-9а-яёa-z-]+"""
+        """(?iu)\s*[,;]?\s*(?:корп(?:ус)?\.?|крп\.?|строен(?:ие)?\.?|стр\.?|лит(?:ера)?\.?)\s*№?\s*[0-9а-яёa-z-]+"""
     )
     private val brandPatterns = listOf(
         Regex("""(?iu)красное\s+и(?:\s+бел(?:ое|\w*))?""") to "Красное и Белое",
