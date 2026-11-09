@@ -3012,7 +3012,7 @@ fun MapIconVector(tint: Color) {
             close()
         }
         drawPath(path, color = tint)
-        drawCircle(color = MaterialTheme.colorScheme.surface, radius = w * 0.15f, center = Offset(w * 0.5f, h * 0.45f))
+        drawCircle(color = surfaceColor, radius = w * 0.15f, center = Offset(w * 0.5f, h * 0.45f))
     }
 }
 
