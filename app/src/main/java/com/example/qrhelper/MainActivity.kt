@@ -2153,6 +2153,23 @@ fun LiveCameraScannerScreen(
     val haptic = LocalHapticFeedback.current
     var lastRaw by remember { mutableStateOf("") }
     var lastScanAt by remember { mutableStateOf(0L) }
+    var boundCameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var activeBarcodeScanner by remember { mutableStateOf<com.google.mlkit.vision.barcode.BarcodeScanner?>(null) }
+    var analysisExecutor by remember { mutableStateOf<java.util.concurrent.ExecutorService?>(null) }
+    var scannerDisposed by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        scannerDisposed = false
+        onDispose {
+            scannerDisposed = true
+            boundCameraProvider?.unbindAll()
+            boundCameraProvider = null
+            activeBarcodeScanner?.close()
+            activeBarcodeScanner = null
+            analysisExecutor?.shutdownNow()
+            analysisExecutor = null
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scannerLaser")
     val laserY by infiniteTransition.animateFloat(
@@ -2182,42 +2199,52 @@ fun LiveCameraScannerScreen(
 
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
+                    if (scannerDisposed) return@addListener
                     val cameraProvider = cameraProviderFuture.get()
+                    boundCameraProvider = cameraProvider
                     val preview = Preview.Builder().build().also {
                         it.setSurfaceProvider(previewView.surfaceProvider)
                     }
 
                     val barcodeScanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_EAN_13, Barcode.FORMAT_DATA_MATRIX, Barcode.FORMAT_QR_CODE, Barcode.FORMAT_UPC_A, Barcode.FORMAT_CODE_128).build())
-                    val analysisExecutor = Executors.newSingleThreadExecutor()
+                    activeBarcodeScanner = barcodeScanner
+                    val executor = Executors.newSingleThreadExecutor()
+                    analysisExecutor = executor
 
                     val imageAnalysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
 
-                    imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
+                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
                         val mediaImage = imageProxy.image
-                        if (mediaImage != null) {
+                        if (mediaImage != null && !scannerDisposed) {
                             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
                             barcodeScanner.process(image)
                                 .addOnSuccessListener { barcodes ->
-                                    for (barcode in barcodes) {
-                                        val rawValue = barcode.rawValue
-                                        if (!rawValue.isNullOrBlank() && !hasScanned) {
-                                            hasScanned = true
-                                            onBarcodeScanned(rawValue)
-                                            break
+                                    if (!scannerDisposed) {
+                                        for (barcode in barcodes) {
+                                            val rawValue = barcode.rawValue
+                                            if (!rawValue.isNullOrBlank() && !hasScanned) {
+                                                hasScanned = true
+                                                onBarcodeScanned(rawValue)
+                                                break
+                                            }
                                         }
                                     }
                                 }
-                                .addOnCompleteListener {
-                                    imageProxy.close()
-                                }
+                                .addOnCompleteListener { imageProxy.close() }
                         } else {
                             imageProxy.close()
                         }
                     }
 
                     try {
+                        if (scannerDisposed) {
+                            imageAnalysis.clearAnalyzer()
+                            executor.shutdownNow()
+                            barcodeScanner.close()
+                            return@addListener
+                        }
                         cameraProvider.unbindAll()
                         val boundCamera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
@@ -2227,6 +2254,9 @@ fun LiveCameraScannerScreen(
                         )
                         onCameraBound(boundCamera)
                     } catch (e: Exception) {
+                        imageAnalysis.clearAnalyzer()
+                        executor.shutdownNow()
+                        barcodeScanner.close()
                         Toast.makeText(ctx, "Камера недоступна: " + e.message, Toast.LENGTH_SHORT).show()
                     }
                 }, ContextCompat.getMainExecutor(ctx))
