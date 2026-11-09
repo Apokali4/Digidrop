@@ -278,4 +278,26 @@ class PhotoRouteTextParserTest {
         assertEquals("ИП Иванов Иван Иванович", metadata.ownerName)
     }
 
+
+    @Test fun preservesBuildingAndStructureInExtractedAddressAndGroupingKey() {
+        val first = PhotoRouteTextParser.extractCandidates(
+            "г. Калуга, ул. В. Никитиной, д. 21 Б, корп. 2, Красное и Белое",
+            "Калуга"
+        ).single()
+        val second = PhotoRouteTextParser.extractCandidates(
+            "г. Калуга, ул. В. Никитиной, д. 21 Б, корп. 3, Красное и Белое",
+            "Калуга"
+        ).single()
+
+        assertEquals("г. Калуга, ул. В. Никитиной, д. 21 Б, корп. 2", first)
+        assertEquals("г. Калуга, ул. В. Никитиной, д. 21 Б, корп. 3", second)
+        assertTrue(PhotoRouteTextParser.canonicalAddressKey(first) != PhotoRouteTextParser.canonicalAddressKey(second))
+    }
+
+    @Test fun groupsPunctuationVariantsOfSameBuildingAndStructureTogether() {
+        val first = PhotoRouteTextParser.canonicalAddressKey("г. Калуга, ул. Болдина, д. 9, корп. 1")
+        val second = PhotoRouteTextParser.canonicalAddressKey("Калуга ул Болдина 9 корпус 1")
+        assertEquals(first, second)
+    }
+
 }
