@@ -34,13 +34,16 @@ internal data class PointImportPlan(
 
 internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
     if (items.isEmpty()) return DeliveryStatus.PENDING
-    val expected = items.sumOf { it.totalBoxes.coerceAtLeast(0) }
-    val scanned = items.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+    val hasDiscrepancy = items.any { it.discrepancyQty > 0 }
+    val allRowsAccounted = items.all { item ->
+        val expected = item.totalBoxes.coerceAtLeast(0)
+        val accounted = item.scannedBoxes.coerceAtLeast(0) + item.discrepancyQty.coerceAtLeast(0)
+        expected == 0 || accounted >= expected
+    }
     return when {
-        items.any { it.discrepancyQty > 0 } -> DeliveryStatus.HAS_DISCREPANCY
-        items.all { it.isDelivered } -> DeliveryStatus.COMPLETED
-        expected > 0 && scanned >= expected -> DeliveryStatus.COMPLETED
-        items.any { it.isDelivered } || scanned > 0 -> DeliveryStatus.IN_PROGRESS
+        hasDiscrepancy -> DeliveryStatus.HAS_DISCREPANCY
+        allRowsAccounted -> DeliveryStatus.COMPLETED
+        items.any { it.scannedBoxes > 0 || it.isDelivered } -> DeliveryStatus.IN_PROGRESS
         else -> DeliveryStatus.PENDING
     }
 }
