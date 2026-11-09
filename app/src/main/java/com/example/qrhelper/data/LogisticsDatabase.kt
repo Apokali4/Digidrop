@@ -21,6 +21,7 @@ class LogisticsConverters{
 @Entity(tableName="delivery_routes") data class DeliveryRouteEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeNumber:String,val createdAt:Long=System.currentTimeMillis(),val active:Boolean=true)
 @Entity(tableName="delivery_points",foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")])
 data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeId:Long,val storeName:String,val address:String,val phone:String="",val sortOrder:Int=0,val timeSlot:String="",val contactPerson:String="",val contactPhone:String="",val status:DeliveryStatus=DeliveryStatus.PENDING,val signaturePath:String="",val photoDocUri:String="",val latitude:Double?=null,val longitude:Double?=null)
+@Entity(tableName="scan_codes",primaryKeys=["routeId","code"],foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")]) data class ScanCodeEntity(val routeId:Long,val code:String,val scannedAt:Long=System.currentTimeMillis())
 @Entity(tableName="products")
 data class ProductEntity(@PrimaryKey val barcode:String,val productName:String,val updatedAt:Long=System.currentTimeMillis())
 @Entity(tableName="cargo_items",foreignKeys=[ForeignKey(entity=DeliveryPointEntity::class,parentColumns=["id"],childColumns=["pointId"],onDelete=ForeignKey.CASCADE)],indices=[Index("pointId"),Index("barcode")])
@@ -31,6 +32,8 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Insert suspend fun insertPoint(v:DeliveryPointEntity):Long
  @Insert suspend fun insertCargo(v:List<CargoItemEntity>)
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun upsertProducts(v:List<ProductEntity>)
+ @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertScanCode(v:ScanCodeEntity):Long
+ @Query("SELECT code FROM scan_codes WHERE routeId=:routeId ORDER BY scannedAt") suspend fun scanCodes(routeId:Long):List<String>
  @Query("SELECT * FROM products WHERE barcode LIKE '%' || :query || '%' OR productName LIKE '%' || :query || '%' ORDER BY productName COLLATE NOCASE") suspend fun searchProducts(query:String):List<ProductEntity>
  @Query("SELECT * FROM products ORDER BY productName COLLATE NOCASE") suspend fun allProducts():List<ProductEntity>
  @Query("UPDATE delivery_routes SET active=0 WHERE active=1") suspend fun deactivateRoutes()
@@ -64,7 +67,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Transaction suspend fun closePoint(id:Long):Boolean{if(unresolved(id)>0||invalidDiscrepancies(id)>0)return false;updateStatus(id,DeliveryStatus.COMPLETED);return true}
  @Query("SELECT p.storeName AS pointName,p.address AS pointAddress,c.itemName AS itemName,c.barcode AS barcode,c.expectedQty AS expectedQty,c.scannedQty AS scannedQty,c.discrepancyQty AS discrepancyQty,c.discrepancyReason AS discrepancyReason FROM cargo_items c JOIN delivery_points p ON p.id=c.pointId WHERE p.routeId=:routeId AND (c.discrepancyQty>0 OR c.scannedQty<c.expectedQty) ORDER BY p.sortOrder,p.storeName,c.itemName") suspend fun discrepancyReport(routeId:Long):List<DiscrepancyReportRow>
 }
-@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class],version=3,exportSchema=true)
+@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=4,exportSchema=true)
 @TypeConverters(LogisticsConverters::class)
 abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
  companion object{
@@ -84,10 +87,16 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("CREATE TABLE IF NOT EXISTS products (barcode TEXT NOT NULL, productName TEXT NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(barcode))")
    }
   }
+  private val MIGRATION_3_4=object:Migration(3,4){
+   override fun migrate(database:SupportSQLiteDatabase){
+    database.execSQL("CREATE TABLE IF NOT EXISTS scan_codes (routeId INTEGER NOT NULL, code TEXT NOT NULL, scannedAt INTEGER NOT NULL, PRIMARY KEY(routeId, code), FOREIGN KEY(routeId) REFERENCES delivery_routes(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+    database.execSQL("CREATE INDEX IF NOT EXISTS index_scan_codes_routeId ON scan_codes(routeId)")
+   }
+  }
   @Volatile private var db:LogisticsDatabase?=null
   fun get(c:Context):LogisticsDatabase=db?:synchronized(this){
    db?:Room.databaseBuilder(c.applicationContext,LogisticsDatabase::class.java,"digidrop.db")
-    .addMigrations(MIGRATION_1_2,MIGRATION_2_3).build().also{db=it}
+    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4).build().also{db=it}
   }
  }
 }
