@@ -581,6 +581,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         )
     }
     var isUpdatingItemStatus by remember { mutableStateOf(false) }
+    var isUpdatingDiscrepancy by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -661,18 +662,36 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 
     fun updateItemDiscrepancy(item: RouteItem, quantity: Int, reason: String) {
+        if (isUpdatingDiscrepancy) return
         val updatedItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) {
                 current.copy(discrepancyQty = quantity.coerceAtLeast(0), discrepancyReason = reason)
             } else current
         }
-        routeItems = updatedItems
-        selectedItem = updatedItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+        isUpdatingDiscrepancy = true
         importScope.launch {
-            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedItems) } }
-                .onFailure { error ->
-                    Toast.makeText(context, "Не удалось сохранить расхождение: ${error.message}", Toast.LENGTH_LONG).show()
+            try {
+                val repository = LogisticsRepository(context)
+                persistRouteProgress { repository.syncProgress(updatedItems) }
+                val authoritativeItems = repository.activeRouteItems()
+                routeItems = authoritativeItems
+                selectedItem = selectedItem?.let { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
                 }
+                if (selectedPointItems.isNotEmpty()) {
+                    selectedPointItems = selectedPointItems.mapNotNull { selected ->
+                        authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                    }
+                }
+            } catch (error: Exception) {
+                Toast.makeText(
+                    context,
+                    "Не удалось сохранить расхождение: ${error.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                isUpdatingDiscrepancy = false
+            }
         }
     }
 
