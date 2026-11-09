@@ -1608,7 +1608,7 @@ fun HubScreen(
     onOpenSettings: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(DigiDropPalette.lightBackground)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .statusBarsPadding().navigationBarsPadding().padding(22.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1633,6 +1633,7 @@ private fun HubMetric(value: String, label: String, modifier: Modifier = Modifie
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(14.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -1649,6 +1650,7 @@ private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = M
             .bounceClick { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Column(
             Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
@@ -1745,7 +1747,7 @@ fun HubTile(
             .bounceClick(scaleDown = 0.985f) { onClick() },
         colors = CardDefaults.cardColors(containerColor = tileColor),
         shape = RoundedCornerShape(22.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 7.dp, pressedElevation = 1.dp)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
@@ -1891,6 +1893,7 @@ fun LiveCameraScannerScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1922,6 +1925,7 @@ fun LiveCameraScannerScreen(
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Text(
                     text = "Наведите рамку на штрихкод накладной",
@@ -1973,6 +1977,7 @@ fun LiveCameraScannerScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)),
                 shape = RoundedCornerShape(20.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
@@ -2023,6 +2028,7 @@ fun ScanResultsScreen(
                     modifier = Modifier.fillMaxWidth().bounceClick { onOpenPoint(pointItems.first()) },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(pointItems.first().storeName, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -2058,6 +2064,7 @@ fun StoreGroupCard(
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(14.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -2129,6 +2136,7 @@ fun PointGroupScreen(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(items) { item ->
                 Card(Modifier.fillMaxWidth().bounceClick { onOpenInvoice(item) },
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
                     Column(Modifier.padding(14.dp)) {
                         Text(item.itemName, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -2245,6 +2253,7 @@ fun PointDetailsScreen(
                 modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text("ДАННЫЕ ТОЧКИ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -2264,6 +2273,7 @@ fun PointDetailsScreen(
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
@@ -2329,6 +2339,7 @@ fun PointDetailsScreen(
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -2721,6 +2732,7 @@ fun RouteListScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("ДАННЫЕ РЕЙСА", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -2760,6 +2772,7 @@ fun RouteListScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("НАВИГАЦИЯ ПО МАРШРУТУ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -2824,6 +2837,7 @@ fun RouteListScreen(
                             .clickable { onApplyAlternative(alternative.map { it.id }) },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(14.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
@@ -2850,6 +2864,7 @@ fun RouteListScreen(
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(20.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(22.dp),
@@ -3044,6 +3059,7 @@ fun RouteItemCard(
             .bounceClick(scaleDown = 0.98f) { onCardClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Row(
             modifier = Modifier
@@ -3322,6 +3338,7 @@ fun ReportsScreen(
         )
         stats.forEach { (label, value) ->
             Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 shape = RoundedCornerShape(14.dp)) {
                 Row(Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
@@ -3424,6 +3441,7 @@ fun SettingsScreen(
 @Composable
 fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
     Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
         shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -3461,6 +3479,7 @@ internal fun HistoryScreen(
                         (route.scannedQty * 100 / route.expectedQty).coerceIn(0, 100)
                     } else 0
                     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                         shape = RoundedCornerShape(14.dp)) {
                         Column(Modifier.padding(14.dp)) {
                             Text(route.routeNumber, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -3498,6 +3517,7 @@ fun UnknownCodesScreen(codes: List<String>, onBack: () -> Unit, onClear: () -> U
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(codes) { code ->
                     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                         shape = RoundedCornerShape(12.dp)) {
                         Text(code, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onSurface, fontFamily = FontFamily.Monospace, fontSize = 13.sp)
                     }
