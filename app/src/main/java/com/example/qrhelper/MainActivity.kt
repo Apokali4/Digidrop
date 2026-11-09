@@ -935,9 +935,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     BackupManager.readBackup(it, context.filesDir)
                 } ?: error("Не удалось прочитать резервную копию")
                 val repository = LogisticsRepository(context)
-                repository.replaceActiveRoute(snapshot.routeItems)
-                repository.restoreUniqueScanCodes(snapshot.scanCodes.toSet())
-                repository.restoreProducts(snapshot.catalog)
+                repository.replaceActiveRoute(
+                    items = snapshot.routeItems,
+                    scanCodes = snapshot.scanCodes.toSet(),
+                    catalog = snapshot.catalog
+                )
                 val authoritativeItems = repository.activeRouteItems()
                 val authoritativeCodes = repository.activeUniqueScanCodes()
                 val manifest = authoritativeItems.joinToString("\n") { item ->
