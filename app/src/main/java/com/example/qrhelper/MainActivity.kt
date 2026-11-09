@@ -371,13 +371,14 @@ internal fun parseManifest(text: String): List<RouteItem> {
     val parsed = mutableListOf<RouteItem>()
     for (lineIndex in (if (hasHeader) 1 else 0) until lines.size) {
         val row = splitCsvLine(lines[lineIndex], delimiter)
-        val barcode = value(row, "barcode")
+        val barcode = value(row, "barcode").trim()
         val store = value(row, "store")
         val address = value(row, "address")
-        if (barcode.isBlank() || (store.isBlank() && address.isBlank())) continue
-        val boxes = value(row, "boxes").replace(',', '.').toDoubleOrNull()?.toInt()?.coerceAtLeast(1) ?: 1
-        val latitude = value(row, "lat").replace(',', '.').toDoubleOrNull()?.takeIf { it in -90.0..90.0 }
-        val longitude = value(row, "lon").replace(',', '.').toDoubleOrNull()?.takeIf { it in -180.0..180.0 }
+        if (!isUsableInvoiceBarcode(barcode) || (store.isBlank() && address.isBlank())) continue
+        val boxes = parseInvoiceQuantity(value(row, "boxes")) ?: continue
+        val coordinates = parseCoordinatePair(value(row, "lat"), value(row, "lon"))
+        val latitude = coordinates?.first
+        val longitude = coordinates?.second
         parsed.add(RouteItem(
             barcode = barcode, storeName = store.ifBlank { "Точка без названия" },
             address = address, itemName = value(row, "item").ifBlank { "Груз по накладной" },
