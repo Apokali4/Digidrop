@@ -278,8 +278,11 @@ internal class LogisticsRepository(context: Context) {
                         cargo.scannedQty.coerceAtLeast(0) + cargo.discrepancyQty.coerceAtLeast(0) >= cargo.expectedQty
                 }
                 val status = when {
+                    allRowsAccounted && point.status == com.example.qrhelper.data.DeliveryStatus.COMPLETED ->
+                        com.example.qrhelper.data.DeliveryStatus.COMPLETED
                     hasDiscrepancy -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
-                    allRowsAccounted && (refreshedCargo.any { it.expectedQty > 0 } || point.status == com.example.qrhelper.data.DeliveryStatus.COMPLETED) -> com.example.qrhelper.data.DeliveryStatus.COMPLETED
+                    allRowsAccounted && refreshedCargo.any { it.expectedQty > 0 } ->
+                        com.example.qrhelper.data.DeliveryStatus.COMPLETED
                     refreshedCargo.any { it.scannedQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
                     else -> com.example.qrhelper.data.DeliveryStatus.PENDING
                 }
