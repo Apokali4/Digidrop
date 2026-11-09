@@ -18,6 +18,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import android.location.Geocoder
@@ -498,16 +499,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appearancePrefs = getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE)
-            if (!appearancePrefs.getBoolean("dark_theme_default_migrated", false)) {
-                appearancePrefs.edit().putBoolean("dark_theme", true)
-                    .putBoolean("dark_theme_default_migrated", true).apply()
+            val systemDark = isSystemInDarkTheme()
+            var appearanceMode by remember {
+                mutableStateOf(AppearanceMode.fromPreference(appearancePrefs.getString("appearance_mode", null)))
             }
-            var darkTheme by remember { mutableStateOf(appearancePrefs.getBoolean("dark_theme", true)) }
-            QRHelperTheme(darkTheme = darkTheme) {
+            QRHelperTheme(darkTheme = appearanceMode.resolve(systemDark)) {
                 DigitDropRoot(
-                    onThemeChange = { enabled ->
-                        darkTheme = enabled
-                        appearancePrefs.edit().putBoolean("dark_theme", enabled).apply()
+                    appearanceMode = appearanceMode,
+                    onAppearanceModeChange = { mode ->
+                        appearanceMode = mode
+                        appearancePrefs.edit().putString("appearance_mode", mode.name).apply()
                     }
                 )
             }
@@ -516,7 +517,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
+fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (AppearanceMode) -> Unit) {
     val startupContext = LocalContext.current
     val startupPrefs = remember { startupContext.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
     val hasSavedRoute = !startupPrefs.getString("active_manifest", "").isNullOrBlank()
@@ -545,7 +546,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
-    var settingsDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", false)) }
+    val settingsDarkTheme = appearanceMode.resolve(isSystemInDarkTheme())
     val screenBackgroundColor = MaterialTheme.colorScheme.background
 
     LaunchedEffect(Unit) {
@@ -1285,9 +1286,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 },
                 onOpenSettings = { navigateTo(AppScreen.SETTINGS) },
                 onThemeToggle = {
-                    settingsDarkTheme = !settingsDarkTheme
-                    prefs.edit().putBoolean("dark_theme", settingsDarkTheme).apply()
-                    onThemeChange(settingsDarkTheme)
+                    onAppearanceModeChange(AppearanceMode.SYSTEM)
                 }
             )
         }
@@ -1608,12 +1607,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         AppScreen.SETTINGS -> {
             SettingsScreen(
                 offlineMode = settingsOffline, autoSave = settingsAutoSave, compactMode = settingsCompact,
-                darkTheme = settingsDarkTheme,
+                appearanceMode = appearanceMode,
                 onBack = { navigateTo(AppScreen.HUB) },
-                onDarkThemeChange = { enabled ->
-                    settingsDarkTheme = enabled
-                    onThemeChange(enabled)
-                },
+                onAppearanceModeChange = { mode -> onAppearanceModeChange(mode) },
                 onOfflineChange = { settingsOffline = it; prefs.edit().putBoolean("offline_mode", it).apply() },
                 onAutoSaveChange = { settingsAutoSave = it; prefs.edit().putBoolean("auto_save", it).apply() },
                 onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
@@ -1822,9 +1818,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                     .clickable {
-                        settingsDarkTheme = !settingsDarkTheme
-                        prefs.edit().putBoolean("dark_theme", settingsDarkTheme).apply()
-                        onThemeChange(settingsDarkTheme)
+                        onAppearanceModeChange(AppearanceMode.SYSTEM)
                     },
                 contentAlignment = Alignment.Center
             ) {
