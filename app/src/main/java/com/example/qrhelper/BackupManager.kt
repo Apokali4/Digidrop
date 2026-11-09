@@ -27,12 +27,20 @@ internal object BackupManager {
     private const val MAX_ROUTE_ITEMS = 10_000
 
     fun writeBackup(output: OutputStream, snapshot: BackupSnapshot, filesDir: File) {
+        require(snapshot.routeItems.size <= MAX_ROUTE_ITEMS) { "Слишком много строк накладной для резервной копии" }
         ZipOutputStream(output).use { zip ->
             val evidenceDirectory = File(filesDir, "delivery-evidence")
             val items = JSONArray()
+            var evidenceBytes = 0L
             snapshot.routeItems.forEachIndexed { index, item ->
-                val photoEntry = addEvidence(zip, evidenceDirectory, item.photoDocUri, "evidence/photo_$index")
-                val signatureEntry = addEvidence(zip, evidenceDirectory, item.signaturePath, "evidence/signature_$index.png")
+                val photoEntry = addEvidence(zip, evidenceDirectory, item.photoDocUri, "evidence/photo_$index") { size ->
+                    evidenceBytes += size
+                    require(evidenceBytes <= MAX_ARCHIVE_BYTES) { "Вложения превышают лимит резервной копии 64 МБ" }
+                }
+                val signatureEntry = addEvidence(zip, evidenceDirectory, item.signaturePath, "evidence/signature_$index.png") { size ->
+                    evidenceBytes += size
+                    require(evidenceBytes <= MAX_ARCHIVE_BYTES) { "Вложения превышают лимит резервной копии 64 МБ" }
+                }
                 items.put(JSONObject()
                     .put("barcode", item.barcode)
                     .put("storeName", item.storeName)
@@ -69,8 +77,11 @@ internal object BackupManager {
                     }
                 })
                 .put("routeItems", items)
+            val jsonBytes = json.toString().toByteArray(Charsets.UTF_8)
+            require(jsonBytes.size.toLong() <= MAX_JSON_BYTES) { "Данные резервной копии превышают лимит JSON 16 МБ" }
+            require(evidenceBytes + jsonBytes.size <= MAX_ARCHIVE_BYTES) { "Резервная копия превышает общий лимит 64 МБ" }
             zip.putNextEntry(ZipEntry("backup.json"))
-            zip.write(json.toString().toByteArray(Charsets.UTF_8))
+            zip.write(jsonBytes)
             zip.closeEntry()
         }
     }
@@ -174,13 +185,15 @@ internal object BackupManager {
         return output.toByteArray()
     }
 
-    private fun addEvidence(zip: ZipOutputStream, directory: File, rawPath: String, entryName: String): String? {
+    private fun addEvidence(zip: ZipOutputStream, directory: File, rawPath: String, entryName: String, onEvidenceSize: (Long) -> Unit): String? {
         if (rawPath.isBlank()) return null
         val file = File(rawPath)
         if (!file.isFile || !file.canonicalPath.startsWith(directory.canonicalPath + File.separator)) return null
-        require(file.length() <= MAX_EVIDENCE_BYTES) {
+        val fileSize = file.length()
+        require(fileSize <= MAX_EVIDENCE_BYTES) {
             "Файл вложения слишком большой для резервной копии: ${file.name}"
         }
+        onEvidenceSize(fileSize)
         zip.putNextEntry(ZipEntry(entryName))
         file.inputStream().use { it.copyTo(zip) }
         zip.closeEntry()
