@@ -756,7 +756,7 @@ fun PhotoRoutePlannerScreen(
         val target = java.io.File(directory, "manifest_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(1000, 9999)}$extension")
         context.contentResolver.openInputStream(source)?.use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Не удалось сохранить фотографию накладной")
+        } ?: error("Не удалось сохранить фотографию маршрутного листа")
         Uri.fromFile(target)
     }
     fun readLocatedStops(): List<LocatedPhotoStop> = runCatching {
@@ -975,7 +975,7 @@ fun PhotoRoutePlannerScreen(
         PhotoPlannerTile("Сфотографировать маршрутный лист", "Камера • можно добавить несколько снимков", enabled = !busy, primary = true) {
             cameraPermission.launch(Manifest.permission.CAMERA)
         }
-        PhotoPlannerTile("Выбрать фотографии из галереи", "Можно отметить сразу несколько снимков накладной", enabled = !busy) {
+        PhotoPlannerTile("Выбрать фотографии из галереи", "Можно отметить сразу несколько снимков маршрутного листа", enabled = !busy) {
             galleryPhotosLauncher.launch("image/*")
         }
         if (capturedUris.isNotEmpty()) {
