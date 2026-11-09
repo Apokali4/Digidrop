@@ -192,7 +192,7 @@ data class RouteItem(
     val discrepancyReason: String? = null
 )
 
-// Реальный рейс появляется только после загрузки файла накладной.
+// Реальный рейс появляется после импорта маршрутного списка.
 val INITIAL_DEMO_ROUTE: List<RouteItem> = emptyList()
 
 
@@ -409,9 +409,9 @@ internal fun parseManifest(text: String): List<RouteItem> {
         val longitude = coordinates?.second
         parsed.add(RouteItem(
             barcode = barcode, storeName = store.ifBlank { "Точка без названия" },
-            address = address, itemName = value(row, "item").ifBlank { "Груз по накладной" },
+            address = address, itemName = value(row, "item").ifBlank { "Доставка по маршрутному списку" },
             totalBoxes = boxes, phone = phone,
-            note = value(row, "note").ifBlank { "Разгрузка по накладной" },
+            note = value(row, "note").ifBlank { "Доставка по маршрутному списку" },
             latitude = latitude, longitude = longitude,
             ownerName = value(row, "owner"),
             workingHours = value(row, "hours"),
@@ -1304,7 +1304,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                 onResetRoute = { resetRouteProgress() },
                 onNavigateNext = {
                     val nextItem = nextPendingPoint(routeItems)?.firstOrNull()
-                    if (nextItem == null) Toast.makeText(context, "Сначала загрузите накладную", Toast.LENGTH_SHORT).show()
+                    if (nextItem == null) Toast.makeText(context, "Сначала загрузите маршрутный список", Toast.LENGTH_SHORT).show()
                     else launchNavigation(nextItem.address, nextItem.latitude, nextItem.longitude)
                 }
             )
@@ -1967,7 +1967,7 @@ fun HubScreen(
                 shape = RoundedCornerShape(20.dp)) {
                 Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(12.dp))
-                Text("Маршрут по фото / накладной", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Импорт маршрутного списка", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
             OutlinedButton(onClick = onOpenScanner, modifier = Modifier.fillMaxWidth().height(68.dp),
                 shape = RoundedCornerShape(18.dp)) {
@@ -2059,7 +2059,7 @@ fun MoreMenuScreen(
             Modifier.fillMaxWidth(), onOpenHistory)
         HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onOpenProducts)
-        HubTile("Неизвестные коды", "Коды вне накладных", "?", DigiDropPalette.primary,
+        HubTile("Неизвестные коды", "Коды вне маршрута", "?", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenUnknown)
         HubTile("Настройки и резервная копия", "Автосохранение, офлайн-режим, ZIP", "⚙", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenSettings)
@@ -3154,7 +3154,7 @@ fun RouteListScreen(
                 }
             }
             if (groups.isEmpty()) {
-                item(key = "empty") { Text("Маршрут пока пуст. Загрузите накладную или маршрутный лист.",
+                item(key = "empty") { Text("Маршрут пока пуст. Загрузите маршрутный список.",
                     modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 itemsIndexed(groups, key = { index, group ->
