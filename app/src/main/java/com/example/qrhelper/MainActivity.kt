@@ -793,11 +793,13 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: error("Не удалось прочитать выбранное фото")
                     LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
-                    val updated = routeItems.map {
-                        if (routeItemKey(it) == routeItemKey(item)) it.copy(photoDocUri = target.absolutePath) else it
+                    val authoritativeItems = LogisticsRepository(context).activeRouteItems()
+                    routeItems = authoritativeItems
+                    selectedItem = authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                        ?: error("Позиция не найдена после сохранения фото")
+                    selectedPointItems = authoritativeItems.filter {
+                        it.storeName == item.storeName && it.address == item.address
                     }
-                    routeItems = updated
-                    selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
                     Toast.makeText(context, "Фото доказательства сохранено", Toast.LENGTH_SHORT).show()
                 }.onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить фото: ${error.message}", Toast.LENGTH_LONG).show()
@@ -1314,14 +1316,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
                                 val target = File(directory, "signature_${System.currentTimeMillis()}.png")
                                 target.outputStream().use { output ->
-                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                                        "Не удалось записать изображение подписи"
+                                    }
                                 }
                                 LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
-                                val updated = routeItems.map {
-                                    if (routeItemKey(it) == routeItemKey(item)) it.copy(signaturePath = target.absolutePath) else it
+                                val authoritativeItems = LogisticsRepository(context).activeRouteItems()
+                                routeItems = authoritativeItems
+                                selectedItem = authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
+                                    ?: error("Позиция не найдена после сохранения подписи")
+                                selectedPointItems = authoritativeItems.filter {
+                                    it.storeName == item.storeName && it.address == item.address
                                 }
-                                routeItems = updated
-                                selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
                                 Toast.makeText(context, "Подпись получателя сохранена", Toast.LENGTH_SHORT).show()
                             }.onFailure { error ->
                                 Toast.makeText(context, "Не удалось сохранить подпись: ${error.message}", Toast.LENGTH_LONG).show()
