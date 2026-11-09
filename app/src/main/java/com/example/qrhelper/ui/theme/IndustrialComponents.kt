@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** DigiDrop industrial icon family, based on the bundled Material Symbols outline set. */
+/** DigiDrop industrial icon family, using bundled Tabler Icons vector assets. */
 enum class DigiDropIcon { HUB, MANIFEST, ROUTE, SCAN, REPORTS, SETTINGS, INVENTORY }
 
 object DigiDropIcons {
