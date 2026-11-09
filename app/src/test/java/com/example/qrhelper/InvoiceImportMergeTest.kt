@@ -94,4 +94,23 @@ class InvoiceImportMergeTest {
         assertEquals("file:///old-sign.png", merged.signaturePath)
     }
 
+    @Test fun preservesPreviouslyScannedPackageCodesWhenReplacementDoesNotSpecifyCodes() {
+        assertEquals(
+            setOf("4601234567890", "4601234567891"),
+            scanCodesForRouteReplacement(
+                existing = setOf("4601234567890", "4601234567891"),
+                requested = null
+            )
+        )
+    }
+
+    @Test fun explicitEmptyScanCodeSetResetsPreviousCodes() {
+        assertTrue(
+            scanCodesForRouteReplacement(
+                existing = setOf("4601234567890"),
+                requested = emptySet()
+            ).isEmpty()
+        )
+    }
+
 }
