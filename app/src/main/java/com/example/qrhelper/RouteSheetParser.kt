@@ -42,6 +42,26 @@ internal object RouteSheetParser {
         return parseOcrLines(lines)
     }
 
+    fun parseOcrText(text: String, city: String = "Калуга"): List<RouteItem> {
+        val addresses = PhotoRouteTextParser.extractRouteAddressRows(text, city)
+        return addresses.mapIndexed { index, address ->
+            val metadata = PhotoRouteTextParser.extractMetadata(text, address)
+            RouteItem(
+                barcode = "",
+                storeName = metadata.storeName.ifBlank { "Точка ${index + 1}" },
+                address = address,
+                itemName = "Доставка по маршрутному списку",
+                totalBoxes = 1,
+                phone = metadata.phone,
+                note = metadata.comment.ifBlank { "Доставка по маршрутному списку" },
+                ownerName = metadata.ownerName,
+                workingHours = metadata.workingHours,
+                cashNote = metadata.cashNote,
+                extraComment = metadata.comment
+            )
+        }
+    }
+
     fun parseSheets(sheets: List<List<List<String>>>): List<RouteItem> {
         if (sheets.isEmpty()) return emptyList()
         // Keep all sheets together so a repeated header or a continuation page
