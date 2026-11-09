@@ -1450,148 +1450,106 @@ fun SplashScreen(onFinished: () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     val appear by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(650, easing = FastOutSlowInEasing),
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
         label = "splashAppear"
     )
-    val pulse = rememberInfiniteTransition(label = "splashPulse")
-    val glow by pulse.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.035f,
-        animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
-        label = "logoGlow"
-    )
-    val progress by pulse.animateFloat(
+    val transition = rememberInfiniteTransition(label = "routeSplash")
+    val progress by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1250), RepeatMode.Restart),
-        label = "splashProgress"
+        animationSpec = infiniteRepeatable(tween(1900, easing = LinearEasing), RepeatMode.Restart),
+        label = "routeProgress"
     )
     LaunchedEffect(Unit) {
         visible = true
-        delay(2200)
+        delay(2600)
         onFinished()
     }
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                listOf(DigiDropPalette.darkBackground, DigiDropPalette.darkSurface, DigiDropPalette.darkSurfaceSoft)
-            )
+            Brush.verticalGradient(listOf(DigiDropPalette.darkBackground, DigiDropPalette.darkSurface))
         ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            drawCircle(
-                Brush.radialGradient(listOf(DigiDropPalette.accent.copy(alpha = 0.22f), Color.Transparent)),
-                radius = w * 0.78f,
-                center = Offset(w * 0.52f, h * 0.55f)
-            )
-            // Силуэты леса, горная дорога и грузовик в графитово-зелёной палитре.
-            fun tree(centerX: Float, baseY: Float, height: Float, tint: Color) {
-                val treePath = Path().apply {
-                    moveTo(centerX, baseY - height)
-                    lineTo(centerX - height * 0.34f, baseY - height * 0.46f)
-                    lineTo(centerX - height * 0.19f, baseY - height * 0.46f)
-                    lineTo(centerX - height * 0.42f, baseY - height * 0.12f)
-                    lineTo(centerX + height * 0.42f, baseY - height * 0.12f)
-                    lineTo(centerX + height * 0.19f, baseY - height * 0.46f)
-                    lineTo(centerX + height * 0.34f, baseY - height * 0.46f)
-                    close()
-                }
-                drawPath(treePath, tint)
-                drawLine(tint, Offset(centerX, baseY - height * 0.12f), Offset(centerX, baseY), height * 0.08f)
-            }
-            val forest = DigiDropPalette.darkBackground.copy(alpha = 0.72f)
-            listOf(0.04f to 0.76f, 0.14f to 0.82f, 0.25f to 0.77f, 0.83f to 0.82f, 0.94f to 0.76f)
-                .forEach { (x, y) -> tree(w * x, h * y, h * 0.19f, forest) }
-            val mountain = Path().apply {
-                moveTo(0f, h * 0.62f)
-                lineTo(w * 0.18f, h * 0.48f)
-                lineTo(w * 0.34f, h * 0.57f)
-                lineTo(w * 0.55f, h * 0.40f)
-                lineTo(w * 0.78f, h * 0.56f)
-                lineTo(w, h * 0.43f)
-                lineTo(w, h)
-                lineTo(0f, h)
-                close()
-            }
-            drawPath(mountain, DigiDropPalette.darkSurfaceSoft.copy(alpha = 0.40f))
-            val road = Path().apply {
-                moveTo(w * 0.50f, h * 1.04f)
-                cubicTo(w * 0.39f, h * 0.88f, w * 0.68f, h * 0.81f, w * 0.55f, h * 0.68f)
-                cubicTo(w * 0.48f, h * 0.59f, w * 0.53f, h * 0.54f, w * 0.56f, h * 0.50f)
-            }
-            drawPath(road, DigiDropPalette.darkBackground.copy(alpha = 0.72f), style = Stroke(width = w * 0.16f, cap = StrokeCap.Round))
-            drawPath(road, DigiDropPalette.accent.copy(alpha = 0.40f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            val truckX = w * 0.48f
-            val truckY = h * 0.70f
-            drawRoundRect(DigiDropPalette.accentDark, Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
-            drawRoundRect(DigiDropPalette.accent, Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
-            drawRoundRect(DigiDropPalette.accentLight, Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
-            drawCircle(DigiDropPalette.darkBackground, w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
-            drawCircle(DigiDropPalette.darkBackground, w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
-            val routePath = Path().apply {
-                moveTo(w * 0.12f, h * 0.78f)
-                cubicTo(w * 0.34f, h * 0.66f, w * 0.25f, h * 0.48f, w * 0.52f, h * 0.50f)
-                cubicTo(w * 0.76f, h * 0.52f, w * 0.64f, h * 0.30f, w * 0.88f, h * 0.22f)
-            }
-            drawPath(routePath, DigiDropPalette.accent.copy(alpha = 0.53f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            listOf(Offset(w * 0.12f, h * 0.78f), Offset(w * 0.52f, h * 0.50f), Offset(w * 0.88f, h * 0.22f))
-                .forEach { drawCircle(DigiDropPalette.accentLight, radius = 6.dp.toPx(), center = it) }
-        }
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp).padding(top = 22.dp)
-                .graphicsLayer { alpha = appear; scaleX = 0.96f + appear * 0.04f; scaleY = 0.96f + appear * 0.04f },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp)
+                .graphicsLayer { alpha = appear; scaleX = .97f + .03f * appear; scaleY = .97f + .03f * appear },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                Modifier.size(112.dp).graphicsLayer { scaleX = glow; scaleY = glow }
-                    .clip(RoundedCornerShape(34.dp))
-                    .background(Brush.linearGradient(listOf(DigiDropPalette.accent, DigiDropPalette.accentDark))),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(Modifier.size(66.dp)) {
-                    val p = Path().apply {
-                        moveTo(size.width * 0.5f, size.height * 0.04f)
-                        lineTo(size.width * 0.88f, size.height * 0.26f)
-                        lineTo(size.width * 0.88f, size.height * 0.70f)
-                        lineTo(size.width * 0.5f, size.height * 0.94f)
-                        lineTo(size.width * 0.12f, size.height * 0.70f)
-                        lineTo(size.width * 0.12f, size.height * 0.26f)
-                        close()
+            Canvas(Modifier.fillMaxWidth().height(210.dp)) {
+                val unit = size.minDimension / 10f
+                val qrLeft = size.width * .08f
+                val qrTop = size.height * .20f
+                val qrSize = size.height * .52f
+                val cell = qrSize / 7f
+                val white = Color(0xFFF7F3EC)
+                val orange = DigiDropPalette.accent
+                // QR finder squares.
+                listOf(0 to 0, 4 to 0, 0 to 4).forEach { (x, y) ->
+                    val left = qrLeft + x * cell
+                    val top = qrTop + y * cell
+                    drawRect(white, Offset(left, top), Size(cell * 3, cell * 3))
+                    drawRect(DigiDropPalette.darkSurface, Offset(left + cell * .55f, top + cell * .55f), Size(cell * 1.9f, cell * 1.9f))
+                    drawRect(white, Offset(left + cell, top + cell), Size(cell, cell))
+                }
+                listOf(3 to 3, 5 to 4, 3 to 6, 6 to 6).forEach { (x, y) ->
+                    drawRect(white, Offset(qrLeft + x * cell, qrTop + y * cell), Size(cell * .72f, cell * .72f))
+                }
+                // Scanner sweep.
+                val scanY = qrTop + qrSize * progress
+                drawLine(orange, Offset(qrLeft - 5.dp.toPx(), scanY), Offset(qrLeft + qrSize + 5.dp.toPx(), scanY),
+                    strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+                val startPoint = Offset(size.width * .61f, size.height * .72f)
+                val firstPoint = Offset(size.width * .72f, size.height * .42f)
+                val endPoint = Offset(size.width * .91f, size.height * .22f)
+                val routeProgress = ((progress - .28f) / .72f).coerceIn(0f, 1f)
+                val firstLegProgress = (routeProgress / .5f).coerceIn(0f, 1f)
+                val secondLegProgress = ((routeProgress - .5f) / .5f).coerceIn(0f, 1f)
+                if (routeProgress > 0f) {
+                    drawLine(orange.copy(alpha = .9f), startPoint,
+                        Offset(startPoint.x + (firstPoint.x - startPoint.x) * firstLegProgress,
+                            startPoint.y + (firstPoint.y - startPoint.y) * firstLegProgress),
+                        strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+                }
+                if (routeProgress > .5f) {
+                    drawLine(orange.copy(alpha = .9f), firstPoint,
+                        Offset(firstPoint.x + (endPoint.x - firstPoint.x) * secondLegProgress,
+                            firstPoint.y + (endPoint.y - firstPoint.y) * secondLegProgress),
+                        strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+                }
+                listOf(startPoint, firstPoint, endPoint).forEachIndexed { index, point ->
+                    if (index == 0 || routeProgress >= if (index == 1) .35f else .85f) {
+                        drawCircle(orange, radius = if (index == 2) 9.dp.toPx() else 7.dp.toPx(), center = point)
+                        drawCircle(DigiDropPalette.darkBackground, radius = 3.dp.toPx(), center = point)
                     }
-                    drawPath(p, Color.White, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-                    drawLine(Color.White, Offset(size.width * 0.27f, size.height * 0.53f), Offset(size.width * 0.46f, size.height * 0.68f), 4.dp.toPx(), cap = StrokeCap.Round)
-                    drawLine(Color.White, Offset(size.width * 0.46f, size.height * 0.68f), Offset(size.width * 0.75f, size.height * 0.36f), 4.dp.toPx(), cap = StrokeCap.Round)
+                }
+                // Destination pin.
+                if (routeProgress > .82f) {
+                    val pin = endPoint
+                    drawCircle(orange, radius = 12.dp.toPx(), center = pin)
+                    drawCircle(white, radius = 4.dp.toPx(), center = pin)
                 }
             }
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(20.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = TextLight, fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = DigiDropPalette.darkText, fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Drop", color = DigiDropPalette.accentLight, fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
             }
-            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(56.dp))
-            Canvas(Modifier.fillMaxWidth(0.68f).height(8.dp)) {
-                val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
-                drawRoundRect(DigiDropPalette.darkBorder.copy(alpha = 0.40f), cornerRadius = radius)
-                val segmentWidth = size.width * 0.34f
-                val x = (size.width - segmentWidth) * progress
-                drawRoundRect(
-                    brush = Brush.horizontalGradient(
-                        listOf(DigiDropPalette.accentDark, DigiDropPalette.accentLight, Color(0xFFB9DDBB), DigiDropPalette.accent)
-                    ),
-                    topLeft = Offset(x, 0f),
-                    size = Size(segmentWidth, size.height),
-                    cornerRadius = radius
-                )
-            }
+            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = DigiDropPalette.darkTextSecondary,
+                fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(42.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth(.62f).height(4.dp),
+                color = DigiDropPalette.accent,
+                trackColor = DigiDropPalette.darkBorder
+            )
             Spacer(Modifier.height(12.dp))
-            Text("Подготавливаем маршрут", color = TextLight, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("Сканирование  •  Точка  •  Маршрут", color = DigiDropPalette.darkTextSecondary, fontSize = 12.sp)
         }
     }
 }
+
 
 @Composable
 fun InvoiceLandingScreen(
