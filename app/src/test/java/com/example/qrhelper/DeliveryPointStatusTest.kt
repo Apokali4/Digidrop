@@ -46,6 +46,28 @@ class DeliveryPointStatusTest {
         assertEquals("Ожидает", deliveryItemStatusLabel(item))
     }
 
+    @Test fun routeSummaryAggregatesPointAndCargoTotals() {
+        val items = listOf(
+            RouteItem("a", "Store A", "Address A", "Item A", 5, "", scannedBoxes = 3),
+            RouteItem("b", "Store A", "Address A", "Item B", 2, "", discrepancyQty = 1, discrepancyReason = "Недовоз"),
+            RouteItem("c", "Store B", "Address B", "Item C", 4, "", isDelivered = true, scannedBoxes = 4)
+        )
+        val summary = routeReportSummary(items)
+        assertEquals(2, summary.pointCount)
+        assertEquals(1, summary.deliveredPoints)
+        assertEquals(1, summary.problemPoints)
+        assertEquals(11, summary.expectedBoxes)
+        assertEquals(7, summary.scannedBoxes)
+        assertEquals(1, summary.discrepancyBoxes)
+        assertEquals(3, summary.remainingBoxes)
+        assertEquals(3, summary.rowCount)
+    }
+
+    @Test fun routeSummaryNeverReportsNegativeRemaining() {
+        val items = listOf(RouteItem("a", "Store", "Address", "Item", 2, "", scannedBoxes = 5))
+        assertEquals(0, routeReportSummary(items).remainingBoxes)
+    }
+
     @Test fun emptyPointIsPending() {
         assertEquals(DeliveryPointStatus.PENDING, deliveryPointStatus(emptyList()))
     }
