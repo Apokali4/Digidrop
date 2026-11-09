@@ -42,7 +42,8 @@ internal fun ProductCatalogScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(product.productName, color = palette.onSurface, fontSize = 16.sp)

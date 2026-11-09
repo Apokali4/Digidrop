@@ -88,7 +88,8 @@ internal fun RouteEditorScreen(
                 onClick = onBack, modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = palette.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline),
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
             ) { Text("← НАЗАД", Modifier.padding(16.dp), color = palette.onSurface) }
             Card(
                 onClick = { onSave(groups.flatten()) }, modifier = Modifier.weight(1f),
@@ -158,7 +159,7 @@ internal fun RouteEditorScreen(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = palette.surface),
                         border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("ТОЧКА ${index + 1}  •  ⠿ ПЕРЕТАЩИТЬ", color = palette.primary, fontSize = 12.sp)

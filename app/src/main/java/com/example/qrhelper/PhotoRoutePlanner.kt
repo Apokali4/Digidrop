@@ -633,7 +633,7 @@ private fun PhotoPlannerTile(
             disabledContainerColor = palette.surfaceVariant
         ),
         border = androidx.compose.foundation.BorderStroke(1.dp, if (primary) palette.primary else palette.outline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp, pressedElevation = 2.dp)
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = if (primary) androidx.compose.ui.graphics.Color.White else palette.onSurface,
@@ -877,7 +877,8 @@ fun PhotoRoutePlannerScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = palette.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline),
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
             ) {
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("ФОТО В ОЧЕРЕДИ", color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
