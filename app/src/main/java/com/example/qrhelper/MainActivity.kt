@@ -509,6 +509,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
     var scanMatches by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
+    var pendingUniqueScanCode by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val importScope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
@@ -1325,7 +1326,32 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 matches = scanMatches,
                 onBack = { navigateTo(AppScreen.SCANNER) },
                 onOpenPoint = { item ->
-                    selectedItem = item
+                    val uniqueCode = pendingUniqueScanCode
+                    if (uniqueCode != null) {
+                        val itemKey = routeItemKey(item)
+                        val updated = item.copy(scannedBoxes = item.scannedBoxes + 1)
+                        val updatedRoute = routeItems.map { current ->
+                            if (routeItemKey(current) == itemKey) updated else current
+                        }
+                        val updatedCodes = sessionScanCodes + uniqueCode
+                        sessionScanCodes = updatedCodes
+                        routeItems = updatedRoute
+                        prefs.edit()
+                            .putStringSet("scan_codes", updatedCodes)
+                            .putInt("scanned_" + itemKey, updated.scannedBoxes)
+                            .apply()
+                        importScope.launch {
+                            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedRoute) } }
+                                .onFailure { failure ->
+                                    Toast.makeText(context, "Не удалось сохранить скан: " + failure.message, Toast.LENGTH_LONG).show()
+                                }
+                        }
+                        pendingUniqueScanCode = null
+                        Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
+                        selectedItem = updated
+                    } else {
+                        selectedItem = item
+                    }
                     navigateTo(AppScreen.DETAILS)
                 }
             )
@@ -1420,7 +1446,12 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     val savedCodes = sessionScanCodes.toMutableSet()
                     val isPlainProductCode = !lookup.hasUniquePackageId
                     when {
+                        lookup.hasUniquePackageId && normalizedCode in savedCodes -> {
+                            Toast.makeText(context, "Дубликат уникального кода упаковки: $normalizedCode", Toast.LENGTH_LONG).show()
+                            navigateTo(AppScreen.HUB)
+                        }
                         matches.size > 1 -> {
+                            pendingUniqueScanCode = normalizedCode.takeIf { lookup.hasUniquePackageId }
                             scanMatches = matches
                             navigateTo(AppScreen.SCAN_RESULTS)
                         }
