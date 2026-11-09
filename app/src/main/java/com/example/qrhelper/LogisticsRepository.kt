@@ -29,12 +29,15 @@ internal class LogisticsRepository(context: Context) {
 
     suspend fun replaceActiveRoute(
         items: List<RouteItem>,
-        scanCodes: Set<String> = emptySet(),
+        scanCodes: Set<String>? = null,
         catalog: List<ProductCatalogRecord> = emptyList()
     ) {
         val points = RouteImportMapper.map(items)
         database.withTransaction {
             val dao = database.dao()
+            val previousRoute = dao.activeRouteOnce()
+            val previousScanCodes = previousRoute?.let { dao.scanCodes(it.id).toSet() }.orEmpty()
+            val codesToPersist = scanCodesForRouteReplacement(previousScanCodes, scanCodes)
             dao.deactivateRoutes()
             val routeCatalog = mapProductCatalog(items).map { product ->
                 ProductEntity(barcode = product.barcode, productName = product.productName)
@@ -83,7 +86,7 @@ internal class LogisticsRepository(context: Context) {
                     }
                 )
             }
-            scanCodes.map(String::trim).filter(String::isNotEmpty).distinct().forEach { code ->
+            codesToPersist.forEach { code ->
                 dao.insertScanCode(ScanCodeEntity(routeId = routeId, code = code))
             }
         }
