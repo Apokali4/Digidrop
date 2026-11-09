@@ -2755,6 +2755,32 @@ fun RouteListScreen(
                             val comment = point.extraComment.ifBlank { point.note }
                             if (comment.isNotBlank()) Text(comment, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            val status = deliveryPointStatus(group)
+                            val totalBoxes = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
+                            val scannedBoxes = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (status == DeliveryPointStatus.DELIVERED) "СДАНО" else "НЕ СДАНО",
+                                    color = if (status == DeliveryPointStatus.DELIVERED)
+                                        MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("$scannedBoxes / $totalBoxes мест",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall)
+                                Spacer(Modifier.weight(1f))
+                                TextButton(
+                                    onClick = { group.forEach(onToggleItem) },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                ) {
+                                    Text(
+                                        if (status == DeliveryPointStatus.DELIVERED) "Вернуть" else "Отметить сдачу",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (point.phone.isNotBlank()) {
                                     Text("Позвонить", modifier = Modifier.clickable { onCallClient(point.phone) }.padding(vertical = 2.dp),
