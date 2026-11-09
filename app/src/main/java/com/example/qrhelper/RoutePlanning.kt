@@ -27,3 +27,8 @@ internal fun nextPendingPoint(items: List<RouteItem>): List<RouteItem>? =
     items.groupBy { it.storeName to it.address }.values.firstOrNull { group ->
         deliveryPointStatus(group) != com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
     }
+
+/** True when a package barcode resolves to a destination other than the current delivery point. */
+internal fun isDifferentDeliveryPoint(scanned: RouteItem, current: RouteItem?): Boolean =
+    current != null && (scanned.storeName.trim().equals(current.storeName.trim(), ignoreCase = true).not() ||
+        scanned.address.trim().equals(current.address.trim(), ignoreCase = true).not())

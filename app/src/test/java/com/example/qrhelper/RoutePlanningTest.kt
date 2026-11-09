@@ -42,4 +42,15 @@ class RoutePlanningTest {
 
         assertNull(nextPendingPoint(listOf(completed)))
     }
+
+    @Test
+    fun identifiesPackageAssignedToAnotherDeliveryPointWithoutBlockingIt() {
+        val current = RouteItem("a", "Магнит", "Калуга, ул. Ленина, 1", "Товар", 2, "")
+        val same = current.copy(barcode = "b")
+        val other = current.copy(storeName = "Бристоль", address = "Калуга, ул. Кирова, 2")
+        assertEquals(false, isDifferentDeliveryPoint(same, current))
+        assertEquals(true, isDifferentDeliveryPoint(other, current))
+        assertEquals(false, isDifferentDeliveryPoint(other, null))
+    }
+
 }
