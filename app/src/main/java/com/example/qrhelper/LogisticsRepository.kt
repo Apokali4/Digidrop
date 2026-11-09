@@ -42,10 +42,9 @@ internal class LogisticsRepository(context: Context) {
             val restoredCatalog = catalog.map { product ->
                 ProductEntity(barcode = product.barcode, productName = product.productName)
             }
-            (routeCatalog + restoredCatalog)
+            val allProducts = (routeCatalog + restoredCatalog)
                 .distinctBy { it.barcode.trim() }
-                .takeIf { it.isNotEmpty() }
-                ?.let(dao::upsertProducts)
+            if (allProducts.isNotEmpty()) dao.upsertProducts(allProducts)
             val routeId = dao.insertRoute(
                 DeliveryRouteEntity(routeNumber = "Импорт ${System.currentTimeMillis()}")
             )
