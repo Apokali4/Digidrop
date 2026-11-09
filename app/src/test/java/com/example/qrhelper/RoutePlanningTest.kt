@@ -53,6 +53,23 @@ class RoutePlanningTest {
         assertEquals(false, isDifferentDeliveryPoint(other, null))
     }
 
+    @Test
+    fun manualOrderIsPreservedForNavigation() {
+        val first = RouteItem("1", "Дальняя", "A", "Товар", 1, "", latitude = 0.0, longitude = 2.0)
+        val second = RouteItem("2", "Ближняя", "B", "Товар", 1, "", latitude = 0.0, longitude = 1.0)
+        assertEquals(listOf("Дальняя", "Ближняя"),
+            routeForNavigation(listOf(first, second), manualOrder = true).map { it.storeName })
+    }
+
+    @Test
+    fun untouchedRouteUsesOptimizerBeforeNavigation() {
+        val completed = RouteItem("done", "Сдано", "A", "Товар", 1, "", latitude = 0.0, longitude = 0.0, scannedBoxes = 1)
+        val farther = RouteItem("far", "Дальняя", "B", "Товар", 1, "", latitude = 0.0, longitude = 2.0)
+        val nearer = RouteItem("near", "Ближняя", "C", "Товар", 1, "", latitude = 0.0, longitude = 1.0)
+        assertEquals(listOf("Сдано", "Ближняя", "Дальняя"),
+            routeForNavigation(listOf(completed, farther, nearer), manualOrder = false).map { it.storeName })
+    }
+
 }
 
 
