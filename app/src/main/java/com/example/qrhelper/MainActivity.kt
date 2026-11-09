@@ -1464,13 +1464,13 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             savedCodes.add(normalizedCode)
                             sessionScanCodes = savedCodes
                             val itemKey = routeItemKey(matchedItem)
-                            if (settingsAutoSave) {
-                                prefs.edit().putStringSet("scan_codes", savedCodes).putInt(
-                                    "scanned_" + itemKey,
-                                    prefs.getInt("scanned_" + itemKey, matchedItem.scannedBoxes) + 1
-                                ).apply()
-                            }
+                            // Unique package IDs are delivery evidence, not an optional UI preference.
+                            // Always persist them so a process restart cannot count the same box twice.
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
+                            prefs.edit()
+                                .putStringSet("scan_codes", savedCodes)
+                                .putInt("scanned_" + itemKey, updated.scannedBoxes)
+                                .apply()
                             val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
                             routeItems = updatedRoute
                             importScope.launch { runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedRoute) } } }
