@@ -379,20 +379,34 @@ internal fun parseManifest(text: String): List<RouteItem> {
         return if (i >= 0 && i < row.size) row[i].trim() else ""
     }
     val parsed = mutableListOf<RouteItem>()
+    var previousStore = ""
+    var previousAddress = ""
+    var previousPhone = ""
     for (lineIndex in (if (hasHeader) 1 else 0) until lines.size) {
         val row = splitCsvLine(lines[lineIndex], delimiter)
         val barcode = value(row, "barcode").trim()
-        val store = value(row, "store")
-        val address = value(row, "address")
-        if ((barcode.isNotBlank() && !isUsableInvoiceBarcode(barcode)) || (store.isBlank() && address.isBlank())) continue
+        val rawStore = value(row, "store")
+        val rawAddress = value(row, "address")
         val boxes = parseInvoiceQuantity(value(row, "boxes")) ?: continue
+        if ((barcode.isNotBlank() && !isUsableInvoiceBarcode(barcode)) || (rawStore.isBlank() && rawAddress.isBlank() && previousAddress.isBlank())) continue
+
+        // Excel route sheets often merge the store/address cells vertically.
+        // Carry values forward only for continuation rows, never across a named new stop.
+        val isContinuation = rawStore.isBlank() || rawStore.equals(previousStore, ignoreCase = true)
+        val store = rawStore.ifBlank { if (isContinuation) previousStore else "" }
+        val address = rawAddress.ifBlank { if (isContinuation) previousAddress else "" }
+        val phone = value(row, "phone").ifBlank { if (isContinuation) previousPhone else "" }
+        if (store.isNotBlank()) previousStore = store
+        if (address.isNotBlank()) previousAddress = address
+        if (phone.isNotBlank()) previousPhone = phone
+
         val coordinates = parseCoordinatePair(value(row, "lat"), value(row, "lon"))
         val latitude = coordinates?.first
         val longitude = coordinates?.second
         parsed.add(RouteItem(
             barcode = barcode, storeName = store.ifBlank { "Точка без названия" },
             address = address, itemName = value(row, "item").ifBlank { "Груз по накладной" },
-            totalBoxes = boxes, phone = value(row, "phone"),
+            totalBoxes = boxes, phone = phone,
             note = value(row, "note").ifBlank { "Разгрузка по накладной" },
             latitude = latitude, longitude = longitude,
             ownerName = value(row, "owner"),
