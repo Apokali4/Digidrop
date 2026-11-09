@@ -179,3 +179,20 @@ internal object RouteImportMapper {
         }
     }
 }
+
+/**
+ * Refuse a destructive route replacement if the mapper would discard any row.
+ * This validation runs before the Room transaction deactivates the old route.
+ */
+internal fun requireCompleteRouteImport(
+    items: List<RouteItem>,
+    points: List<PointImportPlan>
+) {
+    require(items.isNotEmpty()) { "Нельзя заменить активный рейс пустой накладной" }
+    require(items.all { it.address.isNotBlank() }) {
+        "В накладной есть строки без адреса точки доставки"
+    }
+    require(points.isNotEmpty() && points.sumOf { it.cargo.size } == items.size) {
+        "Не все строки накладной удалось включить в маршрут"
+    }
+}
