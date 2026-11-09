@@ -66,4 +66,32 @@ class InvoiceImportMergeTest {
         assertEquals(current, result.items)
     }
 
+    @Test fun carriesProgressAndEvidenceWhenContactPhoneChanges() {
+        val current = listOf(
+            RouteItem(
+                "4601234567890", "Магазин", "Адрес", "Молоко", 5, "+7 900 111-22-33",
+                scannedBoxes = 2, discrepancyQty = 1,
+                photoDocUri = "file:///old-photo.jpg",
+                signaturePath = "file:///old-sign.png"
+            )
+        )
+        val incoming = listOf(
+            current.single().copy(
+                phone = "+7 900 999-88-77",
+                scannedBoxes = 0,
+                discrepancyQty = 0,
+                photoDocUri = "",
+                signaturePath = ""
+            )
+        )
+
+        val merged = mergeInvoiceImport(current, incoming).items.single()
+
+        assertEquals("+7 900 999-88-77", merged.phone)
+        assertEquals(2, merged.scannedBoxes)
+        assertEquals(1, merged.discrepancyQty)
+        assertEquals("file:///old-photo.jpg", merged.photoDocUri)
+        assertEquals("file:///old-sign.png", merged.signaturePath)
+    }
+
 }
