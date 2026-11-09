@@ -1028,7 +1028,12 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         navigateTo(AppScreen.HISTORY)
                     }
                 },
-                onOpenSettings = { navigateTo(AppScreen.SETTINGS) }
+                onOpenSettings = { navigateTo(AppScreen.SETTINGS) },
+                onThemeToggle = {
+                    settingsDarkTheme = !settingsDarkTheme
+                    prefs.edit().putBoolean("dark_theme", settingsDarkTheme).apply()
+                    onThemeChange(settingsDarkTheme)
+                }
             )
         }
         AppScreen.MORE_MENU -> {
@@ -1109,7 +1114,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 compactMode = settingsCompact,
                 onBackToHub = { navigateTo(AppScreen.HUB) },
                 onOpenScanner = { openScanner() },
-                onEditRoute = { navigateTo(AppScreen.ROUTE_EDITOR) },
+                onEditRoute = { /* Редактирование порядка выполняется прямо в списке маршрута. */ },
                 onNavigateSegment = { index, segment ->
                     openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
                 },
@@ -1131,7 +1136,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         Toast.makeText(context, "Оставшийся маршрут перестроен", Toast.LENGTH_SHORT).show()
                     }
                 },
-                onOpenPointMap = { address -> launchNavigation(address) },
+                onOpenPointMap = { address ->
+                    val mapUri = Uri.parse("https://yandex.ru/maps/?text=" + Uri.encode(address))
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, mapUri)) }
+                        .onFailure { Toast.makeText(context, "Не удалось открыть точку в Яндекс Картах", Toast.LENGTH_SHORT).show() }
+                },
                 onCallClient = { phone -> makePhoneCall(phone) },
                 onPointClick = { pointItems ->
                     selectedPointItems = pointItems
