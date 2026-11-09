@@ -336,7 +336,10 @@ internal object PhotoRouteTextParser {
             "Бристоль" -> "08:00–22:00"
             else -> ""
         }
-        return PhotoStopMetadata(store, owner, phone, hours.ifBlank { defaultHours }, cash, comment)
+        val displayName = store.ifBlank {
+            owner.takeIf { it.startsWith("ИП", ignoreCase = true) }.orEmpty()
+        }
+        return PhotoStopMetadata(displayName, owner, phone, hours.ifBlank { defaultHours }, cash, comment)
     }
 }
 internal object PhotoOcrImageSizing {
