@@ -179,20 +179,28 @@ internal class LogisticsRepository(context: Context) {
 
     suspend fun savePhotoForPoint(storeName: String, address: String, path: String) {
         val dao = database.dao()
-        val route = dao.activeRouteOnce() ?: return
+        val route = checkNotNull(dao.activeRouteOnce()) {
+            "Нет активного рейса для сохранения фото"
+        }
         val point = dao.pointsOnce(route.id).firstOrNull {
             it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
-        } ?: return
-        dao.savePhoto(point.id, path)
+        } ?: error("Точка доставки не найдена: $storeName, $address")
+        check(dao.savePhoto(point.id, path) == 1) {
+            "Фото не записано в базу данных"
+        }
     }
 
     suspend fun saveSignatureForPoint(storeName: String, address: String, path: String) {
         val dao = database.dao()
-        val route = dao.activeRouteOnce() ?: return
+        val route = checkNotNull(dao.activeRouteOnce()) {
+            "Нет активного рейса для сохранения подписи"
+        }
         val point = dao.pointsOnce(route.id).firstOrNull {
             it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
-        } ?: return
-        dao.saveSignature(point.id, path)
+        } ?: error("Точка доставки не найдена: $storeName, $address")
+        check(dao.saveSignature(point.id, path) == 1) {
+            "Подпись не записана в базу данных"
+        }
     }
 
     suspend fun syncProgress(items: List<RouteItem>) {
