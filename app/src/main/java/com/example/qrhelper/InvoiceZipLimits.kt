@@ -35,3 +35,15 @@ internal fun nextXlsxXmlTotal(current: Long, entrySize: Int): Long {
     }
     return total
 }
+
+internal const val MAX_XLSX_ENTRIES = 2048
+
+internal fun requireXlsxEntryCount(count: Int) {
+    require(count in 0..MAX_XLSX_ENTRIES) {
+        "В XLSX слишком много ZIP-записей (максимум 2048)"
+    }
+}
+
+internal fun requireUniqueXlsxEntry(seen: Set<String>, name: String) {
+    require(name !in seen) { "В XLSX обнаружена повторяющаяся XML-запись: $name" }
+}
