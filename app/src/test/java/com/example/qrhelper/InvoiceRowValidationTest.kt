@@ -33,4 +33,18 @@ class InvoiceRowValidationTest {
         assertNull(parseCoordinatePair("54", "181"))
         assertNull(parseCoordinatePair("NaN", "36"))
     }
+    @Test fun inheritsMergedStoreAndAddressCellsForContinuationRows() {
+        val rows = parseManifest(
+            "Штрихкод\tМагазин\tАдрес\tТовар\tКоличество\n" +
+                "4601234567890\tМагазин А\tКалуга, Ленина 1\tХлеб\t4\n" +
+                "4601234567891\t\t\tМолоко\t2\n" +
+                "4601234567892\tМагазин Б\tКалуга, Кирова 2\tВода\t3"
+        )
+        assertEquals(3, rows.size)
+        assertTrue(rows.all { it.address.isNotBlank() })
+        assertEquals("Калуга, Ленина 1", rows[1].address)
+        assertEquals("Магазин А", rows[1].storeName)
+        assertEquals("Калуга, Кирова 2", rows[2].address)
+    }
+
 }
