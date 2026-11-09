@@ -6,6 +6,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
+private val ColorError = androidx.compose.ui.graphics.Color(0xFFCF625B)
+
 private val DigiDropLightScheme = lightColorScheme(
     primary = DigiDropPalette.accent,
     onPrimary = DigiDropPalette.onAccent,
@@ -51,8 +53,6 @@ private val DigiDropDarkScheme = darkColorScheme(
     error = ColorError,
     onError = DigiDropPalette.onAccent
 )
-
-private val ColorError = androidx.compose.ui.graphics.Color(0xFFCF625B)
 
 /** Follows the device appearance setting; both themes share the same green brand tiles. */
 @Composable
