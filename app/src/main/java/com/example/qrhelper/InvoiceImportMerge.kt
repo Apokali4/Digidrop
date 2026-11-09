@@ -42,3 +42,15 @@ internal fun mergeInvoiceImport(
     }
     return InvoiceImportMergeResult(merged, isDuplicate = false)
 }
+
+/**
+ * A null request means "replace route contents but retain its scan history".
+ * An explicit empty set is an intentional reset.
+ */
+internal fun scanCodesForRouteReplacement(
+    existing: Set<String>,
+    requested: Set<String>?
+): Set<String> = (requested ?: existing)
+    .map(String::trim)
+    .filter(String::isNotEmpty)
+    .toSet()
