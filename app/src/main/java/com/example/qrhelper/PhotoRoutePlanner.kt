@@ -905,9 +905,10 @@ fun PhotoRoutePlannerScreen(
             status = "Фотография получена. Сохраняю копию…"
             runCatching { copyPhotoIntoRouteStorage(uri) }
                 .onSuccess { saved ->
-                    capturedUris = capturedUris + saved
-                    status = "Фото сохранено локально. Запускаю распознавание…"
-                    processPhotoUris(listOf(saved), onFinished = onInitialImageConsumed)
+                    val photosForRecognition = (capturedUris + saved).distinctBy(Uri::toString)
+                    capturedUris = photosForRecognition
+                    status = "Фото сохранено локально. Повторно распознаю все ${photosForRecognition.size} фото рейса…"
+                    processPhotoUris(photosForRecognition, onFinished = onInitialImageConsumed)
                 }
                 .onFailure { error ->
                     status = "Не удалось сохранить фото: ${error.message}"
