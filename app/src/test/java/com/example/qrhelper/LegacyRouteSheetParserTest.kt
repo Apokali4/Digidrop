@@ -11,7 +11,7 @@ class LegacyRouteSheetParserTest {
             №\tКод\tКлиент\tАдрес доставки\tКомментарий
             1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Врубовая, д. 2, Бристоль\t
             2\t1646\tАльфа Рязань ООО (Красное и Белое)\tг. Калуга, ул. В. Никитиной, д. 21 Б, корп. 2, Красное и Белое\t
-        """.trimIndent().replace("\\t", "\t")
+        """.trimIndent().replace("\\t", "\t").replace("\\t", "\t")
         val rows = LegacyRouteSheetParser.parse(text)
         assertNotNull(rows)
         assertEquals(2, rows!!.size)
@@ -25,7 +25,7 @@ class LegacyRouteSheetParserTest {
         val text = """
             24\t97\tАльбион-2002 ООО\tг. Калуга, ул. Тульская, д. 32, Бристоль\t
             25\t1631\tАльфа-М ООО (Красное и Белое)\tг. Калуга, ул. Болдина, д. 9, кв. 1, Красное и Белое\t
-        """.trimIndent()
+        """.trimIndent().replace("\\t", "\t")
         val rows = LegacyRouteSheetParser.parse(text)
         assertNotNull(rows)
         assertEquals(2, rows!!.size)
@@ -40,7 +40,7 @@ class LegacyRouteSheetParserTest {
             №\tКод\tКлиент\tАдрес доставки\tКомментарий
             1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Врубовая, д. 2, Бристоль\t
             Итого документов: 36
-        """.trimIndent()
+        """.trimIndent().replace("\\t", "\t")
         assertEquals(1, LegacyRouteSheetParser.parse(text)!!.size)
     }
 }
