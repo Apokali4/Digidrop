@@ -263,7 +263,7 @@ internal class LogisticsRepository(context: Context) {
 
     private suspend fun syncProgressInTransaction(items: List<RouteItem>) {
         val dao = database.dao()
-        val activeRoute = dao.activeRouteOnce() ?: return@withTransaction
+        val activeRoute = dao.activeRouteOnce() ?: return
         val storedPoints = dao.pointsOnce(activeRoute.id)
         val importedGroups = items.groupBy { it.storeName.trim() to it.address.trim() }
 
