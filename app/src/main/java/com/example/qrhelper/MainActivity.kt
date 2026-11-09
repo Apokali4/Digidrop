@@ -611,12 +611,17 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {
         runCatching {
             val repository = LogisticsRepository(context)
-            val restored = repository.activeRouteItems()
-            val databaseScanCodes = repository.activeUniqueScanCodes()
-            if (databaseScanCodes.isNotEmpty()) {
-                sessionScanCodes = databaseScanCodes + sessionScanCodes
-                prefs.edit().putStringSet("scan_codes", sessionScanCodes).apply()
+            var restored = repository.activeRouteItems()
+
+            // One-time migration: import the legacy SharedPreferences snapshot into
+            // Room, including unique package scans, before deleting the old copy.
+            if (restored.isEmpty() && routeItems.isNotEmpty()) {
+                repository.replaceActiveRoute(routeItems, scanCodes = sessionScanCodes)
+                restored = repository.activeRouteItems()
             }
+
+            val databaseScanCodes = repository.activeUniqueScanCodes()
+            sessionScanCodes = databaseScanCodes
             if (restored.isNotEmpty()) {
                 routeItems = restored
                 if (currentScreen == AppScreen.HUB || currentScreen == AppScreen.SPLASH) {
@@ -625,17 +630,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         hasActiveRoute = true
                     )
                 }
-                val manifest = restored.joinToString("\n") { item ->
-                    listOf(
-                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
-                    ).joinToString("\t") { it.replace("\t", " ") }
-                }
-                prefs.edit().putString("active_manifest", manifest).apply()
-            } else if (routeItems.isNotEmpty()) {
-                repository.replaceActiveRoute(routeItems)
             }
+
+            // Remove legacy route/progress snapshots only after Room has been read
+            // back successfully. A failed migration leaves the old data untouched.
+            val legacyProgressKeys = prefs.all.keys.filter {
+                it.startsWith("delivered_") || it.startsWith("scanned_")
+            }
+            val cleanup = prefs.edit()
+                .remove("active_manifest")
+                .remove("scan_codes")
+            legacyProgressKeys.forEach(cleanup::remove)
+            check(cleanup.commit()) { "Не удалось завершить миграцию старого рейса" }
         }.onFailure { error ->
             Toast.makeText(context, "Локальная база пока недоступна: ${error.message}", Toast.LENGTH_LONG).show()
         }
