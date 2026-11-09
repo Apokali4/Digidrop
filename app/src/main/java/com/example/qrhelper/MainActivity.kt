@@ -721,7 +721,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     editor.remove("delivered_" + routeItemKey(item))
                     editor.remove("scanned_" + routeItemKey(item))
                 }
-                editor.commit()
+                check(editor.commit()) { "Не удалось очистить снимок активного рейса" }
                 val repository = LogisticsRepository(context)
                 check(repository.archiveActiveRoute()) { "Активный рейс уже отсутствует в базе" }
                 val archived = repository.history()
