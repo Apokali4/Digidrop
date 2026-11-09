@@ -246,4 +246,28 @@ class PhotoRouteTextParserTest {
         assertEquals("Магнит 24", metadata.storeName)
     }
 
+    @Test fun recognizesStoreBrandWhenOcrDropsTheLastLetters() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Калуга, ул. Тарутинская, д. 168, БРИСТО",
+            "Калуга, ул. Тарутинская, д. 168"
+        )
+        assertEquals("Бристоль", metadata.storeName)
+    }
+
+    @Test fun doesNotUseBuildingAbbreviationAsStoreName() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Калуга, ул. Ленина, д. 10, крп. 178",
+            "Калуга, ул. Ленина, д. 10"
+        )
+        assertEquals("", metadata.storeName)
+    }
+
+    @Test fun doesNotUseLegalEntityAsCustomerFacingStoreName() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "ООО Альфа Рязань\nКалуга, ул. В. Никитиной, д. 21",
+            "Калуга, ул. В. Никитиной, д. 21"
+        )
+        assertEquals("", metadata.storeName)
+    }
+
 }
