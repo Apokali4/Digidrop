@@ -91,13 +91,13 @@ internal object ExtendedInvoiceParser {
         val rows = Regex("<(?:table:table-row|text:table-row)\\b[^>]*>(.*?)</(?:table:table-row|text:table-row)>", RegexOption.DOT_MATCHES_ALL)
             .findAll(xml).map { row ->
                 Regex("<(?:table:table-cell|text:table-cell)\\b[^>]*>(.*?)</(?:table:table-cell|text:table-cell)>|<table:covered-table-cell\\b[^>]*/>", RegexOption.DOT_MATCHES_ALL)
-                    .findAll(row.groupValues[1]).joinToString("\\t") { cell ->
+                    .findAll(row.groupValues[1]).joinToString("\t") { cell ->
                         val raw = cell.groupValues[1]
                         Regex("<text:p\\b[^>]*>(.*?)</text:p>", RegexOption.DOT_MATCHES_ALL)
                             .findAll(raw).joinToString(" ") { decodeXml(it.groupValues[1].replace(Regex("<[^>]+>"), "")) }
                     }
             }.filter(String::isNotBlank).toList()
-        if (rows.isNotEmpty()) return rows.joinToString("\\n")
+        if (rows.isNotEmpty()) return rows.joinToString("\n")
         if (!spreadsheet) return xml.replace(Regex("<[^>]+>"), " ").trim()
         error("В ODS не найдена таблица")
     }
