@@ -155,7 +155,30 @@ internal object RouteSheetParser {
                 }
                 continue
             }
-            if (address.isBlank()) continue
+            if (address.isBlank()) {
+                // Route sheets often wrap a client name, delivery instruction or
+                // address fragment onto a following table row. Keep that data
+                // attached to the preceding delivery instead of silently dropping it.
+                val previous = result.lastOrNull() ?: continue
+                val continuation = listOf(code, client, comment)
+                    .filter(String::isNotBlank)
+                    .distinct()
+                    .joinToString(" • ")
+                if (continuation.isNotBlank()) {
+                    val mergedNote = listOf(previous.note, continuation)
+                        .filter(String::isNotBlank)
+                        .distinct()
+                        .joinToString(" • ")
+                    val mergedExtra = listOf(previous.extraComment, continuation)
+                        .filter(String::isNotBlank)
+                        .distinct()
+                        .joinToString(" • ")
+                    val updated = previous.copy(note = mergedNote, extraComment = mergedExtra)
+                    result[result.lastIndex] = updated
+                    last = updated
+                }
+                continue
+            }
             if (number.isNotBlank() && number.filter(Char::isDigit).isBlank()) continue
             val item = routeItem(result.size + 1, code, client, address, comment)
             result += item
