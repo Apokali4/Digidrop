@@ -582,6 +582,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
     var isUpdatingItemStatus by remember { mutableStateOf(false) }
     var isUpdatingDiscrepancy by remember { mutableStateOf(false) }
+    var isUpdatingScan by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -1382,22 +1383,26 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         importScope.launch {
                             runCatching {
                                 val repository = LogisticsRepository(context)
-                                check(repository.registerUniqueScan(uniqueCode)) {
+                                check(!isUpdatingScan) { "Предыдущий скан ещё сохраняется" }
+                                isUpdatingScan = true
+                                val itemKey = routeItemKey(item)
+                                val updatedRoute = routeItems.map { current ->
+                                    if (routeItemKey(current) == itemKey) current.copy(scannedBoxes = current.scannedBoxes + 1) else current
+                                }
+                                check(repository.registerUniqueScanAndSync(uniqueCode, updatedRoute)) {
                                     "Дубликат уникального кода упаковки: $uniqueCode"
                                 }
-                                val itemKey = routeItemKey(item)
-                                val updated = item.copy(scannedBoxes = item.scannedBoxes + 1)
-                                val updatedRoute = routeItems.map { current ->
-                                    if (routeItemKey(current) == itemKey) updated else current
-                                }
-                                val updatedCodes = sessionScanCodes + uniqueCode
+                                persistRouteProgress { }
+                                val authoritativeItems = repository.activeRouteItems()
+                                val updated = authoritativeItems.firstOrNull { routeItemKey(it) == itemKey }
+                                    ?: error("Позиция не найдена после сохранения скана")
+                                val updatedCodes = repository.activeUniqueScanCodes()
                                 sessionScanCodes = updatedCodes
-                                routeItems = updatedRoute
+                                routeItems = authoritativeItems
                                 prefs.edit()
                                     .putStringSet("scan_codes", updatedCodes)
                                     .putInt("scanned_" + itemKey, updated.scannedBoxes)
                                     .apply()
-                                persistRouteProgress { repository.syncProgress(updatedRoute) }
                                 Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
                                 selectedItem = updated
                             }.onFailure { failure ->
@@ -1581,20 +1586,28 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             importScope.launch {
                                 runCatching {
                                     val repository = LogisticsRepository(context)
-                                    check(repository.registerUniqueScan(normalizedCode)) {
+                                    check(!isUpdatingScan) { "Предыдущий скан ещё сохраняется" }
+                                    isUpdatingScan = true
+                                    val itemKey = routeItemKey(matchedItem)
+                                    val updatedRoute = routeItems.map { current ->
+                                        if (routeItemKey(current) == itemKey) current.copy(scannedBoxes = current.scannedBoxes + 1) else current
+                                    }
+                                    check(repository.registerUniqueScanAndSync(normalizedCode, updatedRoute)) {
                                         "Дубликат уникального кода упаковки: $normalizedCode"
                                     }
-                                    savedCodes.add(normalizedCode)
-                                    sessionScanCodes = savedCodes
-                                    val itemKey = routeItemKey(matchedItem)
-                                    val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
+                                    persistRouteProgress { }
+                                    val authoritativeItems = repository.activeRouteItems()
+                                    val updated = authoritativeItems.firstOrNull { routeItemKey(it) == itemKey }
+                                        ?: error("Позиция не найдена после сохранения скана")
+                                    val updatedCodes = repository.activeUniqueScanCodes()
+                                    savedCodes.clear()
+                                    savedCodes.addAll(updatedCodes)
+                                    sessionScanCodes = updatedCodes
+                                    routeItems = authoritativeItems
                                     prefs.edit()
-                                        .putStringSet("scan_codes", savedCodes)
+                                        .putStringSet("scan_codes", updatedCodes)
                                         .putInt("scanned_" + itemKey, updated.scannedBoxes)
                                         .apply()
-                                    val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
-                                    routeItems = updatedRoute
-                                    persistRouteProgress { repository.syncProgress(updatedRoute) }
                                     selectedItem = updated
                                     try {
                                         ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
