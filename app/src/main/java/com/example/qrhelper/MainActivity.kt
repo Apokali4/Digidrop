@@ -431,7 +431,6 @@ enum class AppScreen {
     MORE_MENU,
     INVOICE_IMPORT,
     ROUTE_LIST,
-    ROUTE_EDITOR,
     DETAILS,
     SCANNER,
     SCAN_RESULTS,
@@ -1177,33 +1176,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 .joinToString("\t") { it.replace("\t", " ") }
                         }
                         prefs.edit().putString("active_manifest", saved).apply()
-                    }
-                }
-            )
-        }
-        AppScreen.ROUTE_EDITOR -> {
-            RouteEditorScreen(
-                routeItems = routeItems,
-                onBack = { navigateTo(AppScreen.ROUTE_LIST) },
-                onSave = { editedItems ->
-                    importScope.launch {
-                        runCatching { LogisticsRepository(context).updateActiveRoute(editedItems) }
-                            .onSuccess {
-                                routeItems = editedItems
-                                val manifest = editedItems.joinToString("\n") { item ->
-                                    listOf(
-                                        item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
-                                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
-                                    ).joinToString("\t") { it.replace("\t", " ") }
-                                }
-                                prefs.edit().putString("active_manifest", manifest).remove("scan_codes").apply()
-                                navigateTo(AppScreen.ROUTE_LIST)
-                                Toast.makeText(context, "Маршрут сохранён", Toast.LENGTH_SHORT).show()
-                            }
-                            .onFailure { error ->
-                                Toast.makeText(context, "Не удалось сохранить маршрут: ${error.message}", Toast.LENGTH_LONG).show()
-                            }
                     }
                 }
             )
