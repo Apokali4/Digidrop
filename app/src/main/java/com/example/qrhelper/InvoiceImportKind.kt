@@ -14,7 +14,7 @@ internal fun InputStream.readInvoiceBytes(): ByteArray {
         if (count < 0) break
         total += count
         require(total <= MAX_IMPORT_BYTES) {
-            "Файл слишком большой. Максимальный размер накладной или фотографии: 64 МБ"
+            "Файл слишком большой. Максимальный размер документа: 64 МБ"
         }
         output.write(buffer, 0, count)
     }
@@ -22,13 +22,37 @@ internal fun InputStream.readInvoiceBytes(): ByteArray {
     return output.toByteArray()
 }
 
+internal enum class InvoiceDocumentFormat {
+    IMAGE, PDF, XLS, XLSX, CSV, TSV, TEXT, DOCX, XML, JSON, HTML, UNKNOWN
+}
+
 internal object InvoiceImportKind {
-    private val imageExtensions = setOf(".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp")
+    private val imageExtensions = setOf(".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp", ".tif", ".tiff")
+    private fun extension(uri: String?) = uri.orEmpty().substringBefore('?').substringAfterLast('/', "").let {
+        if (it.contains('.')) "." + it.substringAfterLast('.').lowercase() else ""
+    }
 
     fun isImage(mimeType: String?, uri: String?): Boolean {
         val mime = mimeType.orEmpty().substringBefore(';').trim().lowercase()
-        if (mime.startsWith("image/")) return true
-        val path = uri.orEmpty().substringBefore('?').lowercase()
-        return imageExtensions.any(path::endsWith)
+        return mime.startsWith("image/") || extension(uri) in imageExtensions
+    }
+
+    fun detect(mimeType: String?, uri: String?): InvoiceDocumentFormat {
+        val mime = mimeType.orEmpty().substringBefore(';').trim().lowercase()
+        val ext = extension(uri)
+        return when {
+            isImage(mime, uri) -> InvoiceDocumentFormat.IMAGE
+            ext == ".pdf" || mime == "application/pdf" -> InvoiceDocumentFormat.PDF
+            ext == ".xlsx" || mime.contains("spreadsheetml") -> InvoiceDocumentFormat.XLSX
+            ext == ".xls" || mime == "application/vnd.ms-excel" -> InvoiceDocumentFormat.XLS
+            ext == ".csv" || mime == "application/csv" || mime == "text/csv" -> InvoiceDocumentFormat.CSV
+            ext == ".tsv" || mime == "text/tab-separated-values" -> InvoiceDocumentFormat.TSV
+            ext == ".docx" || mime.contains("wordprocessingml") -> InvoiceDocumentFormat.DOCX
+            ext == ".xml" || mime == "application/xml" || mime == "text/xml" -> InvoiceDocumentFormat.XML
+            ext == ".json" || mime == "application/json" -> InvoiceDocumentFormat.JSON
+            ext in setOf(".html", ".htm") || mime == "text/html" -> InvoiceDocumentFormat.HTML
+            ext in setOf(".txt", ".log") || mime.startsWith("text/") -> InvoiceDocumentFormat.TEXT
+            else -> InvoiceDocumentFormat.UNKNOWN
+        }
     }
 }
