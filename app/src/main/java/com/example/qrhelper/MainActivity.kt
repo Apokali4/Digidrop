@@ -478,15 +478,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            QRHelperTheme {
-                DigitDropRoot()
+            val appearancePrefs = getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE)
+            var darkTheme by remember { mutableStateOf(appearancePrefs.getBoolean("dark_theme", false)) }
+            QRHelperTheme(darkTheme = darkTheme) {
+                DigitDropRoot(
+                    onThemeChange = { enabled ->
+                        darkTheme = enabled
+                        appearancePrefs.edit().putBoolean("dark_theme", enabled).apply()
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun DigitDropRoot() {
+fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
     var photoRouteInitialUri by remember { mutableStateOf<Uri?>(null) }
@@ -515,6 +522,7 @@ fun DigitDropRoot() {
     var settingsOffline by remember { mutableStateOf(prefs.getBoolean("offline_mode", true)) }
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
+    var settingsDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", false)) }
     var sessionScanCodes by remember {
         mutableStateOf(prefs.getStringSet("scan_codes", emptySet())?.toSet().orEmpty())
     }
@@ -1298,7 +1306,12 @@ fun DigitDropRoot() {
         AppScreen.SETTINGS -> {
             SettingsScreen(
                 offlineMode = settingsOffline, autoSave = settingsAutoSave, compactMode = settingsCompact,
+                darkTheme = settingsDarkTheme,
                 onBack = { currentScreen = AppScreen.HUB },
+                onDarkThemeChange = { enabled ->
+                    settingsDarkTheme = enabled
+                    onThemeChange(enabled)
+                },
                 onOfflineChange = { settingsOffline = it; prefs.edit().putBoolean("offline_mode", it).apply() },
                 onAutoSaveChange = { settingsAutoSave = it; prefs.edit().putBoolean("auto_save", it).apply() },
                 onCompactChange = { settingsCompact = it; prefs.edit().putBoolean("compact_mode", it).apply() },
@@ -3378,7 +3391,9 @@ fun SettingsScreen(
     offlineMode: Boolean,
     autoSave: Boolean,
     compactMode: Boolean,
+    darkTheme: Boolean,
     onBack: () -> Unit,
+    onDarkThemeChange: (Boolean) -> Unit,
     onOfflineChange: (Boolean) -> Unit,
     onAutoSaveChange: (Boolean) -> Unit,
     onCompactChange: (Boolean) -> Unit,
@@ -3397,6 +3412,7 @@ fun SettingsScreen(
         SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте; сохранить исходный порядок точек. Навигация запускается через Яндекс Навигатор.", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение кодов упаковок", "Помнить уже отсканированные уникальные коды между перезапусками. Прогресс рейса всегда сохраняется в Room.", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
+        SettingToggleRow("Графитовая тема", "Включает матовую тёмную палитру DigiDrop без чисто чёрного фона", darkTheme, onDarkThemeChange)
         Spacer(Modifier.height(12.dp))
         HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", CardSurface, TextLight, MintAccent, onBackup)
         Spacer(Modifier.height(8.dp))
