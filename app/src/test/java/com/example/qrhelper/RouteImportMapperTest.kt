@@ -18,6 +18,31 @@ class RouteImportMapperTest {
         assertEquals(DeliveryStatus.HAS_DISCREPANCY, RouteImportMapper.map(listOf(item)).single().status)
     }
 
+
+    @Test fun doesNotCompleteMultiRowPointWhenOneRowIsStillMissingEvenIfAnotherIsOverScanned() {
+        val items = listOf(
+            RouteItem("a", "Магазин", "Адрес", "Товар 1", 2, "", scannedBoxes = 4),
+            RouteItem("b", "Магазин", "Адрес", "Товар 2", 3, "", scannedBoxes = 1)
+        )
+        assertEquals(DeliveryStatus.IN_PROGRESS, RouteImportMapper.map(items).single().status)
+    }
+
+    @Test fun doesNotTrustManualDeliveredFlagWhenCargoIsStillMissing() {
+        val item = RouteItem(
+            "a", "Магазин", "Адрес", "Товар", 5, "",
+            isDelivered = true, scannedBoxes = 2
+        )
+        assertEquals(DeliveryStatus.IN_PROGRESS, RouteImportMapper.map(listOf(item)).single().status)
+    }
+
+    @Test fun completesOnlyWhenEveryCargoRowIsAccounted() {
+        val items = listOf(
+            RouteItem("a", "Магазин", "Адрес", "Товар 1", 2, "", scannedBoxes = 2),
+            RouteItem("b", "Магазин", "Адрес", "Товар 2", 3, "", scannedBoxes = 3)
+        )
+        assertEquals(DeliveryStatus.COMPLETED, RouteImportMapper.map(items).single().status)
+    }
+
     @Test fun groupsMultipleInvoiceRowsAtTheSameStoreAndAddress() {
         val items = listOf(
             RouteItem("4601234567890", "Магазин", "Калуга, ул. Кирова, 1", "Молоко", 4, "8800"),
