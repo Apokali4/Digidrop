@@ -1379,6 +1379,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     val lookup = normalizeScannedBarcode(normalizedCode)
                     val matches = routeItems.filter { item -> lookup.candidates.any { it.equals(item.barcode.trim(), ignoreCase = true) } }
                     val matchedItem = matches.singleOrNull()
+                    val currentDeliveryPoint = nextPendingPoint(routeItems)?.firstOrNull()
                     val savedCodes = sessionScanCodes.toMutableSet()
                     val isPlainProductCode = !lookup.hasUniquePackageId
                     when {
@@ -1394,6 +1395,13 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             navigateTo(AppScreen.HUB)
                         }
                         isPlainProductCode -> {
+                            if (isDifferentDeliveryPoint(matchedItem, currentDeliveryPoint)) {
+                                Toast.makeText(
+                                    context,
+                                    "Внимание: упаковка относится к другой точке — ${matchedItem.storeName}, ${matchedItem.address}. Текущая точка: ${currentDeliveryPoint?.storeName}.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                             val remaining = (matchedItem.totalBoxes - matchedItem.scannedBoxes).coerceAtLeast(0)
                             Toast.makeText(
                                 context,
@@ -1404,6 +1412,13 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             navigateTo(AppScreen.DETAILS)
                         }
                         remainingBoxes(matchedItem) == 0 -> {
+                            if (isDifferentDeliveryPoint(matchedItem, currentDeliveryPoint)) {
+                                Toast.makeText(
+                                    context,
+                                    "Внимание: упаковка относится к другой точке — ${matchedItem.storeName}, ${matchedItem.address}. Текущая точка: ${currentDeliveryPoint?.storeName}.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                             Toast.makeText(
                                 context,
                                 "${matchedItem.storeName}: все места по этой позиции уже учтены (${matchedItem.totalBoxes}). Повторный скан не засчитываю.",
@@ -1413,10 +1428,24 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             navigateTo(AppScreen.DETAILS)
                         }
                         normalizedCode in savedCodes -> {
+                            if (isDifferentDeliveryPoint(matchedItem, currentDeliveryPoint)) {
+                                Toast.makeText(
+                                    context,
+                                    "Внимание: упаковка относится к другой точке — ${matchedItem.storeName}, ${matchedItem.address}.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                             Toast.makeText(context, "Дубликат уникального кода упаковки: $normalizedCode", Toast.LENGTH_LONG).show()
                             navigateTo(AppScreen.HUB)
                         }
                         else -> {
+                            if (isDifferentDeliveryPoint(matchedItem, currentDeliveryPoint)) {
+                                Toast.makeText(
+                                    context,
+                                    "Внимание: упаковка относится к другой точке — ${matchedItem.storeName}, ${matchedItem.address}. Текущая точка: ${currentDeliveryPoint?.storeName}.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                             savedCodes.add(normalizedCode)
                             sessionScanCodes = savedCodes
                             val itemKey = routeItemKey(matchedItem)
