@@ -7,10 +7,12 @@ import org.junit.Test
 
 class BrandPaletteTest {
     @Test
-    fun appPaletteUsesLightSurfacesAndGreenActions() {
-        assertEquals(Color.White, DigiDropPalette.background)
-        assertEquals(Color.White, DigiDropPalette.surface)
-        assertEquals(Color(0xFF278747), DigiDropPalette.primary)
-        assertEquals(Color(0xFF1F2D23), DigiDropPalette.text)
+    fun appPaletteUsesGraphiteSurfacesAndSafetyOrangeActions() {
+        assertEquals(Color(0xFFF0EFEC), DigiDropPalette.background)
+        assertEquals(Color(0xFFFAF9F6), DigiDropPalette.surface)
+        assertEquals(Color(0xFFF07824), DigiDropPalette.primary)
+        assertEquals(Color(0xFF242629), DigiDropPalette.text)
+        assertEquals(Color(0xFF1D2023), DigiDropPalette.darkBackground)
+        assertEquals(Color(0xFF292D31), DigiDropPalette.darkSurface)
     }
 }
