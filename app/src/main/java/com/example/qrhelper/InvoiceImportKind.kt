@@ -2,6 +2,8 @@ package com.example.qrhelper
 
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 internal const val MAX_IMPORT_BYTES = 64L * 1024L * 1024L
 
@@ -20,6 +22,14 @@ internal fun InputStream.readInvoiceBytes(): ByteArray {
     }
     require(total > 0L) { "Выбранный файл пустой" }
     return output.toByteArray()
+}
+
+internal fun decodeInvoiceText(bytes: ByteArray): String {
+    val utf8 = Charsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+    return runCatching { utf8.decode(ByteBuffer.wrap(bytes)).toString().removePrefix("\uFEFF") }
+        .getOrElse { String(bytes, charset("windows-1251")).removePrefix("\uFEFF") }
 }
 
 internal enum class InvoiceDocumentFormat {
