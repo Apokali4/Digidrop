@@ -1089,9 +1089,10 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                                         Toast.makeText(context, "Файл ${index + 1}: $message", Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                                val routeRows = RouteSheetParser.parse(normalizeOcrTableText(recognized))
-                                routeRows.ifEmpty { RouteSheetParser.parse(recognized) }
-                                    .ifEmpty { parseManifest(normalizeOcrTableText(recognized)) }
+                                val tableRows = RouteSheetParser.parse(normalizeOcrTableText(recognized))
+                                val ocrAddressRows = RouteSheetParser.parseOcrText(recognized)
+                                val routeRows = listOf(tableRows, ocrAddressRows).maxByOrNull { it.size }.orEmpty()
+                                routeRows.ifEmpty { parseManifest(normalizeOcrTableText(recognized)) }
                             }
                             InvoiceDocumentFormat.PDF -> {
                                 val extracted = PdfInvoiceImporter.extractText(context, uri)
