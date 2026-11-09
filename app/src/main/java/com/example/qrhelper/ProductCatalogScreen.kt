@@ -7,6 +7,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,12 +25,14 @@ internal fun ProductCatalogScreen(
     onSearch: (String) -> Unit
 ) {
     val palette = MaterialTheme.colorScheme
+    var query by remember { mutableStateOf("") }
     Column(
         Modifier.fillMaxSize().background(palette.background).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("← НАЗАД", modifier = Modifier.padding(vertical = 8.dp), color = palette.primary)
         Text("Каталог товаров", color = palette.onBackground, fontSize = 25.sp)
+        OutlinedTextField(value = query, onValueChange = { query = it; onSearch(it) }, modifier = Modifier.fillMaxWidth(), label = { Text("Поиск по названию или штрихкоду") }, singleLine = true)
         Text("Локальная база штрихкодов из загруженных накладных",
             color = palette.onSurfaceVariant, fontSize = 12.sp)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
