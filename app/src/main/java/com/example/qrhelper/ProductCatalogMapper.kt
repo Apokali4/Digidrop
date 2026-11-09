@@ -7,9 +7,17 @@ internal data class ProductCatalogRecord(
 
 internal fun mapProductCatalog(items: List<RouteItem>): List<ProductCatalogRecord> =
     items.asSequence()
-        .filter { it.barcode.isNotBlank() && it.itemName.isNotBlank() }
-        .groupBy { it.barcode.trim() }
-        .map { (barcode, rows) ->
-            ProductCatalogRecord(barcode, rows.last().itemName.trim())
+        .mapNotNull { item ->
+            val barcode = item.barcode.trim()
+            val productName = item.itemName.trim()
+            if (barcode.isBlank() || productName.isBlank()) null
+            else barcode to productName
+        }
+        .groupBy(
+            keySelector = { (barcode, _) -> barcode },
+            valueTransform = { (_, productName) -> productName }
+        )
+        .map { (barcode, names) ->
+            ProductCatalogRecord(barcode, names.last())
         }
         .sortedBy { it.productName.lowercase() }
