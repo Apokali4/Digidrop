@@ -95,6 +95,7 @@ internal fun RouteEditorScreen(
                 onClick = { onSave(groups.flatten()) }, modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = palette.primary)
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) { Text("СОХРАНИТЬ", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimary) }
         }
         Text("Редактор маршрута", color = palette.onSurface, fontSize = 24.sp)
@@ -103,6 +104,7 @@ internal fun RouteEditorScreen(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
             border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
         ) {
             Text("ТОЧЕК: ${groups.size}   •   СТРОК ГРУЗА: ${groups.sumOf { it.size }}",
                 Modifier.padding(14.dp), color = palette.onSurfaceVariant)
@@ -111,11 +113,13 @@ internal fun RouteEditorScreen(
             onClick = { openEditor(null) }, modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = palette.primary)
+            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
         ) {
             Text("+ ДОБАВИТЬ ТОЧКУ", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimary)
         }
         if (groups.isEmpty()) {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant)) {
                 Text("Маршрут пуст. Добавь первую точку.", Modifier.padding(16.dp), color = palette.onSurfaceVariant)
             }
@@ -172,11 +176,13 @@ internal fun RouteEditorScreen(
                                     onClick = { openEditor(group) }, modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = palette.secondaryContainer)
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                                 ) { Text("ИЗМЕНИТЬ", Modifier.padding(12.dp), color = palette.primary) }
                                 Card(
                                     onClick = { deletingGroup = group }, modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant)
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                                 ) { Text("УДАЛИТЬ", Modifier.padding(12.dp), color = palette.onSurface) }
                             }
                         }
