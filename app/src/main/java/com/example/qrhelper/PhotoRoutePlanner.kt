@@ -326,29 +326,34 @@ internal object PhotoRouteNavigationUrls {
         return "https://yandex.ru/maps/?rtext=${encode(routeText)}&rtt=auto"
     }
 
-    fun yandexNavigator(stops: List<PhotoRouteCoordinate>, startsFromPreviousStop: Boolean = false): Uri {
+    internal fun yandexNavigatorUrl(stops: List<PhotoRouteCoordinate>, startsFromPreviousStop: Boolean = false): String {
         validate(stops)
         require(stops.size <= YANDEX_MAX_STOPS) {
             "Яндекс Навигатор принимает не больше 20 точек за один участок"
         }
-        val route = Uri.parse("yandexnavi://build_route_on_map").buildUpon()
+        val query = mutableListOf<Pair<String, String>>()
         val destinations = if (startsFromPreviousStop) {
-            route.appendQueryParameter("lat_from", stops.first().latitude.toString())
-                .appendQueryParameter("lon_from", stops.first().longitude.toString())
+            query += "lat_from" to stops.first().latitude.toString()
+            query += "lon_from" to stops.first().longitude.toString()
             stops.drop(1)
         } else stops
         require(destinations.size >= 2 || (startsFromPreviousStop && destinations.size == 1)) {
             "Для маршрута нужны минимум две точки"
         }
         destinations.dropLast(1).forEachIndexed { index, point ->
-            route.appendQueryParameter("lat_via_$index", point.latitude.toString())
-                .appendQueryParameter("lon_via_$index", point.longitude.toString())
+            query += "lat_via_$index" to point.latitude.toString()
+            query += "lon_via_$index" to point.longitude.toString()
         }
         val destination = destinations.last()
-        route.appendQueryParameter("lat_to", destination.latitude.toString())
-            .appendQueryParameter("lon_to", destination.longitude.toString())
-        return route.build()
+        query += "lat_to" to destination.latitude.toString()
+        query += "lon_to" to destination.longitude.toString()
+        return "yandexnavi://build_route_on_map?" +
+            query.joinToString("&") { (key, value) -> "$key=$value" }
     }
+
+    fun yandexNavigator(stops: List<PhotoRouteCoordinate>, startsFromPreviousStop: Boolean = false): Uri =
+        Uri.parse(yandexNavigatorUrl(stops, startsFromPreviousStop))
+
 
 }
 
