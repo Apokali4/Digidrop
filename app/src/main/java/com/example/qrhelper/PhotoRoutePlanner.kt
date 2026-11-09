@@ -136,6 +136,19 @@ internal object PhotoRouteTextParser {
         Regex("""(?iu)балтика""") to "Балтика"
     )
 
+    internal fun cleanStoreName(candidate: String): String {
+        var cleaned = candidate.trim()
+            .replace(Regex("""(?iu)\s+(?:квартира|кв\.?|подъезд|офис|помещение)\b.*$"""), "")
+            .replace(Regex("""(?iu)\s+\b[\p{L}\p{N}-]{8,}\b.*$"""), "")
+            .trim(' ', ',', ';', '|', '.', ':', '-', '—')
+        val words = cleaned.split(Regex("""\s+""")).toMutableList()
+        while (words.size > 1 && words.last().length <= 2 && words.last().any { it.isLetter() } &&
+            words.last().none { it.isUpperCase() }
+        ) words.removeAt(words.lastIndex)
+        cleaned = words.joinToString(" ")
+        return cleaned.takeIf { it.any(Char::isLetter) && it.length <= 48 }.orEmpty()
+    }
+
     private fun cleanAddressFragment(line: String, city: String): String? {
         val street = streetHint.find(line) ?: return null
         val house = houseAfterStreet.find(line, street.range.last + 1) ?: return null
@@ -242,13 +255,19 @@ internal object PhotoRouteTextParser {
                 it.length <= 48 && !Regex("""[^А-Яа-яЁёA-Za-z0-9 .&()/-]""").containsMatchIn(it)
         }
         val brandInSuffix = suffixBrand?.let { suffix ->
-            brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(suffix) }?.second
+            val matchedBrand = brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(suffix) }?.second
+            when (matchedBrand) {
+                // The number is part of the actual shop name, not OCR noise.
+                "Магнит" -> cleanStoreName(suffix)
+                null -> cleanStoreName(suffix)
+                else -> matchedBrand
+            }
         }
         val brandNearby = block.withIndex().mapNotNull { (lineIndex, line) ->
             brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.second
                 ?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
         }.minByOrNull { it.first }?.second
-        val store = brandInSuffix ?: suffixBrand ?: brandNearby ?: companyLine
+        val store = brandInSuffix ?: cleanStoreName(brandNearby ?: companyLine)
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex

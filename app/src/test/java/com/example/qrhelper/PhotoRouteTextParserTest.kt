@@ -221,4 +221,29 @@ class PhotoRouteTextParserTest {
         )
         assertEquals("до 10:00", metadata.workingHours)
     }
+
+    @Test fun stripsApartmentAndTechnicalBarcodeNoiseFromStoreName() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Калуга, ул. Ленина, д. 10, Шаурма яя x1pe-6001230285",
+            "Калуга, ул. Ленина, д. 10"
+        )
+        assertEquals("Шаурма", metadata.storeName)
+    }
+
+    @Test fun doesNotMistakeApartmentNumberForStoreName() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Калуга, ул. Ленина, д. 10, квартира 136",
+            "Калуга, ул. Ленина, д. 10"
+        )
+        assertEquals("", metadata.storeName)
+    }
+
+    @Test fun preservesLegitimateDigitsInStoreName() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "Калуга, ул. Ленина, д. 10, Магнит 24",
+            "Калуга, ул. Ленина, д. 10"
+        )
+        assertEquals("Магнит 24", metadata.storeName)
+    }
+
 }
