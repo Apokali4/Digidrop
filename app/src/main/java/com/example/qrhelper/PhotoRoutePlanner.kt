@@ -138,7 +138,7 @@ internal object PhotoRouteTextParser {
 
     internal fun cleanStoreName(candidate: String): String {
         var cleaned = candidate.trim()
-            .replace(Regex("""(?iu)\s+(?:квартира|кв\.?|подъезд|офис|помещение)\b.*$"""), "")
+            .replace(Regex("""(?iu)(?:^|\s+)(?:квартира|кв\.?|подъезд|офис|помещение)\b.*$"""), "")
             .replace(Regex("""(?iu)\s+\b[\p{L}\p{N}-]{8,}\b.*$"""), "")
             .trim(' ', ',', ';', '|', '.', ':', '-', '—')
         val words = cleaned.split(Regex("""\s+""")).toMutableList()
