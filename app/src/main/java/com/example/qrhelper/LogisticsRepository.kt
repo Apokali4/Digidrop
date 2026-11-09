@@ -233,6 +233,9 @@ internal class LogisticsRepository(context: Context) {
         return activeRouteItems()
     }
 
+    suspend fun allEvidencePaths(): Set<String> =
+        database.dao().allEvidencePaths().filter { it.isNotBlank() }.toSet()
+
     suspend fun savePhotoForPoint(storeName: String, address: String, path: String): String? =
         database.withTransaction {
             val dao = database.dao()
