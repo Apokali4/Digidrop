@@ -287,11 +287,14 @@ private fun readXlsxXml(xml: String, sharedStrings: List<String> = emptyList()):
 
 internal fun parseXlsx(input: InputStream): List<RouteItem> {
     val entries = mutableMapOf<String, ByteArray>()
+    var expandedXmlBytes = 0L
     ZipInputStream(input).use { zip ->
         while (true) {
             val entry = zip.nextEntry ?: break
             if (!entry.isDirectory && (entry.name == "xl/sharedStrings.xml" || entry.name.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")))) {
-                entries[entry.name] = readBoundedInvoiceZipEntry(zip)
+                val xmlBytes = readBoundedInvoiceZipEntry(zip)
+                expandedXmlBytes = nextXlsxXmlTotal(expandedXmlBytes, xmlBytes.size)
+                entries[entry.name] = xmlBytes
             }
             zip.closeEntry()
         }
