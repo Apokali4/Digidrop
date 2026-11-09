@@ -1074,8 +1074,10 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     return@launch
                 }
 
+                val importErrors = mutableListOf<String>()
                 val imported = withContext(Dispatchers.IO) {
                     uris.flatMapIndexed { index, uri ->
+                        try {
                         val mime = context.contentResolver.getType(uri).orEmpty()
                         val format = InvoiceImportKind.detect(mime, uri.toString())
                         require(format != InvoiceDocumentFormat.UNKNOWN) {
@@ -1107,7 +1109,14 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
                             else -> ExtendedInvoiceParser.parse(format, bytes)
                         }
+                        } catch (error: Exception) {
+                            importErrors += "Файл №${index + 1}: ${error.message ?: "ошибка чтения"}"
+                            emptyList()
+                        }
                     }
+                }
+                if (importErrors.isNotEmpty()) {
+                    Toast.makeText(context, "Не удалось прочитать часть файлов:\n" + importErrors.joinToString("\n"), Toast.LENGTH_LONG).show()
                 }
                 if (imported.isNotEmpty()) {
                     val parsedRows = mergeInvoiceRows(emptyList(), imported)
