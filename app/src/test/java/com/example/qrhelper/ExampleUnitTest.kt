@@ -27,13 +27,21 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun keepsRowsWithDestinationWhenBarcodeIsMissingButSkipsRowsWithoutDestination() {
+    fun keepsRowsWithDestinationAndInheritsMergedCellsForContinuationRows() {
         val input = "Штрихкод;Магазин;Адрес;Товар;Мест\n" +
             ";Северный;ул. Гагарина;Вода;2\n" +
-            "4601234567890;;;Вода;2"
+            "4601234567890;;;Сок;2"
         val result = parseManifest(input)
-        assertEquals(1, result.size)
-        assertTrue(result.single().barcode.isBlank())
-        assertEquals("Северный", result.single().storeName)
+        assertEquals(2, result.size)
+        assertTrue(result.first().barcode.isBlank())
+        assertEquals("Северный", result.first().storeName)
+        assertEquals("ул. Гагарина", result.last().address)
+        assertEquals("Северный", result.last().storeName)
+    }
+
+    @Test
+    fun skipsRowsWithoutDestinationWhenNoPreviousStopExists() {
+        val result = parseManifest("Штрихкод;Магазин;Адрес;Товар;Мест\n4601234567890;;;Вода;2")
+        assertTrue(result.isEmpty())
     }
 }
