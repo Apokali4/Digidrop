@@ -94,14 +94,14 @@ internal fun RouteEditorScreen(
                 onClick = { onSave(groups.flatten()) }, modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = palette.primary)
-            ) { Text("СОХРАНИТЬ", Modifier.padding(16.dp), color = Color.White) }
+            ) { Text("СОХРАНИТЬ", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onPrimary) }
         }
-        Text("Редактор маршрута", color = palette.text, fontSize = 24.sp)
+        Text("Редактор маршрута", color = palette.onSurface, fontSize = 24.sp)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
-            border = androidx.compose.foundation.BorderStroke(1.dp, palette.border)
+            border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
         ) {
             Text("ТОЧЕК: ${groups.size}   •   СТРОК ГРУЗА: ${groups.sumOf { it.size }}",
                 Modifier.padding(14.dp), color = palette.onSurfaceVariant)
@@ -115,8 +115,8 @@ internal fun RouteEditorScreen(
         }
         if (groups.isEmpty()) {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = palette.surfaceSoft)) {
-                Text("Маршрут пуст. Добавь первую точку.", Modifier.padding(16.dp), color = palette.textSecondary)
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant)) {
+                Text("Маршрут пуст. Добавь первую точку.", Modifier.padding(16.dp), color = palette.onSurfaceVariant)
             }
         } else {
             val listState = rememberLazyListState()
