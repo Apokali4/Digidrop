@@ -22,13 +22,8 @@ internal object ReportExporter {
             item.scannedBoxes.toString(),
             item.discrepancyQty.toString(),
             item.discrepancyReason.orEmpty(),
-            (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0).toString(),
-            when {
-                item.discrepancyQty > 0 -> "Расхождение"
-                item.isDelivered -> "Доставлено"
-                item.scannedBoxes > 0 -> "В работе"
-                else -> "Ожидает"
-            }
+            remainingBoxes(item).toString(),
+            deliveryItemStatusLabel(item)
         )
     }
 
@@ -121,17 +116,15 @@ internal object ReportExporter {
         line("Строк накладной: ${items.size} • Точек: ${items.map { it.storeName to it.address }.distinct().size}")
         line(" ")
         items.forEachIndexed { index, item ->
-            val status = when {
-                item.discrepancyQty > 0 -> "РАСХОЖДЕНИЕ: ${item.discrepancyReason ?: "не указано"} ${item.discrepancyQty}"
-                item.isDelivered -> "ДОСТАВЛЕНО"
-                item.scannedBoxes > 0 -> "В РАБОТЕ"
-                else -> "ОЖИДАЕТ"
-            }
+            val status = deliveryItemStatusLabel(item).uppercase()
+            val discrepancy = if (item.discrepancyQty > 0) {
+                " • расхождение: ${item.discrepancyQty} (${item.discrepancyReason ?: "причина не указана"})"
+            } else ""
             val content = listOf(
                 "${index + 1}. ${item.storeName}",
                 "Адрес: ${item.address}",
                 "Товар: ${item.itemName} • код: ${item.barcode}",
-                "План: ${item.totalBoxes} • скан: ${item.scannedBoxes} • ${status}",
+                "План: ${item.totalBoxes} • скан: ${item.scannedBoxes} • осталось: ${remainingBoxes(item)} • ${status}${discrepancy}",
                 if (item.note.isNotBlank()) "Примечание: ${item.note}" else ""
             ).filter { it.isNotBlank() }
             content.forEach { text ->
