@@ -1165,9 +1165,11 @@ fun PhotoRoutePlannerScreen(
         }
 
         if (located.isNotEmpty()) {
-            Text("НАЙДЕНО ТОЧЕК: ${located.size}", color = palette.primary,
+            Text("УНИКАЛЬНЫХ ОСТАНОВОК: ${located.size}", color = palette.primary,
                 style = MaterialTheme.typography.titleMedium)
-            Text("Распознавание и координаты готовы. Откройте единый список, чтобы проверить и расставить точки.",
+            Text("Записей доставки внутри остановок: ${located.sumOf { it.deliveries.size }}", color = palette.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall)
+            Text("Совпадающие адреса объединены. Все доставки и комментарии сохранены внутри остановок.",
                 color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             PhotoPlannerTile("Показать список точек", "Дальше все действия будут на одном экране маршрута",
                 enabled = !busy, primary = true) {
