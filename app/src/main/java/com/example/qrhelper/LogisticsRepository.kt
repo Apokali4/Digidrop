@@ -189,6 +189,17 @@ internal class LogisticsRepository(context: Context) {
         }
     }
 
+    suspend fun resetActiveRouteProgress(items: List<RouteItem>) {
+        database.withTransaction {
+            val dao = database.dao()
+            val route = checkNotNull(dao.activeRouteOnce()) {
+                "Нет активного рейса для сброса прогресса"
+            }
+            dao.clearScanCodes(route.id)
+            syncProgressInTransaction(items)
+        }
+    }
+
     suspend fun restoreUniqueScanCodes(codes: Set<String>) {
         if (codes.isEmpty()) return
         database.withTransaction {
