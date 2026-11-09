@@ -2751,20 +2751,16 @@ fun RouteListScreen(
                             if (comment.isNotBlank()) Text(comment, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall, maxLines = 1)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                TextButton(onClick = { if (point.phone.isNotBlank()) onCallClient(point.phone) },
-                                    enabled = point.phone.isNotBlank(),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
-                                    Text("Позвонить", style = MaterialTheme.typography.labelSmall)
+                                if (point.phone.isNotBlank()) {
+                                    Text("Позвонить", modifier = Modifier.clickable { onCallClient(point.phone) }.padding(vertical = 2.dp),
+                                        color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                 }
-                                TextButton(onClick = { onOpenPointMap(point.address) },
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
-                                    Text("Проверить в Яндексе", style = MaterialTheme.typography.labelSmall)
-                                }
+                                Text("Проверить в Яндексе", modifier = Modifier.clickable { onOpenPointMap(point.address) }.padding(vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                                 Spacer(Modifier.weight(1f))
-                                TextButton(onClick = { expandedPoint = if (expanded) null else key },
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
-                                    Text(if (expanded) "Скрыть" else "Адрес", style = MaterialTheme.typography.labelSmall)
-                                }
+                                Text(if (expanded) "Скрыть" else "Адрес",
+                                    modifier = Modifier.clickable { expandedPoint = if (expanded) null else key }.padding(vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
                             if (expanded) Text(point.address, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall)
