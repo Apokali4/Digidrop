@@ -823,13 +823,8 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         item.barcode, item.storeName, item.address, item.itemName,
                         item.totalBoxes.toString(), item.scannedBoxes.toString(),
                         item.discrepancyQty.toString(), item.discrepancyReason.orEmpty(),
-                        (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0).toString(),
-                        when {
-                            item.discrepancyQty > 0 -> "Расхождение"
-                            item.isDelivered -> "Доставлено"
-                            item.scannedBoxes > 0 -> "В работе"
-                            else -> "Ожидает"
-                        }
+                        remainingBoxes(item).toString(),
+                        deliveryItemStatusLabel(item)
                     ).joinToString(";") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
                 }
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
