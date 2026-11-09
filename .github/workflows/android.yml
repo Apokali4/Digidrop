@@ -52,12 +52,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
-      - name: Run unit tests
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
-      - name: Build debug APK (explicit final build only)
+      - name: Build debug APK (explicit build request)
         if: (github.event_name == 'workflow_dispatch' && inputs.build_apk == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]'))
         run: ./gradlew --no-daemon --stacktrace assembleDebug
-      - name: Upload APK (explicit final build only)
+      - name: Upload APK (explicit build request)
         if: (github.event_name == 'workflow_dispatch' && inputs.build_apk == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]'))
         uses: actions/upload-artifact@v4
         with:
@@ -65,3 +63,6 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Run unit tests
+        if: always()
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
