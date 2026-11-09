@@ -306,7 +306,7 @@ class PhotoRouteTextParserTest {
     }
 
 
-    @Test fun groupsThirtySixDeliveryRowsIntoTwentyThreePhysicalStops() {
+    @Test fun groupsThirtySixDeliveryRowsIntoTwentyTwoPhysicalStops() {
         val addresses = buildList {
             repeat(5) { add("г. Калуга, ул. Болдина, д. 9, корп. 1") }
             repeat(5) { add("Калуга, улица Болдина 9 корпус 1") }
