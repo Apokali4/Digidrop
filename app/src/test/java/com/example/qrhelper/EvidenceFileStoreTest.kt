@@ -125,4 +125,13 @@ class EvidenceFileStoreTest {
         }
     }
 
+    @Test fun refusesMalformedPathsWithoutThrowing() {
+        val directory = Files.createTempDirectory("digidrop-evidence-malformed").toFile()
+        try {
+            assertFalse(EvidenceFileStore.deleteOwned(directory, "\u0000invalid"))
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
 }
