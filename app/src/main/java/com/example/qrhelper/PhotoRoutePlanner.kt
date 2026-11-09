@@ -877,13 +877,19 @@ fun PhotoRoutePlannerScreen(
                 rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
                 check(rawText.isNotBlank()) { "OCR не распознал текст. Попробуйте снимок крупнее и без бликов." }
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
-                addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
+                addresses = PhotoRouteTextParser.extractRouteAddressRows(rawText, routeCity)
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
                 } else {
                     status = "Распознано фотографий ${uris.size}. Определяю координаты точек…"
                     val (resolved, failed) = geocodePhotoStops(context, addresses, routeCity)
-                    located = resolved.map { it.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, it.address)) }
+                    val occurrences = mutableMapOf<String, Int>()
+                    located = resolved.map { stop ->
+                        val key = PhotoRouteTextParser.canonicalAddressKey(stop.address)
+                        val occurrence = occurrences.getOrDefault(key, 0)
+                        occurrences[key] = occurrence + 1
+                        stop.copy(metadata = PhotoRouteTextParser.extractMetadataForOccurrence(rawText, stop.address, occurrence))
+                    }
                     status = when {
                         located.isEmpty() -> "Адресов: ${addresses.size}, но координаты не определились. Проверьте интернет и адреса."
                         failed.isNotEmpty() -> "Добавлено ${located.size} точек. Не найдены координаты: ${failed.joinToString("; ")}."
@@ -1048,7 +1054,7 @@ fun PhotoRoutePlannerScreen(
             OutlinedTextField(rawText, { rawText = it }, label = { Text("Распознанный текст") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp), minLines = 4)
             PhotoPlannerTile("Повторно выделить адреса", "Перестроить список по исправленному тексту") {
-                addresses = PhotoRouteTextParser.extractCandidates(rawText, routeCity)
+                addresses = PhotoRouteTextParser.extractRouteAddressRows(rawText, routeCity)
                 located = emptyList()
                 routeOrigin = null
                 status = "Найдено адресов: ${addresses.size}."
@@ -1084,7 +1090,13 @@ fun PhotoRoutePlannerScreen(
                         busy = true
                         try {
                             val (resolved, failed) = geocodePhotoStops(context, addresses, routeCity)
-                            located = resolved.map { it.copy(metadata = PhotoRouteTextParser.extractMetadata(rawText, it.address)) }
+                            val occurrences = mutableMapOf<String, Int>()
+                            located = resolved.map { stop ->
+                                val key = PhotoRouteTextParser.canonicalAddressKey(stop.address)
+                                val occurrence = occurrences.getOrDefault(key, 0)
+                                occurrences[key] = occurrence + 1
+                                stop.copy(metadata = PhotoRouteTextParser.extractMetadataForOccurrence(rawText, stop.address, occurrence))
+                            }
                             status = if (failed.isEmpty()) "Координаты найдены для всех ${located.size} точек."
                                 else "Координаты найдены для ${located.size}. Не найдены: ${failed.joinToString("; ")}."
                         } finally { busy = false }
