@@ -2,7 +2,7 @@ name: Android CI
 # Final validated APK build trigger: [build-apk].
 # Release build is intentionally opt-in after import-format verification.
 # Release build is intentionally opt-in after import-format verification.
-# [build-apk] Rebuild after restoring single-file invoice import.
+# [build-apk] Build route-list importer for multi-file and multi-page sources.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
