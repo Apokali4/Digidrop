@@ -86,6 +86,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
@@ -445,15 +446,15 @@ enum class AppScreen {
 
 // Цвета экранов берутся из активной Material 3 темы, поэтому переключатель
 // действительно перекрашивает весь интерфейс, а не только отдельные карточки.
-val BgDark: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.background
-val CardSurface: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.surface
-val CardBorder: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.outline
-val EmeraldPrimary: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.primary
-val MintAccent: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.secondary
-val TextLight: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-val TextMuted: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-val IndustrialPanel: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
-val IndustrialDivider: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
+val BgDark: Color = DigiDropPalette.darkBackground
+val CardSurface: Color = DigiDropPalette.darkSurface
+val CardBorder: Color = DigiDropPalette.darkBorder
+val EmeraldPrimary: Color = DigiDropPalette.accent
+val MintAccent: Color = DigiDropPalette.accentLight
+val TextLight: Color = DigiDropPalette.darkText
+val TextMuted: Color = DigiDropPalette.darkTextSecondary
+val IndustrialPanel: Color = DigiDropPalette.darkSurfaceSoft
+val IndustrialDivider: Color = DigiDropPalette.darkDivider
 
 @Composable
 fun Modifier.bounceClick(
