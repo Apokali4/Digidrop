@@ -23,7 +23,7 @@ internal fun InputStream.readInvoiceBytes(): ByteArray {
 }
 
 internal enum class InvoiceDocumentFormat {
-    IMAGE, PDF, XLS, XLSX, CSV, TSV, TEXT, DOCX, XML, JSON, HTML, UNKNOWN
+    IMAGE, PDF, XLS, XLSX, CSV, TSV, TEXT, DOC, DOCX, RTF, ODS, ODT, XML, JSON, HTML, UNKNOWN
 }
 
 internal object InvoiceImportKind {
@@ -47,7 +47,11 @@ internal object InvoiceImportKind {
             ext == ".xls" || mime == "application/vnd.ms-excel" -> InvoiceDocumentFormat.XLS
             ext == ".csv" || mime == "application/csv" || mime == "text/csv" -> InvoiceDocumentFormat.CSV
             ext == ".tsv" || mime == "text/tab-separated-values" -> InvoiceDocumentFormat.TSV
+            ext == ".doc" || mime == "application/msword" -> InvoiceDocumentFormat.DOC
             ext == ".docx" || mime.contains("wordprocessingml") -> InvoiceDocumentFormat.DOCX
+            ext == ".rtf" || mime == "application/rtf" || mime == "text/rtf" -> InvoiceDocumentFormat.RTF
+            ext == ".ods" || mime.contains("opendocument.spreadsheet") -> InvoiceDocumentFormat.ODS
+            ext == ".odt" || mime.contains("opendocument.text") -> InvoiceDocumentFormat.ODT
             ext == ".xml" || mime == "application/xml" || mime == "text/xml" -> InvoiceDocumentFormat.XML
             ext == ".json" || mime == "application/json" -> InvoiceDocumentFormat.JSON
             ext in setOf(".html", ".htm") || mime == "text/html" -> InvoiceDocumentFormat.HTML
