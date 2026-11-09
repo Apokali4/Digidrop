@@ -58,17 +58,28 @@ internal object ExtendedInvoiceParser {
     }
 
     private fun rtfToText(rtf: String): String {
-        var text = rtf
-            .replace("\\tab", "\t")
-            .replace("\\cell", "\t")
-            .replace("\\row", "\n")
-            .replace("\\par", "\n")
-        text = Regex("\\\\u(-?\\d+)\\??").replace(text) { match ->
+        val codePage = Regex("""\\ansicpg(\d+)""").find(rtf)
+            ?.groupValues?.get(1)?.toIntOrNull() ?: 1252
+        val charset = runCatching { java.nio.charset.Charset.forName("windows-$codePage") }
+            .getOrDefault(Charsets.ISO_8859_1)
+
+        // RTF stores legacy-language characters as consecutive escaped bytes.
+        // Decode the whole run together so Cyrillic Windows-1251 survives.
+        var text = Regex("""(?:\\'[0-9a-fA-F]{2})+""").replace(rtf) { run ->
+            val bytes = Regex("""\\'([0-9a-fA-F]{2})""").findAll(run.value)
+                .map { it.groupValues[1].toInt(16).toByte() }.toList().toByteArray()
+            String(bytes, charset)
+        }
+        text = text
+            .replace("""\tab""", "\t")
+            .replace("""\cell""", "\t")
+            .replace("""\row""", "\n")
+            .replace("""\par""", "\n")
+        text = Regex("""\\u(-?\d+)\??""").replace(text) { match ->
             match.groupValues[1].toInt().toChar().toString()
         }
         val plain = text
-            .replace(Regex("\\\\'[0-9a-fA-F]{2}"), " ")
-            .replace(Regex("\\\\[a-zA-Z]+-?\\d* ?"), " ")
+            .replace(Regex("""\\[a-zA-Z]+-?\d* ?"""), " ")
             .replace(Regex("[{}]"), " ")
             .replace(Regex(" +"), " ")
             .trim()
