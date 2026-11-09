@@ -8,84 +8,68 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExtendedInvoiceParserTest {
-    @Test fun convertsHtmlTablesToManifestRows() {
-        val rows = ExtendedInvoiceParser.parse(
-            InvoiceDocumentFormat.HTML,
-            """<table><tr><th>Штрихкод</th><th>Магазин</th><th>Адрес</th><th>Товар</th><th>Количество</th></tr><tr><td>4601234567890</td><td>Магазин А</td><td>Калуга, Ленина 1</td><td>Молоко</td><td>4</td></tr></table>""".toByteArray()
-        )
-        assertTrue(rows.any { it.storeName == "Магазин А" && it.totalBoxes == 4 })
+    private fun assertRouteRow(rows: List<RouteItem>, client: String, addressPart: String) {
+        assertTrue(rows.any { it.storeName == client && it.address.contains(addressPart) })
+        assertTrue(rows.all { it.barcode.isBlank() })
     }
 
-    @Test fun convertsJsonArrayOfObjectsToManifestRows() {
-        val rows = ExtendedInvoiceParser.parse(
-            InvoiceDocumentFormat.JSON,
-            """[{"Штрихкод":"4601234567890","Магазин":"Магазин Б","Адрес":"Калуга, Кирова 2","Товар":"Хлеб","Количество":3}]""".toByteArray()
-        )
-        assertTrue(rows.any { it.storeName == "Магазин Б" && it.totalBoxes == 3 })
+    @Test fun convertsHtmlRouteTable() {
+        val html = """<table><tr><th>№</th><th>Код</th><th>Клиент</th><th>Адрес доставки</th><th>Комментарий</th></tr><tr><td>1</td><td>1708</td><td>Балтика ПК ООО</td><td>Калуга, ул. Ленина, д. 1</td><td>Доставить до 10:00</td></tr></table>"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.HTML, html.toByteArray()), "Балтика ПК ООО", "Ленина")
     }
 
-    @Test fun convertsXmlTableRowsToManifestRows() {
-        val rows = ExtendedInvoiceParser.parse(
-            InvoiceDocumentFormat.XML,
-            """<root><row><cell>Штрихкод</cell><cell>Магазин</cell><cell>Адрес</cell><cell>Товар</cell><cell>Количество</cell></row><row><cell>4601234567890</cell><cell>Магазин В</cell><cell>Калуга, Гагарина 3</cell><cell>Сок</cell><cell>2</cell></row></root>""".toByteArray()
-        )
-        assertTrue(rows.any { it.storeName == "Магазин В" && it.totalBoxes == 2 })
+    @Test fun convertsJsonRouteRows() {
+        val json = """[{"№":"1","Код":"1646","Клиент":"Альфа Рязань ООО","Адрес доставки":"Калуга, ул. Кирова, д. 2","Комментарий":"Приём до 10:00"}]"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.JSON, json.toByteArray()), "Альфа Рязань ООО", "Кирова")
     }
-    @Test fun parsesLegacyXlsWorkbookRows() {
+
+    @Test fun convertsXmlRouteRows() {
+        val xml = """<root><row><cell>№</cell><cell>Код</cell><cell>Клиент</cell><cell>Адрес доставки</cell><cell>Комментарий</cell></row><row><cell>1</cell><cell>1708</cell><cell>Балтика ПК ООО</cell><cell>Калуга, ул. Гагарина, д. 3</cell><cell>Звонить заранее</cell></row></root>"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.XML, xml.toByteArray()), "Балтика ПК ООО", "Гагарина")
+    }
+
+    @Test fun parsesLegacyXlsRouteRows() {
         val bytes = ByteArrayOutputStream().use { output ->
             HSSFWorkbook().use { workbook ->
-                val sheet = workbook.createSheet("Накладная")
+                val sheet = workbook.createSheet("Маршрут")
                 val header = sheet.createRow(0)
-                listOf("Штрихкод", "Магазин", "Адрес", "Товар", "Количество").forEachIndexed { index, value ->
+                listOf("№", "Код", "Клиент", "Адрес доставки", "Комментарий").forEachIndexed { index, value ->
                     header.createCell(index).setCellValue(value)
                 }
                 val row = sheet.createRow(1)
-                listOf("4601234567890", "Магазин Г", "Калуга, Мира 4", "Вода", "5").forEachIndexed { index, value ->
+                listOf("1", "1708", "Балтика ПК ООО", "Калуга, ул. Мира, д. 4", "Доставка до 12:00").forEachIndexed { index, value ->
                     row.createCell(index).setCellValue(value)
                 }
                 workbook.write(output)
             }
             output.toByteArray()
         }
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.XLS, bytes)
-        assertTrue(rows.any { it.storeName == "Магазин Г" && it.totalBoxes == 5 })
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.XLS, bytes), "Балтика ПК ООО", "Мира")
     }
 
-    @Test fun parsesRtfTabularInvoiceText() {
-        val rtf = "{\\rtf1\\ansi Штрихкод\\tab Магазин\\tab Адрес\\tab Товар\\tab Количество\\par 4601234567890\\tab Магазин Д\\tab Калуга, Победы 5\\tab Чай\\tab 6}"
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
-        assertTrue(rows.any { it.storeName == "Магазин Д" && it.totalBoxes == 6 })
+    @Test fun parsesRtfRouteRows() {
+        val rtf = """{\rtf1\ansi №\tab Код\tab Клиент\tab Адрес доставки\tab Комментарий\par 1\tab 1646\tab Альфа Рязань ООО\tab Калуга, ул. Победы, д. 5\tab Забрать документы}"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray()), "Альфа Рязань ООО", "Победы")
     }
 
-    @Test fun parsesOdsSpreadsheetTable() {
-        val xml = """<office:document-content xmlns:table="urn:table" xmlns:text="urn:text"><table:table><table:table-row><table:table-cell><text:p>Штрихкод</text:p></table:table-cell><table:table-cell><text:p>Магазин</text:p></table:table-cell><table:table-cell><text:p>Адрес</text:p></table:table-cell><table:table-cell><text:p>Товар</text:p></table:table-cell><table:table-cell><text:p>Количество</text:p></table:table-cell></table:table-row><table:table-row><table:table-cell><text:p>4601234567890</text:p></table:table-cell><table:table-cell><text:p>Магазин Ж</text:p></table:table-cell><table:table-cell><text:p>Калуга, Театральная 7</text:p></table:table-cell><table:table-cell><text:p>Сахар</text:p></table:table-cell><table:table-cell><text:p>7</text:p></table:table-cell></table:table-row></table:table></office:document-content>"""
-        val bytes = zippedContent(xml)
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODS, bytes)
-        assertTrue(rows.any { it.storeName == "Магазин Ж" && it.totalBoxes == 7 })
+    @Test fun parsesOdsRouteTable() {
+        val xml = """<office:document-content xmlns:table="urn:table" xmlns:text="urn:text"><table:table><table:table-row><table:table-cell><text:p>№</text:p></table:table-cell><table:table-cell><text:p>Код</text:p></table:table-cell><table:table-cell><text:p>Клиент</text:p></table:table-cell><table:table-cell><text:p>Адрес доставки</text:p></table:table-cell><table:table-cell><text:p>Комментарий</text:p></table:table-cell></table:table-row><table:table-row><table:table-cell><text:p>1</text:p></table:table-cell><table:table-cell><text:p>1708</text:p></table:table-cell><table:table-cell><text:p>Балтика ПК ООО</text:p></table:table-cell><table:table-cell><text:p>Калуга, ул. Театральная, д. 7</text:p></table:table-cell><table:table-cell><text:p>Доставить до 10:00</text:p></table:table-cell></table:table-row></table:table></office:document-content>"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODS, zippedEntry("content.xml", xml)), "Балтика ПК ООО", "Театральная")
     }
 
-    @Test fun parsesOdtTableRows() {
-        val xml = """<office:document-content xmlns:text="urn:text"><text:table><text:table-row><text:table-cell><text:p>Штрихкод</text:p></text:table-cell><text:table-cell><text:p>Магазин</text:p></text:table-cell><text:table-cell><text:p>Адрес</text:p></text:table-cell><text:table-cell><text:p>Товар</text:p></text:table-cell><text:table-cell><text:p>Количество</text:p></text:table-cell></text:table-row><text:table-row><text:table-cell><text:p>4601234567890</text:p></text:table-cell><text:table-cell><text:p>Магазин З</text:p></text:table-cell><text:table-cell><text:p>Калуга, Суворова 8</text:p></text:table-cell><text:table-cell><text:p>Крупа</text:p></text:table-cell><text:table-cell><text:p>8</text:p></text:table-cell></text:table-row></text:table></office:document-content>"""
-        val bytes = zippedContent(xml)
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODT, bytes)
-        assertTrue(rows.any { it.storeName == "Магазин З" && it.totalBoxes == 8 })
+    @Test fun parsesOdtRouteTable() {
+        val xml = """<office:document-content xmlns:text="urn:text"><text:table><text:table-row><text:table-cell><text:p>№</text:p></text:table-cell><text:table-cell><text:p>Код</text:p></text:table-cell><text:table-cell><text:p>Клиент</text:p></text:table-cell><text:table-cell><text:p>Адрес доставки</text:p></text:table-cell><text:table-cell><text:p>Комментарий</text:p></text:table-cell></text:table-row><text:table-row><text:table-cell><text:p>1</text:p></text:table-cell><text:table-cell><text:p>1646</text:p></text:table-cell><text:table-cell><text:p>Альфа Рязань ООО</text:p></text:table-cell><text:table-cell><text:p>Калуга, ул. Суворова, д. 8</text:p></text:table-cell><text:table-cell><text:p>Въезд со двора</text:p></text:table-cell></text:table-row></text:table></office:document-content>"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODT, zippedEntry("content.xml", xml)), "Альфа Рязань ООО", "Суворова")
     }
 
-    private fun zippedContent(xml: String): ByteArray =
-        ByteArrayOutputStream().use { output ->
-            ZipOutputStream(output).use { zip ->
-                zip.putNextEntry(ZipEntry("content.xml"))
-                zip.write(xml.toByteArray())
-                zip.closeEntry()
-            }
-            output.toByteArray()
-        }
+    @Test fun parsesDocxRouteTable() {
+        val xml = """<w:document xmlns:w="urn:word"><w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>№</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Код</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Клиент</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Адрес доставки</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Комментарий</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>1</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>1708</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Балтика ПК ООО</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Калуга, ул. Кирова, д. 9</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Позвонить перед въездом</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.DOCX, zippedEntry("word/document.xml", xml)), "Балтика ПК ООО", "Кирова")
+    }
 
-    @Test fun parsesDocxTableRows() {
-        val xml = """<w:document xmlns:w="urn:word"><w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Штрихкод</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Магазин</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Адрес</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Товар</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Количество</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>4601234567890</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Магазин И</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Калуга, Кирова 9</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Мука</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>9</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"""
-        val bytes = zippedEntry("word/document.xml", xml)
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.DOCX, bytes)
-        assertTrue(rows.any { it.storeName == "Магазин И" && it.totalBoxes == 9 })
+    @Test fun decodesRussianCp1251InRtfRouteRows() {
+        val rtf = """{\rtf1\ansi\ansicpg1251 №\tab Код\tab Клиент\tab Адрес доставки\tab Комментарий\par 1\tab 1708\tab \'cc\'e0\'e3\'e0\'e7\'e8\'ed \'c1\'ee\'eb\'e5\'e5\'e2\tab Калуга, ул. Ленина, д. 1\tab Хлеб}"""
+        assertRouteRow(ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray()), "Магазин Болеев", "Ленина")
     }
 
     private fun zippedEntry(name: String, xml: String): ByteArray =
@@ -97,12 +81,4 @@ class ExtendedInvoiceParserTest {
             }
             output.toByteArray()
         }
-
-
-    @Test fun decodesRussianCp1251HexEscapesInRtfInvoices() {
-        val rtf = """{\rtf1\ansi\ansicpg1251 Штрихкод\tab Магазин\tab Адрес\tab Товар\tab Количество\par 4601234567890\tab \'cc\'e0\'e3\'e0\'e7\'e8\'ed \'c1\'ee\'eb\'e5\'e5\'e2\tab Калуга, Ленина 1\tab Хлеб\tab 4}"""
-        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
-        assertTrue(rows.any { it.storeName == "Магазин Болеев" && it.totalBoxes == 4 })
-    }
-
 }
