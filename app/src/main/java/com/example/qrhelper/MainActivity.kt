@@ -610,6 +610,16 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
 
     fun updateItemStatus(item: RouteItem) {
         val nextStatus = !item.isDelivered
+        val accountedBoxes = item.scannedBoxes + item.discrepancyQty
+        if (nextStatus && item.totalBoxes > 0 && accountedBoxes < item.totalBoxes) {
+            val missing = (item.totalBoxes - accountedBoxes).coerceAtLeast(0)
+            Toast.makeText(
+                context,
+                "Нельзя закрыть точку: не учтено $missing мест. Отсканируй их или зафиксируй расхождение.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
         if (settingsAutoSave) prefs.edit().putBoolean("delivered_" + routeItemKey(item), nextStatus).apply()
         val updatedItems = routeItems.map { current ->
             if (routeItemKey(current) == routeItemKey(item)) current.copy(isDelivered = nextStatus) else current
@@ -2345,9 +2355,22 @@ fun PointDetailsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Отсканировано: ${item.scannedBoxes} / ${item.totalBoxes}",
-                        color = if (item.scannedBoxes >= item.totalBoxes) DigiDropPalette.accent else DigiDropPalette.accent,
+                        color = DigiDropPalette.accent,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
+                    )
+                    if (item.discrepancyQty > 0) {
+                        Text(
+                            "Расхождение: ${item.discrepancyQty} мест • ${item.discrepancyReason.orEmpty()}",
+                            color = DigiDropPalette.primaryDark,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        "Учтено: ${(item.scannedBoxes + item.discrepancyQty).coerceAtMost(item.totalBoxes)} / ${item.totalBoxes} мест",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp
                     )
                     Box(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)) {
                         Box(
