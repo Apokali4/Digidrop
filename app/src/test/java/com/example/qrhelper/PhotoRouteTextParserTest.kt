@@ -263,4 +263,13 @@ class PhotoRouteTextParserTest {
     }
 
 
+    @Test fun usesSoleProprietorNameWhenStoreNameIsMissing() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            "ИП Иванов Иван Иванович\\nКалуга, ул. Ленина, д. 10\\nТелефон 8 900 123 45 67",
+            "Калуга, ул. Ленина, д. 10"
+        )
+        assertEquals("ИП Иванов Иван Иванович", metadata.storeName)
+        assertEquals("ИП Иванов Иван Иванович", metadata.ownerName)
+    }
+
 }
