@@ -33,6 +33,7 @@ internal class LogisticsRepository(context: Context) {
         catalog: List<ProductCatalogRecord> = emptyList()
     ) {
         val points = RouteImportMapper.map(items)
+        requireCompleteRouteImport(items, points)
         database.withTransaction {
             val dao = database.dao()
             val previousRoute = dao.activeRouteOnce()
