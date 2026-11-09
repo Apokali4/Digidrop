@@ -1392,7 +1392,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 check(repository.registerUniqueScanAndSync(uniqueCode, updatedRoute)) {
                                     "Дубликат уникального кода упаковки: $uniqueCode"
                                 }
-                                persistRouteProgress { }
                                 val authoritativeItems = repository.activeRouteItems()
                                 val updated = authoritativeItems.firstOrNull { routeItemKey(it) == itemKey }
                                     ?: error("Позиция не найдена после сохранения скана")
@@ -1405,7 +1404,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     .apply()
                                 Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
                                 selectedItem = updated
+                                isUpdatingScan = false
                             }.onFailure { failure ->
+                                isUpdatingScan = false
                                 Toast.makeText(context, failure.message ?: "Не удалось сохранить скан", Toast.LENGTH_LONG).show()
                             }
                         }
@@ -1595,7 +1596,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     check(repository.registerUniqueScanAndSync(normalizedCode, updatedRoute)) {
                                         "Дубликат уникального кода упаковки: $normalizedCode"
                                     }
-                                    persistRouteProgress { }
                                     val authoritativeItems = repository.activeRouteItems()
                                     val updated = authoritativeItems.firstOrNull { routeItemKey(it) == itemKey }
                                         ?: error("Позиция не найдена после сохранения скана")
@@ -1614,7 +1614,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     } catch (_: Exception) {}
                                     Toast.makeText(context, "Скан принят: ${updated.scannedBoxes} / ${updated.totalBoxes}", Toast.LENGTH_SHORT).show()
                                     navigateTo(AppScreen.DETAILS)
+                                    isUpdatingScan = false
                                 }.onFailure { failure ->
+                                    isUpdatingScan = false
                                     Toast.makeText(context, failure.message ?: "Не удалось сохранить скан", Toast.LENGTH_LONG).show()
                                 }
                             }
