@@ -27,4 +27,19 @@ class ProductCatalogMapperTest {
             listOf(RouteItem(" ", "A", "Address", " ", 1, ""))
         ))
     }
+
+    @Test fun trimsBarcodeBeforeGroupingAndKeepsLatestMeaningfulName() {
+        val products = mapProductCatalog(
+            listOf(
+                RouteItem(" 4603 ", "A", "Address", "  Старое имя  ", 1, ""),
+                RouteItem("4603", "B", "Address", "   ", 2, ""),
+                RouteItem("4603  ", "C", "Address", "  Новое имя  ", 3, "")
+            )
+        )
+
+        assertEquals(
+            listOf(ProductCatalogRecord("4603", "Новое имя")),
+            products
+        )
+    }
 }
