@@ -269,7 +269,8 @@ internal object PhotoRouteTextParser {
     }
 
     fun extractMetadata(text: String, address: String): PhotoStopMetadata {
-        val lines = text.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }
+        val normalizedText = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n")
+        val lines = normalizedText.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }.toList()
         val targetKey = canonicalAddressKey(address)
         val index = lines.indexOfFirst { line ->
@@ -312,12 +313,17 @@ internal object PhotoRouteTextParser {
         val cash = block.withIndex()
             .filter { (_, line) -> Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(line) }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
-        val suffixBrand = afterHouse.takeIf {
+        val cleanedSuffix = cleanStoreName(afterHouse)
+        val suffixBrand = cleanedSuffix.takeIf {
             isPlausibleStoreSuffix(it) && !legalPattern.containsMatchIn(it) &&
                 !Regex("""[^А-Яа-яЁёA-Za-z0-9 .&()/-]""").containsMatchIn(it)
         }
         val brandInSuffix = suffixBrand?.let { suffix ->
-            brandFromLine(suffix) ?: cleanStoreName(suffix)
+            val recognizedBrand = brandFromLine(suffix)
+            if (recognizedBrand != null) {
+                val trailingNumber = Regex("""\\b\\d{1,3}\\s*$""").find(suffix)?.value?.trim().orEmpty()
+                if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
+            } else cleanStoreName(suffix)
         }
         val brandNearby = block.withIndex().mapNotNull { (lineIndex, line) ->
             brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
