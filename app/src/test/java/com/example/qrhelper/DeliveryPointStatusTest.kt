@@ -26,6 +26,26 @@ class DeliveryPointStatusTest {
         assertEquals(DeliveryPointStatus.DELIVERED, deliveryPointStatus(items))
     }
 
+    @Test fun reportStatusPrioritizesDiscrepancy() {
+        val item = RouteItem("a", "Store", "Address", "Item", 5, "", isDelivered = true, scannedBoxes = 5, discrepancyQty = 1)
+        assertEquals("Расхождение", deliveryItemStatusLabel(item))
+    }
+
+    @Test fun reportStatusShowsDeliveredWhenManuallyCompleted() {
+        val item = RouteItem("a", "Store", "Address", "Item", 0, "", isDelivered = true)
+        assertEquals("Доставлено", deliveryItemStatusLabel(item))
+    }
+
+    @Test fun reportStatusShowsInProgressForPartialScans() {
+        val item = RouteItem("a", "Store", "Address", "Item", 5, "", scannedBoxes = 2)
+        assertEquals("В работе", deliveryItemStatusLabel(item))
+    }
+
+    @Test fun reportStatusShowsPendingWithoutProgress() {
+        val item = RouteItem("a", "Store", "Address", "Item", 5, "")
+        assertEquals("Ожидает", deliveryItemStatusLabel(item))
+    }
+
     @Test fun emptyPointIsPending() {
         assertEquals(DeliveryPointStatus.PENDING, deliveryPointStatus(emptyList()))
     }
