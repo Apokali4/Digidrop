@@ -24,7 +24,6 @@ internal fun requireBackupEntryCount(count: Int) {
 }
 
 internal object BackupManager {
-    private const val MAX_ARCHIVE_ENTRIES = 2048
     private const val MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L
     private const val MAX_JSON_BYTES = 16L * 1024L * 1024L
     private const val MAX_EVIDENCE_BYTES = 12L * 1024L * 1024L
@@ -94,6 +93,20 @@ internal object BackupManager {
             zip.write(jsonBytes)
             zip.closeEntry()
         }
+    }
+
+    fun cleanupRestoredEvidence(snapshot: BackupSnapshot, filesDir: File) {
+        val evidenceRoot = File(filesDir, "delivery-evidence").canonicalFile
+        val ownedDirectories = snapshot.routeItems.flatMap { item ->
+            listOf(item.photoDocUri, item.signaturePath)
+        }.filter(String::isNotBlank).mapNotNull { path ->
+            runCatching { File(path).canonicalFile.parentFile }.getOrNull()
+        }.filter { directory ->
+            directory.parentFile == evidenceRoot &&
+                directory.name.matches(Regex("restored_\\d+")) &&
+                directory.isDirectory
+        }.toSet()
+        ownedDirectories.forEach { it.deleteRecursively() }
     }
 
     fun readBackup(input: InputStream, filesDir: File): BackupSnapshot {
@@ -214,9 +227,23 @@ internal object BackupManager {
         if (entryName.isNullOrBlank()) return null
         val bytes = entries[entryName]
             ?: error("В резервной копии отсутствует файл вложения: $entryName")
+        require(bytes.isNotEmpty() && bytes.size.toLong() <= MAX_EVIDENCE_BYTES) {
+            "Файл вложения пустой или превышает допустимый размер"
+        }
         val target = File(directory, entryName.substringAfterLast('/'))
-        target.writeBytes(bytes)
-        return target.absolutePath
+        val temporary = File(directory, "." + target.name + ".tmp")
+        try {
+            java.io.FileOutputStream(temporary).use { output ->
+                output.write(bytes)
+                output.flush()
+                output.fd.sync()
+            }
+            check(temporary.renameTo(target)) { "Не удалось сохранить вложение из резервной копии" }
+            return target.absolutePath
+        } catch (error: Exception) {
+            temporary.delete()
+            throw error
+        }
     }
 
     private fun JSONObject.optNullableDouble(key: String): Double? =
