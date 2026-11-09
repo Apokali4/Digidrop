@@ -1080,38 +1080,26 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 val imported = withContext(Dispatchers.IO) {
                     uris.flatMapIndexed { index, uri ->
                         val mime = context.contentResolver.getType(uri).orEmpty()
-                            .substringBefore(';').trim().lowercase()
-                        val uriText = uri.toString().substringBefore('?').lowercase()
-                        val isPdf = mime == "application/pdf" || uriText.endsWith(".pdf")
-                        val isXlsx = mime.contains("spreadsheet") || uriText.endsWith(".xlsx")
-                        val isLegacyXls = uriText.endsWith(".xls") ||
-                            mime == "application/vnd.ms-excel"
-                        require(!isLegacyXls) {
-                            "Файл №${index + 1}: формат .xls пока не поддерживается. Сохраните его как .xlsx или CSV."
+                        val format = InvoiceImportKind.detect(mime, uri.toString())
+                        require(format != InvoiceDocumentFormat.IMAGE) {
+                            "Фотографии пока обрабатываются отдельным OCR-сценарием. Для пакетной загрузки выберите документы."
                         }
-                        require(isPdf || isXlsx || uriText.endsWith(".csv") ||
-                            mime.startsWith("text/") || mime == "application/csv") {
-                            "Файл №${index + 1}: неподдерживаемый формат. Используйте PDF, XLSX или CSV."
+                        require(format != InvoiceDocumentFormat.UNKNOWN) {
+                            "Файл №${index + 1}: формат не распознан. Поддерживаются PDF, XLS/XLSX, CSV/TSV/TXT, DOCX, XML, JSON и HTML."
                         }
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "Читаю файл ${index + 1} из ${uris.size}…",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "Читаю файл ${index + 1} из ${uris.size}…", Toast.LENGTH_SHORT).show()
                         }
-                        if (isPdf) {
-                            PdfInvoiceImporter.parse(context, uri) { message ->
+                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
+                            ?: error("Не удалось открыть файл №${index + 1}")
+                        when (format) {
+                            InvoiceDocumentFormat.PDF -> PdfInvoiceImporter.parse(context, uri) { message ->
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                 }
                             }
-                        } else {
-                            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                                val bytes = inputStream.readInvoiceBytes()
-                                if (isXlsx) parseXlsx(bytes.inputStream())
-                                else parseManifest(bytes.toString(Charsets.UTF_8))
-                            }.orEmpty()
+                            InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
+                            else -> ExtendedInvoiceParser.parse(format, bytes)
                         }
                     }
                 }
@@ -1264,7 +1252,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onBack = { navigateTo(AppScreen.HUB) },
                 onTakePhoto = { photoRouteInitialAction = "camera"; photoRouteInitialUri = null; navigateTo(AppScreen.PHOTO_ROUTE) },
                 onLoadInvoice = {
-                    filePickerLauncher.launch(arrayOf("image/*", "text/*", "application/csv", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    filePickerLauncher.launch(arrayOf("*/*"))
                 }
             )
         }
