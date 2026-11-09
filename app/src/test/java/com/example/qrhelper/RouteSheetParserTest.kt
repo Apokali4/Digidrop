@@ -92,4 +92,19 @@ class RouteSheetParserTest {
         assertEquals(result[0].address, result[1].address)
     }
 
+
+    @Test fun keepsContinuationRowsAttachedToPreviousDelivery() {
+        val text = """
+            №\tКод\tКлиент\tАдрес доставки\tКомментарий
+            1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Болдина, д. 9\t
+            \t\tДополнительные условия\t\tДоставить до 10:00
+        """.trimIndent().replace("\\t", "\t")
+
+        val result = RouteSheetParser.parse(text)
+
+        assertEquals(1, result.size)
+        assertTrue(result.single().note.contains("Дополнительные условия"))
+        assertTrue(result.single().note.contains("Доставить до 10:00"))
+    }
+
 }
