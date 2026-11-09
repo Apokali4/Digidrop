@@ -43,4 +43,27 @@ class InvoiceImportMergeTest {
         )
         assertEquals(0, mergeInvoiceImport(current, incoming).items.single().scannedBoxes)
     }
+    @Test fun preservesProgressForRepeatedIdenticalCargoRowsInTheirOriginalOrder() {
+        val current = listOf(
+            RouteItem("same", "Магазин", "Адрес", "Молоко", 2, "", scannedBoxes = 1),
+            RouteItem("same", "Магазин", "Адрес", "Молоко", 4, "", scannedBoxes = 3)
+        )
+        val incoming = listOf(
+            current[0].copy(scannedBoxes = 0),
+            current[1].copy(scannedBoxes = 0)
+        )
+        val result = mergeInvoiceImport(current, incoming)
+        assertEquals(listOf(1, 3), result.items.map { it.scannedBoxes })
+    }
+
+    @Test fun treatsReorderedInvoiceRowsAsDuplicate() {
+        val current = listOf(
+            RouteItem("a", "Магазин", "Адрес", "Молоко", 2, ""),
+            RouteItem("b", "Магазин", "Адрес", "Хлеб", 4, "")
+        )
+        val result = mergeInvoiceImport(current, current.reversed())
+        assertTrue(result.isDuplicate)
+        assertEquals(current, result.items)
+    }
+
 }
