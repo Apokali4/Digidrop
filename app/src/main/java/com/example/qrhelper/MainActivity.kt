@@ -289,9 +289,15 @@ internal fun parseXlsx(input: InputStream): List<RouteItem> {
     val entries = mutableMapOf<String, ByteArray>()
     var expandedXmlBytes = 0L
     ZipInputStream(input).use { zip ->
+        val seenRelevantEntries = mutableSetOf<String>()
+        var entryCount = 0
         while (true) {
             val entry = zip.nextEntry ?: break
+            entryCount++
+            requireXlsxEntryCount(entryCount)
             if (!entry.isDirectory && (entry.name == "xl/sharedStrings.xml" || entry.name.matches(Regex("xl/worksheets/sheet[0-9]+\\.xml")))) {
+                requireUniqueXlsxEntry(seenRelevantEntries, entry.name)
+                seenRelevantEntries.add(entry.name)
                 val xmlBytes = readBoundedInvoiceZipEntry(zip)
                 expandedXmlBytes = nextXlsxXmlTotal(expandedXmlBytes, xmlBytes.size)
                 entries[entry.name] = xmlBytes
