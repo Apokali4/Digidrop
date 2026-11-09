@@ -853,16 +853,23 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         val item = selectedItem
         if (uri != null && item != null) {
             importScope.launch {
+                val directory = File(context.filesDir, "delivery-evidence")
+                var createdEvidence: File? = null
+                var databaseCommitted = false
                 runCatching {
-                    val directory = File(context.filesDir, "delivery-evidence")
                     val target = context.contentResolver.openInputStream(uri)?.use { input ->
                         EvidenceFileStore.copy(
                             directory,
-                            "photo_${System.currentTimeMillis()}.jpg",
+                            "photo_${java.util.UUID.randomUUID()}.jpg",
                             input
                         )
                     } ?: error("Не удалось прочитать выбранное фото")
-                    LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
+                    createdEvidence = target
+                    val previousPath = LogisticsRepository(context).savePhotoForPoint(
+                        item.storeName, item.address, target.absolutePath
+                    )
+                    databaseCommitted = true
+                    EvidenceFileStore.deleteOwned(directory, previousPath)
                     val authoritativeItems = LogisticsRepository(context).activeRouteItems()
                     routeItems = authoritativeItems
                     selectedItem = authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
@@ -872,6 +879,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     }
                     Toast.makeText(context, "Фото доказательства сохранено", Toast.LENGTH_SHORT).show()
                 }.onFailure { error ->
+                    if (!databaseCommitted) {
+                        EvidenceFileStore.deleteOwned(directory, createdEvidence?.absolutePath)
+                    }
                     Toast.makeText(context, "Не удалось сохранить фото: ${error.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -1388,15 +1398,29 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         importScope.launch {
                             runCatching {
                                 val directory = File(context.filesDir, "delivery-evidence")
-                                val target = EvidenceFileStore.write(
-                                    directory,
-                                    "signature_${System.currentTimeMillis()}.png"
-                                ) { output ->
-                                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
-                                        "Не удалось записать изображение подписи"
+                                var createdEvidence: File? = null
+                                var databaseCommitted = false
+                                try {
+                                    val target = EvidenceFileStore.write(
+                                        directory,
+                                        "signature_${java.util.UUID.randomUUID()}.png"
+                                    ) { output ->
+                                        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                                            "Не удалось записать изображение подписи"
+                                        }
                                     }
+                                    createdEvidence = target
+                                    val previousPath = LogisticsRepository(context).saveSignatureForPoint(
+                                        item.storeName, item.address, target.absolutePath
+                                    )
+                                    databaseCommitted = true
+                                    EvidenceFileStore.deleteOwned(directory, previousPath)
+                                } catch (error: Exception) {
+                                    if (!databaseCommitted) {
+                                        EvidenceFileStore.deleteOwned(directory, createdEvidence?.absolutePath)
+                                    }
+                                    throw error
                                 }
-                                LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
                                 val authoritativeItems = LogisticsRepository(context).activeRouteItems()
                                 routeItems = authoritativeItems
                                 selectedItem = authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
