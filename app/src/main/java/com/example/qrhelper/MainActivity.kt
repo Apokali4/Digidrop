@@ -2797,11 +2797,15 @@ fun RouteListScreen(
                                     style = MaterialTheme.typography.labelSmall)
                                 Spacer(Modifier.weight(1f))
                                 TextButton(
-                                    onClick = { group.forEach(onToggleItem) },
+                                    onClick = {
+                                        val targets = if (group.all { it.isDelivered }) group.filter { it.isDelivered }
+                                            else group.filterNot { it.isDelivered }
+                                        targets.forEach(onToggleItem)
+                                    },
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                                 ) {
                                     Text(
-                                        if (status == DeliveryPointStatus.DELIVERED) "Вернуть" else "Отметить сдачу",
+                                        if (group.all { it.isDelivered }) "Вернуть" else "Отметить сдачу",
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
