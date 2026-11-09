@@ -86,4 +86,43 @@ class EvidenceFileStoreTest {
         }
     }
 
+    @Test fun startupCleanupKeepsReferencedEvidenceAndRemovesOnlyOrphansAndTemps() {
+        val directory = Files.createTempDirectory("digidrop-evidence-reconcile").toFile()
+        try {
+            val referenced = File(directory, "photo_kept.jpg").apply { writeBytes(byteArrayOf(1)) }
+            val orphan = File(directory, "signature_orphan.png").apply { writeBytes(byteArrayOf(2)) }
+            val temporary = File(directory, ".photo_interrupted.jpg.tmp").apply { writeBytes(byteArrayOf(3)) }
+            val unrelated = File(directory, "notes.txt").apply { writeBytes(byteArrayOf(4)) }
+
+            val removed = EvidenceFileStore.cleanupUnreferenced(
+                directory,
+                setOf(referenced.absolutePath, "/some/archived/evidence.jpg")
+            )
+
+            assertTrue(removed >= 2)
+            assertTrue(referenced.exists())
+            assertFalse(orphan.exists())
+            assertFalse(temporary.exists())
+            assertTrue(unrelated.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test fun cleanupDoesNotFollowNestedDirectoriesOrDeleteReferencedFiles() {
+        val directory = Files.createTempDirectory("digidrop-evidence-nested").toFile()
+        try {
+            val nested = File(directory, "nested").apply { mkdirs() }
+            val nestedFile = File(nested, "photo_nested.jpg").apply { writeBytes(byteArrayOf(1)) }
+            val orphan = File(directory, "photo_orphan.jpg").apply { writeBytes(byteArrayOf(2)) }
+
+            EvidenceFileStore.cleanupUnreferenced(directory, emptySet())
+
+            assertTrue(nestedFile.exists())
+            assertFalse(orphan.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
 }
