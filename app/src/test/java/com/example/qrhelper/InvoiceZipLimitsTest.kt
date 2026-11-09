@@ -22,4 +22,14 @@ class InvoiceZipLimitsTest {
         val bytes = ByteArray(16) { 2 }
         assertEquals(16, readBoundedInvoiceZipEntry(ByteArrayInputStream(bytes), 16).size)
     }
+    @Test fun accumulatesExpandedXmlAcrossWorkbookEntries() {
+        assertEquals(48L, nextXlsxXmlTotal(32L, 16))
+    }
+
+    @Test fun rejectsWorkbookWhoseCombinedXmlExceedsBudget() {
+        assertThrows(IllegalArgumentException::class.java) {
+            nextXlsxXmlTotal(MAX_XLSX_TOTAL_XML_BYTES - 8L, 9)
+        }
+    }
+
 }
