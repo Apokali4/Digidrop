@@ -24,3 +24,14 @@ internal fun readBoundedInvoiceZipEntry(
     }
     return output.toByteArray()
 }
+
+internal const val MAX_XLSX_TOTAL_XML_BYTES = 64L * 1024L * 1024L
+
+internal fun nextXlsxXmlTotal(current: Long, entrySize: Int): Long {
+    require(current >= 0L && entrySize >= 0) { "Некорректный размер XLSX" }
+    val total = current + entrySize.toLong()
+    require(total <= MAX_XLSX_TOTAL_XML_BYTES) {
+        "Распакованное содержимое XLSX превышает 64 МБ"
+    }
+    return total
+}
