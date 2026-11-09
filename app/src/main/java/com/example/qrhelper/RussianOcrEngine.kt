@@ -144,7 +144,6 @@ internal object RussianOcrEngine {
         withContext(Dispatchers.Main) {
             onProgress("Скачиваю русскую OCR-модель (первый запуск)…")
         }
-        val temporary = File(dataDirectory, "rus.traineddata.download")
         val connection = (URL("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata")
             .openConnection() as HttpURLConnection)
         try {
@@ -159,7 +158,6 @@ internal object RussianOcrEngine {
             connection.inputStream.use { input -> installOcrModel(input, trainedData) }
         } finally {
             connection.disconnect()
-            if (temporary.exists()) temporary.delete()
         }
     }
 
