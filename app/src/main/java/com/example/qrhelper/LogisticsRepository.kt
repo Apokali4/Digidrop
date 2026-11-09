@@ -181,6 +181,14 @@ internal class LogisticsRepository(context: Context) {
         return dao.scanCodes(route.id).toSet()
     }
 
+    suspend fun clearActiveUniqueScanCodes() {
+        database.withTransaction {
+            val dao = database.dao()
+            val route = dao.activeRouteOnce() ?: return@withTransaction
+            dao.clearScanCodes(route.id)
+        }
+    }
+
     suspend fun restoreUniqueScanCodes(codes: Set<String>) {
         if (codes.isEmpty()) return
         database.withTransaction {
