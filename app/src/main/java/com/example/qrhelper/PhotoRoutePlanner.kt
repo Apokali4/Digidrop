@@ -419,7 +419,7 @@ internal object PhotoRouteNavigationUrls {
 
     fun yandexSegments(stops: List<PhotoRouteCoordinate>): List<List<PhotoRouteCoordinate>> {
         validate(stops)
-        val firstSegmentLimit = YANDEX_MAX_STOPS - 1 // Текущая позиция водителя тоже занимает одну точку.
+        val firstSegmentLimit = YANDEX_MAX_STOPS // Первый участок содержит до 20 точек доставки.
         if (stops.size <= firstSegmentLimit) return listOf(stops)
         val segments = mutableListOf<List<PhotoRouteCoordinate>>()
         var start = 0
