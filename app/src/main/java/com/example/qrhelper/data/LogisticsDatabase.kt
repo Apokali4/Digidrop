@@ -95,5 +95,11 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("CREATE INDEX IF NOT EXISTS index_scan_codes_routeId ON scan_codes(routeId)")
    }
   }
+  @Volatile private var db:LogisticsDatabase?=null
+  fun get(c:Context):LogisticsDatabase=db?:synchronized(this){
+   db?:Room.databaseBuilder(c.applicationContext,LogisticsDatabase::class.java,"digidrop.db")
+    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4).build().also{db=it}
+  }
+
  }
 }
