@@ -1334,26 +1334,31 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onOpenPoint = { item ->
                     val uniqueCode = pendingUniqueScanCode
                     if (uniqueCode != null && remainingBoxes(item) > 0) {
-                        val itemKey = routeItemKey(item)
-                        val updated = item.copy(scannedBoxes = item.scannedBoxes + 1)
-                        val updatedRoute = routeItems.map { current ->
-                            if (routeItemKey(current) == itemKey) updated else current
-                        }
-                        val updatedCodes = sessionScanCodes + uniqueCode
-                        sessionScanCodes = updatedCodes
-                        routeItems = updatedRoute
-                        prefs.edit()
-                            .putStringSet("scan_codes", updatedCodes)
-                            .putInt("scanned_" + itemKey, updated.scannedBoxes)
-                            .apply()
                         importScope.launch {
-                            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedRoute) } }
-                                .onFailure { failure ->
-                                    Toast.makeText(context, "Не удалось сохранить скан: " + failure.message, Toast.LENGTH_LONG).show()
+                            runCatching {
+                                val repository = LogisticsRepository(context)
+                                check(repository.registerUniqueScan(uniqueCode)) {
+                                    "Дубликат уникального кода упаковки: $uniqueCode"
                                 }
+                                val itemKey = routeItemKey(item)
+                                val updated = item.copy(scannedBoxes = item.scannedBoxes + 1)
+                                val updatedRoute = routeItems.map { current ->
+                                    if (routeItemKey(current) == itemKey) updated else current
+                                }
+                                val updatedCodes = sessionScanCodes + uniqueCode
+                                sessionScanCodes = updatedCodes
+                                routeItems = updatedRoute
+                                prefs.edit()
+                                    .putStringSet("scan_codes", updatedCodes)
+                                    .putInt("scanned_" + itemKey, updated.scannedBoxes)
+                                    .apply()
+                                persistRouteProgress { repository.syncProgress(updatedRoute) }
+                                Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
+                                selectedItem = updated
+                            }.onFailure { failure ->
+                                Toast.makeText(context, failure.message ?: "Не удалось сохранить скан", Toast.LENGTH_LONG).show()
+                            }
                         }
-                        Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
-                        selectedItem = updated
                     } else {
                         if (uniqueCode != null) {
                             Toast.makeText(context, "Все места по этой позиции уже учтены. Скан не засчитан.", Toast.LENGTH_LONG).show()
@@ -1523,25 +1528,33 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
-                            savedCodes.add(normalizedCode)
-                            sessionScanCodes = savedCodes
-                            val itemKey = routeItemKey(matchedItem)
-                            // Unique package IDs are delivery evidence, not an optional UI preference.
-                            // Always persist them so a process restart cannot count the same box twice.
-                            val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
-                            prefs.edit()
-                                .putStringSet("scan_codes", savedCodes)
-                                .putInt("scanned_" + itemKey, updated.scannedBoxes)
-                                .apply()
-                            val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
-                            routeItems = updatedRoute
-                            importScope.launch { runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedRoute) } } }
-                            selectedItem = updated
-                            try {
-                                ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
-                            } catch (_: Exception) {}
-                            Toast.makeText(context, "Скан принят: ${updated.scannedBoxes} / ${updated.totalBoxes}", Toast.LENGTH_SHORT).show()
-                            navigateTo(AppScreen.DETAILS)
+                            importScope.launch {
+                                runCatching {
+                                    val repository = LogisticsRepository(context)
+                                    check(repository.registerUniqueScan(normalizedCode)) {
+                                        "Дубликат уникального кода упаковки: $normalizedCode"
+                                    }
+                                    savedCodes.add(normalizedCode)
+                                    sessionScanCodes = savedCodes
+                                    val itemKey = routeItemKey(matchedItem)
+                                    val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
+                                    prefs.edit()
+                                        .putStringSet("scan_codes", savedCodes)
+                                        .putInt("scanned_" + itemKey, updated.scannedBoxes)
+                                        .apply()
+                                    val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
+                                    routeItems = updatedRoute
+                                    persistRouteProgress { repository.syncProgress(updatedRoute) }
+                                    selectedItem = updated
+                                    try {
+                                        ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
+                                    } catch (_: Exception) {}
+                                    Toast.makeText(context, "Скан принят: ${updated.scannedBoxes} / ${updated.totalBoxes}", Toast.LENGTH_SHORT).show()
+                                    navigateTo(AppScreen.DETAILS)
+                                }.onFailure { failure ->
+                                    Toast.makeText(context, failure.message ?: "Не удалось сохранить скан", Toast.LENGTH_LONG).show()
+                                }
+                            }
                         }
                     }
                 }
