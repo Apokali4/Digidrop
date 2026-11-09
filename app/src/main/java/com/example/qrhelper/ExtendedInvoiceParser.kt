@@ -59,17 +59,17 @@ internal object ExtendedInvoiceParser {
 
     private fun rtfToText(rtf: String): String {
         val plain = rtf
-            .replace(Regex("""\\\\tab\\b ?"""), "\\t")
-            .replace(Regex("""\\\\cell\\b ?"""), "\\t")
-            .replace(Regex("""\\\\row\\b ?"""), "\\n")
-            .replace(Regex("""\\\\par\\b ?"""), "\\n")
-            .replace(Regex("""\\\\u(-?\\d+)\\??""")) { match ->
+            .replace(Regex("\\\\tab\\b ?"), "\t")
+            .replace(Regex("\\\\cell\\b ?"), "\t")
+            .replace(Regex("\\\\row\\b ?"), "\n")
+            .replace(Regex("\\\\par\\b ?"), "\n")
+            .replace(Regex("\\\\u(-?\\d+)\\??")) { match ->
                 match.groupValues[1].toInt().toChar().toString()
             }
-            .replace(Regex("""\\\\'[0-9a-fA-F]{2}"""), " ")
-            .replace(Regex("""\\\\[a-zA-Z]+-?\\d* ?"""), " ")
+            .replace(Regex("\\\\'[0-9a-fA-F]{2}"), " ")
+            .replace(Regex("\\\\[a-zA-Z]+-?\\d* ?"), " ")
             .replace(Regex("[{}]"), " ")
-            .replace(Regex("[ \\t]+"), " ")
+            .replace(Regex("[ \t]+"), " ")
             .trim()
         require(plain.isNotBlank()) { "RTF не содержит извлекаемого текста" }
         return plain
