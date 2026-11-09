@@ -1798,6 +1798,8 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 }
 
+}
+
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
     var visible by remember { mutableStateOf(false) }
