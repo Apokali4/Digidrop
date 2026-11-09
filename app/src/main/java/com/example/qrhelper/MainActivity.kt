@@ -503,8 +503,8 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         val activity = windowContext as? Activity
         activity?.window?.let { window ->
             if (currentScreen == AppScreen.SPLASH) {
-                window.statusBarColor = Color(0xFF0D3522).toArgb()
-                window.navigationBarColor = Color(0xFF0D3522).toArgb()
+                window.statusBarColor = DigiDropPalette.darkBackground.toArgb()
+                window.navigationBarColor = DigiDropPalette.darkBackground.toArgb()
                 window.decorView.systemUiVisibility = 0
             } else {
                 window.statusBarColor = BgDark.toArgb()
@@ -1476,7 +1476,7 @@ fun SplashScreen(onFinished: () -> Unit) {
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(
-                listOf(Color(0xFF0D3522), Color(0xFF16472B), Color(0xFF123B25))
+                listOf(DigiDropPalette.darkBackground, DigiDropPalette.darkSurface, DigiDropPalette.darkSurfaceSoft)
             )
         ),
         contentAlignment = Alignment.Center
@@ -1485,7 +1485,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             val w = size.width
             val h = size.height
             drawCircle(
-                Brush.radialGradient(listOf(Color(0x5537C96B), Color.Transparent)),
+                Brush.radialGradient(listOf(DigiDropPalette.accent.copy(alpha = 0.22f), Color.Transparent)),
                 radius = w * 0.78f,
                 center = Offset(w * 0.52f, h * 0.55f)
             )
@@ -1504,7 +1504,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 drawPath(treePath, tint)
                 drawLine(tint, Offset(centerX, baseY - height * 0.12f), Offset(centerX, baseY), height * 0.08f)
             }
-            val forest = Color(0xAA0C3023)
+            val forest = DigiDropPalette.darkBackground.copy(alpha = 0.72f)
             listOf(0.04f to 0.76f, 0.14f to 0.82f, 0.25f to 0.77f, 0.83f to 0.82f, 0.94f to 0.76f)
                 .forEach { (x, y) -> tree(w * x, h * y, h * 0.19f, forest) }
             val mountain = Path().apply {
@@ -1518,29 +1518,29 @@ fun SplashScreen(onFinished: () -> Unit) {
                 lineTo(0f, h)
                 close()
             }
-            drawPath(mountain, Color(0x66304F3D))
+            drawPath(mountain, DigiDropPalette.darkSurfaceSoft.copy(alpha = 0.40f))
             val road = Path().apply {
                 moveTo(w * 0.50f, h * 1.04f)
                 cubicTo(w * 0.39f, h * 0.88f, w * 0.68f, h * 0.81f, w * 0.55f, h * 0.68f)
                 cubicTo(w * 0.48f, h * 0.59f, w * 0.53f, h * 0.54f, w * 0.56f, h * 0.50f)
             }
-            drawPath(road, Color(0xAA07110E), style = Stroke(width = w * 0.16f, cap = StrokeCap.Round))
-            drawPath(road, Color(0x6643B85B), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(road, DigiDropPalette.darkBackground.copy(alpha = 0.72f), style = Stroke(width = w * 0.16f, cap = StrokeCap.Round))
+            drawPath(road, DigiDropPalette.accent.copy(alpha = 0.40f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
             val truckX = w * 0.48f
             val truckY = h * 0.70f
-            drawRoundRect(Color(0xFF285B35), Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
-            drawRoundRect(Color(0xFF397A4D), Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
-            drawRoundRect(Color(0xFF9CE6A7), Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
-            drawCircle(Color(0xFF183423), w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
-            drawCircle(Color(0xFF183423), w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
+            drawRoundRect(DigiDropPalette.accentDark, Offset(truckX, truckY), Size(w * 0.22f, h * 0.075f), androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()))
+            drawRoundRect(DigiDropPalette.accent, Offset(truckX + w * 0.16f, truckY + h * 0.012f), Size(w * 0.095f, h * 0.063f), androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()))
+            drawRoundRect(DigiDropPalette.accentLight, Offset(truckX + w * 0.177f, truckY + h * 0.019f), Size(w * 0.055f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
+            drawCircle(DigiDropPalette.darkBackground, w * 0.018f, Offset(truckX + w * 0.055f, truckY + h * 0.075f))
+            drawCircle(DigiDropPalette.darkBackground, w * 0.205f, Offset(truckX + w * 0.205f, truckY + h * 0.075f))
             val routePath = Path().apply {
                 moveTo(w * 0.12f, h * 0.78f)
                 cubicTo(w * 0.34f, h * 0.66f, w * 0.25f, h * 0.48f, w * 0.52f, h * 0.50f)
                 cubicTo(w * 0.76f, h * 0.52f, w * 0.64f, h * 0.30f, w * 0.88f, h * 0.22f)
             }
-            drawPath(routePath, Color(0x8843B85B), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(routePath, DigiDropPalette.accent.copy(alpha = 0.53f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
             listOf(Offset(w * 0.12f, h * 0.78f), Offset(w * 0.52f, h * 0.50f), Offset(w * 0.88f, h * 0.22f))
-                .forEach { drawCircle(Color(0xFF65B878), radius = 6.dp.toPx(), center = it) }
+                .forEach { drawCircle(DigiDropPalette.accentLight, radius = 6.dp.toPx(), center = it) }
         }
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 30.dp).padding(top = 22.dp)
@@ -1550,7 +1550,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Box(
                 Modifier.size(112.dp).graphicsLayer { scaleX = glow; scaleY = glow }
                     .clip(RoundedCornerShape(34.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF278747), Color(0xFF1F6F39)))),
+                    .background(Brush.linearGradient(listOf(DigiDropPalette.accent, DigiDropPalette.accentDark))),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(Modifier.size(66.dp)) {
@@ -1570,19 +1570,19 @@ fun SplashScreen(onFinished: () -> Unit) {
             }
             Spacer(Modifier.height(26.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = Color(0xFF26352C), fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Drop", color = Color(0xFF65B878), fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = DigiDropPalette.lightText, fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Drop", color = DigiDropPalette.accentLight, fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
             }
-            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = Color(0xFF647168), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = DigiDropPalette.lightTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(56.dp))
             Canvas(Modifier.fillMaxWidth(0.68f).height(8.dp)) {
                 val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
-                drawRoundRect(Color(0x663B5145), cornerRadius = radius)
+                drawRoundRect(DigiDropPalette.darkBorder.copy(alpha = 0.40f), cornerRadius = radius)
                 val segmentWidth = size.width * 0.34f
                 val x = (size.width - segmentWidth) * progress
                 drawRoundRect(
                     brush = Brush.horizontalGradient(
-                        listOf(Color(0xFF1F6F39), Color(0xFF65B878), Color(0xFFB9DDBB), Color(0xFF278747))
+                        listOf(DigiDropPalette.accentDark, DigiDropPalette.accentLight, Color(0xFFB9DDBB), DigiDropPalette.accent)
                     ),
                     topLeft = Offset(x, 0f),
                     size = Size(segmentWidth, size.height),
@@ -1590,7 +1590,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Text("Подготавливаем маршрут", color = Color(0xFF26352C), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("Подготавливаем маршрут", color = DigiDropPalette.lightText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -1632,7 +1632,7 @@ fun HubScreen(
     onOpenSettings: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF5F8F5))
+        modifier = Modifier.fillMaxSize().background(DigiDropPalette.lightBackground)
             .statusBarsPadding().navigationBarsPadding().padding(22.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1640,7 +1640,7 @@ fun HubScreen(
             onClick = onLoadInvoice,
             modifier = Modifier.fillMaxWidth().height(76.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF278747), contentColor = Color.White
+                containerColor = DigiDropPalette.accent, contentColor = Color.White
             ),
             shape = RoundedCornerShape(20.dp)
         ) {
@@ -1718,19 +1718,19 @@ fun MoreMenuScreen(
             Modifier.fillMaxWidth(), onOpenRoute)
         HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", EmeraldPrimary,
             Modifier.fillMaxWidth(), onNavigateNext)
-        HubTile("Отчёты и экспорт", "Сводка и выгрузки", "▤", Color(0xFF278747),
+        HubTile("Отчёты и экспорт", "Сводка и выгрузки", "▤", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onOpenReports)
         HubTile("История рейсов", "Архив завершённых маршрутов", "◷", MintAccent,
             Modifier.fillMaxWidth(), onOpenHistory)
-        HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", Color(0xFF278747),
+        HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onOpenProducts)
         HubTile("Неизвестные коды", "Коды вне накладных", "?", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenUnknown)
         HubTile("Настройки и резервная копия", "Автосохранение, офлайн-режим, ZIP", "⚙", DigiDropPalette.primary,
             Modifier.fillMaxWidth(), onOpenSettings)
-        HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", Color(0xFF278747),
+        HubTile("Экспорт CSV", "Выгрузить текущий маршрут", "⇩", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onExport)
-        HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", Color(0xFF278747),
+        HubTile("Позвонить диспетчеру", "Связаться по рабочему номеру", "☎", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onCallDispatcher)
         HubTile("Сбросить прогресс рейса", "Очистить отметки сканирования и статусы", "↺", DigiDropPalette.primaryDark,
             Modifier.fillMaxWidth(), onClick = { confirmReset = true })
@@ -1760,9 +1760,9 @@ fun HubTile(
     onClick: () -> Unit,
     primary: Boolean = false
 ) {
-    val tileColor = if (primary) Color(0xFF278747) else CardSurface
+    val tileColor = if (primary) DigiDropPalette.accent else CardSurface
     val foreground = if (primary) Color.White else TextLight
-    val secondary = if (primary) Color(0xFFE5F0E4) else TextMuted
+    val secondary = if (primary) DigiDropPalette.primarySoft else TextMuted
     Card(
         modifier = modifier.heightIn(min = if (primary) 132.dp else 112.dp)
             .border(1.dp, if (primary) EmeraldPrimary else CardBorder, RoundedCornerShape(22.dp))
@@ -1931,7 +1931,7 @@ fun LiveCameraScannerScreen(
                     Text("СКАНЕР", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Box(
                         modifier = Modifier.size(44.dp).clip(CircleShape)
-                            .background(if (isFlashOn) Color(0xFF285B35) else CardSurface)
+                            .background(if (isFlashOn) DigiDropPalette.accentDark else CardSurface)
                             .border(1.dp, if (isFlashOn) EmeraldPrimary else CardBorder, CircleShape)
                             .bounceClick { onFlashToggle() },
                         contentAlignment = Alignment.Center
@@ -2078,7 +2078,7 @@ fun StoreGroupCard(
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
         modifier = Modifier.fillMaxWidth()
-            .border(1.dp, Color(0xFFDCE8DE), RoundedCornerShape(14.dp))
+            .border(1.dp, DigiDropPalette.lightBorder, RoundedCornerShape(14.dp))
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(14.dp)
@@ -2086,23 +2086,23 @@ fun StoreGroupCard(
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(first.storeName.ifBlank { "Точка доставки" }, color = Color(0xFF202820),
+                Text(first.storeName.ifBlank { "Точка доставки" }, color = DigiDropPalette.lightText,
                     fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(first.address, color = Color(0xFF58645A), fontSize = 12.sp, maxLines = 2)
+                Text(first.address, color = DigiDropPalette.lightTextSecondary, fontSize = 12.sp, maxLines = 2)
                 val details = listOf(first.workingHours, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
-                if (details.isNotBlank()) Text(details, color = Color(0xFF278747), fontSize = 11.sp, maxLines = 1)
+                if (details.isNotBlank()) Text(details, color = DigiDropPalette.accent, fontSize = 11.sp, maxLines = 1)
                 Text("$total мест • ${items.size} накладных",
-                    color = Color(0xFF58645A), fontSize = 11.sp)
+                    color = DigiDropPalette.lightTextSecondary, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(when { hasProblem -> "Проблема"; delivered -> "Сдано"; else -> "В пути" },
-                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> Color(0xFF278747); else -> Color(0xFF657568) },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> DigiDropPalette.accent; else -> DigiDropPalette.lightTextSecondary },
                     fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE8F3E9))
-                        .bounceClick { onMapClick() }, contentAlignment = Alignment.Center) { MapIconVector(Color(0xFF278747)) }
-                    Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE8F3E9))
-                        .bounceClick { onCallClick() }, contentAlignment = Alignment.Center) { PhoneIconVector(Color(0xFF278747)) }
+                    Box(Modifier.size(32.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)
+                        .bounceClick { onMapClick() }, contentAlignment = Alignment.Center) { MapIconVector(DigiDropPalette.accent) }
+                    Box(Modifier.size(32.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)
+                        .bounceClick { onCallClick() }, contentAlignment = Alignment.Center) { PhoneIconVector(DigiDropPalette.accent) }
                 }
             }
         }
@@ -2306,14 +2306,14 @@ fun PointDetailsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Отсканировано: ${item.scannedBoxes} / ${item.totalBoxes}",
-                        color = if (item.scannedBoxes >= item.totalBoxes) Color(0xFF278747) else Color(0xFF278747),
+                        color = if (item.scannedBoxes >= item.totalBoxes) DigiDropPalette.accent else DigiDropPalette.accent,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Box(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape).background(Color(0xFFE5F0E4))) {
+                    Box(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)) {
                         Box(
                             Modifier.fillMaxWidth((item.scannedBoxes.toFloat() / item.totalBoxes.coerceAtLeast(1)).coerceIn(0f, 1f))
-                                .height(9.dp).clip(CircleShape).background(Color(0xFF278747))
+                                .height(9.dp).clip(CircleShape).background(DigiDropPalette.accent)
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -3354,9 +3354,9 @@ fun ReportsScreen(
             }
         }
         Text("Состояние точек", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        ReportStatusBar("Доставлено", delivered, points.size, Color(0xFF278747))
-        ReportStatusBar("В работе", inProgressPoints, points.size, Color(0xFF278747))
-        ReportStatusBar("Ожидают", pendingPoints, points.size, Color(0xFF4D9B62))
+        ReportStatusBar("Доставлено", delivered, points.size, DigiDropPalette.accent)
+        ReportStatusBar("В работе", inProgressPoints, points.size, DigiDropPalette.accent)
+        ReportStatusBar("Ожидают", pendingPoints, points.size, DigiDropPalette.accentDark)
         ReportStatusBar("Расхождения", problemPoints, points.size, DigiDropPalette.primaryDark)
         Spacer(Modifier.height(8.dp))
         HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
