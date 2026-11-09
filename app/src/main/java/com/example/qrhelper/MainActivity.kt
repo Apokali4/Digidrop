@@ -907,16 +907,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     ) { uri: Uri? ->
         if (uri != null) importScope.launch {
             runCatching {
-                val catalog = LogisticsRepository(context).allProducts().map {
+                val repository = LogisticsRepository(context)
+                val backupRouteItems = repository.activeRouteItems()
+                val catalog = repository.allProducts().map {
                     ProductCatalogRecord(barcode = it.barcode, productName = it.productName)
                 }
                 val snapshot = BackupSnapshot(
-                    routeItems = routeItems,
+                    routeItems = backupRouteItems,
                     offlineMode = settingsOffline,
                     autoSave = settingsAutoSave,
                     compactMode = settingsCompact,
                     unknownCodes = unknownCodes,
-                    scanCodes = sessionScanCodes.toList(),
+                    scanCodes = repository.activeUniqueScanCodes().toList(),
                     catalog = catalog
                 )
                 context.contentResolver.openOutputStream(uri)?.use {
