@@ -20,6 +20,12 @@ internal data class BackupSnapshot(
 )
 
 internal object BackupManager {
+    private const val MAX_ARCHIVE_ENTRIES = 2048
+    private const val MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L
+    private const val MAX_JSON_BYTES = 16L * 1024L * 1024L
+    private const val MAX_EVIDENCE_BYTES = 12L * 1024L * 1024L
+    private const val MAX_ROUTE_ITEMS = 10_000
+
     fun writeBackup(output: OutputStream, snapshot: BackupSnapshot, filesDir: File) {
         ZipOutputStream(output).use { zip ->
             val evidenceDirectory = File(filesDir, "delivery-evidence")
@@ -70,55 +76,102 @@ internal object BackupManager {
     }
 
     fun readBackup(input: InputStream, filesDir: File): BackupSnapshot {
-        val entries = mutableMapOf<String, ByteArray>()
+        val entries = linkedMapOf<String, ByteArray>()
+        var totalBytes = 0L
         ZipInputStream(input).use { zip ->
+            var entryCount = 0
             while (true) {
                 val entry = zip.nextEntry ?: break
-                if (!entry.isDirectory) entries[entry.name] = zip.readBytes()
+                entryCount++
+                require(entryCount <= MAX_ARCHIVE_ENTRIES) { "В архиве слишком много файлов" }
+                require(!entry.isDirectory) { "В архиве обнаружена неожиданная папка" }
+                require(entry.name == "backup.json" || entry.name.matches(
+                    Regex("evidence/(photo_\\d+|signature_\\d+\\.png)")
+                )) { "В архиве обнаружен неизвестный файл" }
+                require(!entries.containsKey(entry.name)) { "В архиве повторяется файл: ${entry.name}" }
+                val limit = if (entry.name == "backup.json") MAX_JSON_BYTES else MAX_EVIDENCE_BYTES
+                val bytes = zip.readBounded(limit) { read ->
+                    totalBytes += read
+                    require(totalBytes <= MAX_ARCHIVE_BYTES) { "Резервная копия превышает 64 МБ" }
+                }
+                entries[entry.name] = bytes
                 zip.closeEntry()
             }
         }
+
         val jsonBytes = entries["backup.json"] ?: error("В архиве отсутствует backup.json")
         val root = JSONObject(jsonBytes.toString(Charsets.UTF_8))
         require(root.optInt("schemaVersion") == 1) { "Неподдерживаемая версия резервной копии" }
-        val evidenceDirectory = File(filesDir, "delivery-evidence/restored_${System.currentTimeMillis()}").apply { mkdirs() }
-        val route = root.optJSONArray("routeItems") ?: JSONArray()
-        val items = (0 until route.length()).map { index ->
-            val item = route.getJSONObject(index)
-            val photoPath = restoreEvidence(entries, item.optString("photoEntry").takeUnless { it == "null" }, evidenceDirectory)
-            val signaturePath = restoreEvidence(entries, item.optString("signatureEntry").takeUnless { it == "null" }, evidenceDirectory)
-            RouteItem(
-                barcode = item.optString("barcode"),
-                storeName = item.optString("storeName"),
-                address = item.optString("address"),
-                itemName = item.optString("itemName"),
-                totalBoxes = item.optInt("totalBoxes"),
-                phone = item.optString("phone"),
-                note = item.optString("note"),
-                isDelivered = item.optBoolean("isDelivered"),
-                latitude = item.optNullableDouble("latitude"),
-                longitude = item.optNullableDouble("longitude"),
-                scannedBoxes = item.optInt("scannedBoxes"),
-                ownerName = item.optString("ownerName"),
-                workingHours = item.optString("workingHours"),
-                cashNote = item.optString("cashNote"),
-                extraComment = item.optString("extraComment"),
-                photoDocUri = photoPath.orEmpty(),
-                signaturePath = signaturePath.orEmpty(),
-                discrepancyQty = item.optInt("discrepancyQty"),
-                discrepancyReason = item.optString("discrepancyReason").takeUnless { it == "null" || it.isBlank() }
-            )
+        val route = root.optJSONArray("routeItems") ?: error("В резервной копии отсутствует список точек")
+        require(route.length() <= MAX_ROUTE_ITEMS) { "В резервной копии слишком много строк накладной" }
+
+        val evidenceDirectory = File(filesDir, "delivery-evidence/restored_${System.currentTimeMillis()}").apply {
+            check(mkdirs() || isDirectory) { "Не удалось подготовить папку фотографий" }
         }
-        val settings = root.optJSONObject("settings") ?: JSONObject()
-        return BackupSnapshot(
-            routeItems = items,
-            offlineMode = settings.optBoolean("offlineMode", true),
-            autoSave = settings.optBoolean("autoSave", true),
-            compactMode = settings.optBoolean("compactMode", false),
-            unknownCodes = root.optJSONArray("unknownCodes").toStringList(),
-            scanCodes = root.optJSONArray("scanCodes").toStringList(),
-            catalog = root.optJSONArray("products").toProductCatalog()
-        )
+        try {
+            val items = (0 until route.length()).map { index ->
+                val item = route.getJSONObject(index)
+                val photoName = item.optString("photoEntry").takeUnless { it == "null" || it.isBlank() }
+                val signatureName = item.optString("signatureEntry").takeUnless { it == "null" || it.isBlank() }
+                require(photoName == null || photoName == "evidence/photo_$index") {
+                    "Некорректная ссылка на фото в строке ${index + 1}"
+                }
+                require(signatureName == null || signatureName == "evidence/signature_$index.png") {
+                    "Некорректная ссылка на подпись в строке ${index + 1}"
+                }
+                val photoPath = restoreEvidence(entries, photoName, evidenceDirectory)
+                val signaturePath = restoreEvidence(entries, signatureName, evidenceDirectory)
+                RouteItem(
+                    barcode = item.optString("barcode"),
+                    storeName = item.optString("storeName"),
+                    address = item.optString("address"),
+                    itemName = item.optString("itemName"),
+                    totalBoxes = item.optInt("totalBoxes"),
+                    phone = item.optString("phone"),
+                    note = item.optString("note"),
+                    isDelivered = item.optBoolean("isDelivered"),
+                    latitude = item.optNullableDouble("latitude"),
+                    longitude = item.optNullableDouble("longitude"),
+                    scannedBoxes = item.optInt("scannedBoxes"),
+                    ownerName = item.optString("ownerName"),
+                    workingHours = item.optString("workingHours"),
+                    cashNote = item.optString("cashNote"),
+                    extraComment = item.optString("extraComment"),
+                    photoDocUri = photoPath.orEmpty(),
+                    signaturePath = signaturePath.orEmpty(),
+                    discrepancyQty = item.optInt("discrepancyQty"),
+                    discrepancyReason = item.optString("discrepancyReason").takeUnless { it == "null" || it.isBlank() }
+                )
+            }
+            val settings = root.optJSONObject("settings") ?: JSONObject()
+            return BackupSnapshot(
+                routeItems = items,
+                offlineMode = settings.optBoolean("offlineMode", true),
+                autoSave = settings.optBoolean("autoSave", true),
+                compactMode = settings.optBoolean("compactMode", false),
+                unknownCodes = root.optJSONArray("unknownCodes").toStringList(),
+                scanCodes = root.optJSONArray("scanCodes").toStringList(),
+                catalog = root.optJSONArray("products").toProductCatalog()
+            )
+        } catch (error: Exception) {
+            evidenceDirectory.deleteRecursively()
+            throw error
+        }
+    }
+
+    private fun InputStream.readBounded(limit: Long, onRead: (Int) -> Unit): ByteArray {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var count = 0L
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) break
+            count += read
+            require(count <= limit) { "Файл в резервной копии превышает допустимый размер" }
+            onRead(read)
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
     }
 
     private fun addEvidence(zip: ZipOutputStream, directory: File, rawPath: String, entryName: String): String? {
