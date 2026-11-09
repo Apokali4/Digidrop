@@ -185,7 +185,7 @@ class RouteImportMapperTest {
             requireCompleteRouteImport(listOf(valid, invalid), RouteImportMapper.map(listOf(valid, invalid)))
             throw AssertionError("Expected incomplete route import to be rejected")
         } catch (expected: IllegalArgumentException) {
-            assertEquals("В накладной есть строки без адреса точки доставки", expected.message)
+            assertEquals("В маршрутном списке есть строки без адреса точки доставки", expected.message)
         }
     }
 
