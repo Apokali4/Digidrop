@@ -356,11 +356,11 @@ internal fun parseManifest(text: String): List<RouteItem> {
     fun normalize(value: String) = value.trim().lowercase().replace("ё", "е")
         .replace(Regex("[\\s_№.-]+"), "")
     val aliases = mapOf(
-        "barcode" to setOf("barcode", "штрихкод", "штрихкодгруза", "код", "кодтовара", "кодгруза", "qr", "qrкод", "этикетка"),
-        "store" to setOf("store", "магазин", "торговаяточка", "получатель", "наименованиеполучателя", "получательнаименование", "клиент", "названиеточки", "объект"),
-        "address" to setOf("address", "адрес", "адресдоставки", "адресполучателя"),
+        "barcode" to setOf("barcode", "штрихкод", "штрихкодгруза", "код", "кодтовара", "кодгруза", "qr", "qrкод", "этикетка", "ean", "gtin", "sscc", "кодмаркировки", "кодупаковки", "кодкоробки"),
+        "store" to setOf("store", "магазин", "торговаяточка", "получатель", "наименованиеполучателя", "получательнаименование", "клиент", "названиеточки", "объект", "наименованиемагазина", "адресмагазина", "пунктразгрузки", "точкавыгрузки"),
+        "address" to setOf("address", "адрес", "адресдоставки", "адресполучателя", "адресобъекта", "местодоставки"),
         "item" to setOf("item", "товар", "наименование", "наименованиетовара", "номенклатура", "груз"),
-        "boxes" to setOf("boxes", "мест", "колвомест", "количествомест", "местколво", "колвоупаковок", "коробки", "количество", "шт") ,
+        "boxes" to setOf("boxes", "мест", "колвомест", "количествомест", "местколво", "колвоупаковок", "коробки", "количество", "шт", "количествокоробок", "колвокор", "колвошт", "qty", "quantity", "количествоединиц") ,
         "phone" to setOf("phone", "телефон", "контакт", "мобильный", "номертелефона"),
         "owner" to setOf("owner", "ип", "фио", "предприниматель", "владелец", "контактноелицо"),
         "hours" to setOf("hours", "времяработы", "графикработы", "режимработы", "работает"),
@@ -384,7 +384,7 @@ internal fun parseManifest(text: String): List<RouteItem> {
         val barcode = value(row, "barcode").trim()
         val store = value(row, "store")
         val address = value(row, "address")
-        if (!isUsableInvoiceBarcode(barcode) || (store.isBlank() && address.isBlank())) continue
+        if ((barcode.isNotBlank() && !isUsableInvoiceBarcode(barcode)) || (store.isBlank() && address.isBlank())) continue
         val boxes = parseInvoiceQuantity(value(row, "boxes")) ?: continue
         val coordinates = parseCoordinatePair(value(row, "lat"), value(row, "lon"))
         val latitude = coordinates?.first
