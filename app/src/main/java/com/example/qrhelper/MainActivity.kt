@@ -706,9 +706,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         }
         importScope.launch {
             try {
-                val repository = LogisticsRepository(context)
-                repository.archiveActiveRoute()
-                val archived = repository.history()
+                // Сначала убираем legacy-снимок. Если процесс погибнет между
+                // SharedPreferences и Room, Room всё равно останется источником истины:
+                // активный рейс восстановится из БД, а уже архивированный не воскреснет.
                 val editor = prefs.edit()
                     .remove("active_manifest")
                     .remove("scan_codes")
@@ -721,7 +721,10 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     editor.remove("delivered_" + routeItemKey(item))
                     editor.remove("scanned_" + routeItemKey(item))
                 }
-                editor.apply()
+                editor.commit()
+                val repository = LogisticsRepository(context)
+                check(repository.archiveActiveRoute()) { "Активный рейс уже отсутствует в базе" }
+                val archived = repository.history()
                 archivedRoutes = archived
                 routeItems = emptyList()
                 routeHeader = PhotoRouteHeader()
