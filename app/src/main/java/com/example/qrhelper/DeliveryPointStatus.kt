@@ -22,3 +22,39 @@ internal fun deliveryItemStatusLabel(item: RouteItem): String = when {
     item.scannedBoxes > 0 -> "В работе"
     else -> "Ожидает"
 }
+
+
+internal data class RouteReportSummary(
+    val pointCount: Int,
+    val deliveredPoints: Int,
+    val problemPoints: Int,
+    val inProgressPoints: Int,
+    val pendingPoints: Int,
+    val expectedBoxes: Int,
+    val scannedBoxes: Int,
+    val discrepancyBoxes: Int,
+    val remainingBoxes: Int,
+    val rowCount: Int
+)
+
+internal fun routeReportSummary(items: List<RouteItem>): RouteReportSummary {
+    val points = items.groupBy { it.storeName.trim() to it.address.trim() }.values
+    val delivered = points.count { deliveryPointStatus(it) == DeliveryPointStatus.DELIVERED }
+    val problem = points.count { deliveryPointStatus(it) == DeliveryPointStatus.PROBLEM }
+    val inProgress = points.count { deliveryPointStatus(it) == DeliveryPointStatus.IN_PROGRESS }
+    val expected = items.sumOf { it.totalBoxes.coerceAtLeast(0) }
+    val scanned = items.sumOf { it.scannedBoxes.coerceAtLeast(0) }
+    val discrepancies = items.sumOf { it.discrepancyQty.coerceAtLeast(0) }
+    return RouteReportSummary(
+        pointCount = points.size,
+        deliveredPoints = delivered,
+        problemPoints = problem,
+        inProgressPoints = inProgress,
+        pendingPoints = (points.size - delivered - problem - inProgress).coerceAtLeast(0),
+        expectedBoxes = expected,
+        scannedBoxes = scanned,
+        discrepancyBoxes = discrepancies,
+        remainingBoxes = (expected - scanned - discrepancies).coerceAtLeast(0),
+        rowCount = items.size
+    )
+}
