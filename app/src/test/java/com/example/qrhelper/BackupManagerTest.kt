@@ -21,6 +21,18 @@ class BackupManagerTest {
         return output.toByteArray()
     }
 
+    @Test fun refusesToExportMoreThanTenThousandRouteRows() {
+        val snapshot = BackupSnapshot(
+            routeItems = List(10_001) { RouteItem("", "", "Адрес", "Товар", 1, "") }
+        )
+        try {
+            BackupManager.writeBackup(ByteArrayOutputStream(), snapshot, File("build/test-backup"))
+            fail("Ожидалось ограничение числа строк")
+        } catch (expected: IllegalArgumentException) {
+            // Expected: export and import enforce the same route row limit.
+        }
+    }
+
     @Test fun rejectsUnexpectedArchivePathsBeforeParsingJson() {
         val bytes = archive("../outside.txt" to byteArrayOf(1))
         try {
