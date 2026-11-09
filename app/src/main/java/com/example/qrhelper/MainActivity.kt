@@ -1225,11 +1225,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 .putString("route_header_driver", header.driver)
                                 .putString("route_header_vehicle", header.vehicle)
                                 .putString("route_header_vehicle_number", header.vehicleNumber)
-                                .putString("active_manifest", authoritativeItems.joinToString("\\n") { item ->
+                                .putString("active_manifest", authoritativeItems.joinToString("\n") { item ->
                                     listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
                                         item.ownerName, item.workingHours, item.cashNote, item.extraComment)
-                                        .joinToString("\\t") { it.replace("\\t", " ") }
+                                        .joinToString("\t") { it.replace("\t", " ") }
                                 })
                                 .putBoolean("manual_route_order", false)
                                 .putStringSet("scan_codes", authoritativeCodes)
