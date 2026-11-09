@@ -98,4 +98,11 @@ class ExtendedInvoiceParserTest {
             output.toByteArray()
         }
 
+
+    @Test fun decodesRussianCp1251HexEscapesInRtfInvoices() {
+        val rtf = "{\\\\rtf1\\\\ansi\\\\ansicpg1251 Штрихкод\\\\tab Магазин\\\\tab Адрес\\\\tab Товар\\\\tab Количество\\\\par 4601234567890\\\\tab \\'cc\\'e0\\'e3\\'e0\\'e7\\'e8\\'ed \\'c1\\'ee\\'eb\\'e5\\'e5\\'e2\\\\tab Калуга, Ленина 1\\\\tab Хлеб\\\\tab 4}"
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
+        assertTrue(rows.any { it.storeName == "Магазин Болев" && it.totalBoxes == 4 })
+    }
+
 }
