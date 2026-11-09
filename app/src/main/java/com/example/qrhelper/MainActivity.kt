@@ -507,20 +507,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
     var photoRouteInitialUri by remember { mutableStateOf<Uri?>(null) }
     val windowContext = LocalContext.current
-    SideEffect {
-        val activity = windowContext as? Activity
-        activity?.window?.let { window ->
-            if (currentScreen == AppScreen.SPLASH) {
-                window.statusBarColor = DigiDropPalette.darkBackground.toArgb()
-                window.navigationBarColor = DigiDropPalette.darkBackground.toArgb()
-                window.decorView.systemUiVisibility = 0
-            } else {
-                window.statusBarColor = BgDark.toArgb()
-                window.navigationBarColor = BgDark.toArgb()
-                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            }
-        }
-    }
     var previousScreen by remember { mutableStateOf(AppScreen.HUB) }
     var selectedItem by remember { mutableStateOf<RouteItem?>(null) }
     var selectedPointItems by remember { mutableStateOf<List<RouteItem>>(emptyList()) }
@@ -532,6 +518,24 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var settingsAutoSave by remember { mutableStateOf(prefs.getBoolean("auto_save", true)) }
     var settingsCompact by remember { mutableStateOf(prefs.getBoolean("compact_mode", false)) }
     var settingsDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", false)) }
+
+    SideEffect {
+        val activity = windowContext as? Activity
+        activity?.window?.let { window ->
+            val systemBarColor = if (currentScreen == AppScreen.SPLASH) {
+                DigiDropPalette.darkBackground
+            } else {
+                MaterialTheme.colorScheme.background
+            }
+            window.statusBarColor = systemBarColor.toArgb()
+            window.navigationBarColor = systemBarColor.toArgb()
+            window.decorView.systemUiVisibility = if (currentScreen != AppScreen.SPLASH && !settingsDarkTheme) {
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            } else {
+                0
+            }
+        }
+    }
     var sessionScanCodes by remember {
         mutableStateOf(prefs.getStringSet("scan_codes", emptySet())?.toSet().orEmpty())
     }
@@ -992,10 +996,14 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         }
     }
 
-    BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
+    fun navigateBack() {
         val (remainingHistory, destination) = AppScreenHistory.pop(screenHistory, currentScreen)
         screenHistory = remainingHistory
         currentScreen = destination
+    }
+
+    BackHandler(enabled = currentScreen != AppScreen.SPLASH) {
+        navigateBack()
     }
 
     Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
@@ -1076,7 +1084,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 initialImageUri = photoRouteInitialUri,
                 onInitialActionConsumed = { photoRouteInitialAction = null },
                 onInitialImageConsumed = { photoRouteInitialUri = null },
-                onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; navigateTo(AppScreen.INVOICE_IMPORT) },
+                onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; navigateBack() },
                 onApplyRoute = { imported, header ->
                     routeHeader = header
                     prefs.edit()

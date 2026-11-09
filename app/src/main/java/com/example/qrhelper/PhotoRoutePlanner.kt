@@ -657,100 +657,17 @@ fun PhotoRoutePlannerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val palette = MaterialTheme.colorScheme
-    val plannerPrefs = remember {
-        context.getSharedPreferences("digitdrop_photo_route_session", android.content.Context.MODE_PRIVATE)
-    }
-    fun readStringList(key: String): List<String> = runCatching {
-        val array = org.json.JSONArray(plannerPrefs.getString(key, "[]").orEmpty())
-        (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
-    }.getOrDefault(emptyList())
-    fun readLocatedStops(): List<LocatedPhotoStop> = runCatching {
-        val array = org.json.JSONArray(plannerPrefs.getString("located_stops", "[]").orEmpty())
-        (0 until array.length()).mapNotNull { index ->
-            val item = array.optJSONObject(index) ?: return@mapNotNull null
-            val metadata = item.optJSONObject("metadata") ?: org.json.JSONObject()
-            val address = item.optString("address")
-            if (address.isBlank()) return@mapNotNull null
-            LocatedPhotoStop(
-                address = address,
-                latitude = item.optDouble("latitude", Double.NaN),
-                longitude = item.optDouble("longitude", Double.NaN),
-                metadata = PhotoStopMetadata(
-                    storeName = metadata.optString("storeName"),
-                    ownerName = metadata.optString("ownerName"),
-                    phone = metadata.optString("phone"),
-                    workingHours = metadata.optString("workingHours"),
-                    cashNote = metadata.optString("cashNote"),
-                    comment = metadata.optString("comment")
-                )
-            ).takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
-        }
-    }.getOrDefault(emptyList())
-    var rawText by remember { mutableStateOf(plannerPrefs.getString("raw_text", "").orEmpty()) }
-    var routeHeader by remember {
-        mutableStateOf(
-            PhotoRouteHeader(
-                driver = plannerPrefs.getString("header_driver", "").orEmpty(),
-                vehicle = plannerPrefs.getString("header_vehicle", "").orEmpty(),
-                vehicleNumber = plannerPrefs.getString("header_vehicle_number", "").orEmpty(),
-                routeNumber = plannerPrefs.getString("header_route_number", "").orEmpty()
-            )
-        )
-    }
-    var routeCity by remember { mutableStateOf(plannerPrefs.getString("route_city", "Калуга").orEmpty()) }
-    var addresses by remember { mutableStateOf(readStringList("addresses")) }
-    var located by remember { mutableStateOf(readLocatedStops()) }
+    var rawText by remember { mutableStateOf("") }
+    var routeHeader by remember { mutableStateOf(PhotoRouteHeader()) }
+    var routeCity by remember { mutableStateOf("Калуга") }
+    var addresses by remember { mutableStateOf(listOf<String>()) }
+    var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве.") }
     var busy by remember { mutableStateOf(false) }
     var showRawText by remember { mutableStateOf(false) }
     var cameraOpen by remember { mutableStateOf(false) }
-    var capturedUris by remember {
-        mutableStateOf(readStringList("captured_uris").mapNotNull { runCatching { Uri.parse(it) }.getOrNull() })
-    }
-    LaunchedEffect(rawText, routeHeader, routeCity, addresses, located, capturedUris) {
-        val addressJson = org.json.JSONArray().apply { addresses.forEach(::put) }
-        val photoJson = org.json.JSONArray().apply { capturedUris.forEach { put(it.toString()) } }
-        val stopJson = org.json.JSONArray().apply {
-            located.forEach { stop ->
-                put(org.json.JSONObject().apply {
-                    put("address", stop.address)
-                    put("latitude", stop.latitude)
-                    put("longitude", stop.longitude)
-                    put("metadata", org.json.JSONObject().apply {
-                        put("storeName", stop.metadata.storeName)
-                        put("ownerName", stop.metadata.ownerName)
-                        put("phone", stop.metadata.phone)
-                        put("workingHours", stop.metadata.workingHours)
-                        put("cashNote", stop.metadata.cashNote)
-                        put("comment", stop.metadata.comment)
-                    })
-                })
-            }
-        }
-        plannerPrefs.edit()
-            .putString("raw_text", rawText)
-            .putString("header_driver", routeHeader.driver)
-            .putString("header_vehicle", routeHeader.vehicle)
-            .putString("header_vehicle_number", routeHeader.vehicleNumber)
-            .putString("header_route_number", routeHeader.routeNumber)
-            .putString("route_city", routeCity)
-            .putString("addresses", addressJson.toString())
-            .putString("located_stops", stopJson.toString())
-            .putString("captured_uris", photoJson.toString())
-            .apply()
-    }
-    LaunchedEffect(initialAction, initialImageUri) {
-        if (initialAction == "camera" || initialImageUri != null) {
-            plannerPrefs.edit().clear().apply()
-            rawText = ""
-            routeHeader = PhotoRouteHeader()
-            addresses = emptyList()
-            located = emptyList()
-            capturedUris = emptyList()
-            routeCity = "Калуга"
-        }
-    }
+    var capturedUris by remember { mutableStateOf(listOf<Uri>()) }
 
     fun updateStopMetadata(index: Int, transform: (PhotoStopMetadata) -> PhotoStopMetadata) {
         if (index !in located.indices) return
@@ -1003,9 +920,28 @@ fun PhotoRoutePlannerScreen(
 
             located.forEachIndexed { index, stop ->
                 var dragDistance by remember(stop.address) { mutableStateOf(0f) }
-                var editing by remember(stop.address) { mutableStateOf(false) }
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().pointerInput(stop.address, located.size) {
+                        detectDragGesturesAfterLongPress(
+                            onDragEnd = { dragDistance = 0f },
+                            onDragCancel = { dragDistance = 0f },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                dragDistance += amount.y
+                                if (dragDistance > 72f && index < located.lastIndex) {
+                                    located = located.toMutableList().also { list ->
+                                        val item = list.removeAt(index); list.add(index + 1, item)
+                                    }
+                                    dragDistance = 0f
+                                } else if (dragDistance < -72f && index > 0) {
+                                    located = located.toMutableList().also { list ->
+                                        val item = list.removeAt(index); list.add(index - 1, item)
+                                    }
+                                    dragDistance = 0f
+                                }
+                            }
+                        )
+                    },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
@@ -1014,82 +950,29 @@ fun PhotoRoutePlannerScreen(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "⠿",
-                                modifier = Modifier
-                                    .background(palette.surfaceVariant, RoundedCornerShape(10.dp))
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                                    .pointerInput(stop.address, located.size) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragEnd = { dragDistance = 0f },
-                                            onDragCancel = { dragDistance = 0f },
-                                            onDrag = { change, amount ->
-                                                change.consume()
-                                                dragDistance += amount.y
-                                                if (dragDistance > 72f && index < located.lastIndex) {
-                                                    located = located.toMutableList().also { list ->
-                                                        val item = list.removeAt(index); list.add(index + 1, item)
-                                                    }
-                                                    dragDistance = 0f
-                                                } else if (dragDistance < -72f && index > 0) {
-                                                    located = located.toMutableList().also { list ->
-                                                        val item = list.removeAt(index); list.add(index - 1, item)
-                                                    }
-                                                    dragDistance = 0f
-                                                }
-                                            }
-                                        )
-                                    },
-                                color = palette.onSurfaceVariant,
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                            Text("⠿ ПЕРЕТАЩИТЬ", color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                         Text(stop.metadata.storeName.ifBlank { "Название магазина не распознано" },
                             color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
                         Text(stop.address, color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yandexnavi://show_point_on_map")
-                                        .buildUpon()
-                                        .appendQueryParameter("lat", stop.latitude.toString())
-                                        .appendQueryParameter("lon", stop.longitude.toString())
-                                        .appendQueryParameter("zoom", "16")
-                                        .build())
-                                        .setPackage("ru.yandex.yandexnavi")
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
-                                }
-                            }) { Text("Адрес") }
-                            if (stop.metadata.phone.isNotBlank()) {
-                                TextButton(onClick = {
-                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(stop.metadata.phone))))
-                                }) { Text("Позвонить") }
-                            }
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { editing = !editing }) {
-                                Text(if (editing) "Свернуть" else "Изменить")
+                        PhotoPlannerTile("Проверить адрес в Яндекс Навигаторе", "Откроется найденная координата") {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yandexnavi://show_point_on_map")
+                                    .buildUpon()
+                                    .appendQueryParameter("lat", stop.latitude.toString())
+                                    .appendQueryParameter("lon", stop.longitude.toString())
+                                    .appendQueryParameter("zoom", "16")
+                                    .build())
+                                    .setPackage("ru.yandex.yandexnavi")
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
                             }
                         }
-                        if (stop.metadata.workingHours.isNotBlank()) {
-                            Text("Доставка: ${stop.metadata.workingHours}", color = palette.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (stop.metadata.phone.isNotBlank()) {
-                            Text("Телефон: ${stop.metadata.phone}", color = palette.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (stop.metadata.comment.isNotBlank()) {
-                            Text(stop.metadata.comment, color = palette.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (editing) {
-                            PhotoMetadataField("Магазин", stop.metadata.storeName) { value -> updateStopMetadata(index) { it.copy(storeName = value) } }
-                            PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value -> updateStopMetadata(index) { it.copy(workingHours = value) } }
-                            PhotoMetadataField("Телефон", stop.metadata.phone) { value -> updateStopMetadata(index) { it.copy(phone = value) } }
-                            PhotoMetadataField("Комментарий", stop.metadata.comment) { value -> updateStopMetadata(index) { it.copy(comment = value) } }
-                        }
+                        PhotoMetadataField("Магазин", stop.metadata.storeName) { value -> updateStopMetadata(index) { it.copy(storeName = value) } }
+                        PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value -> updateStopMetadata(index) { it.copy(workingHours = value) } }
+                        PhotoMetadataField("Телефон", stop.metadata.phone) { value -> updateStopMetadata(index) { it.copy(phone = value) } }
+                        PhotoMetadataField("Комментарий", stop.metadata.comment) { value -> updateStopMetadata(index) { it.copy(comment = value) } }
                         PhotoPlannerTile("Удалить точку", "Убрать адрес из текущего маршрута") {
                             located = located.filterIndexed { i, _ -> i != index }
                             status = "Точка удалена."
@@ -1098,15 +981,24 @@ fun PhotoRoutePlannerScreen(
                 }
             }
 
+            Text("НАВИГАЦИЯ", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
             val coords = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
             val segments = if (coords.size >= 2) PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
             if (segments.isEmpty()) {
                 Text("Для Яндекс Навигатора нужны минимум две точки с координатами.", color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else if (segments.size > 1) {
-                Text("Маршрут будет передан участками по 20 точек с общей переходной точкой. Участков: ${segments.size}.",
-                    color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else if (segments.size == 1) {
+                PhotoPlannerTile("Яндекс Навигатор", "Открыть все ${coords.size} точек в заданном порядке") {
+                    openYandexNavigator(context, segments.first())
+                }
+            } else {
+                segments.forEachIndexed { index, segment ->
+                    PhotoPlannerTile("Яндекс • участок ${index + 1} из ${segments.size}",
+                        "${segment.size} точек • соседние участки имеют общую переходную точку") {
+                        openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
+                    }
+                }
             }
-            PhotoPlannerTile("Одобрить маршрут и открыть в Яндекс Навигаторе", "Сохранить точки в DigiDrop и открыть первый участок", primary = true) {
+            PhotoPlannerTile("Сохранить маршрут в DigiDrop", "Передать точки в рабочий список рейса", primary = true) {
                 val items = located.mapIndexed { index, stop ->
                     RouteItem(
                         barcode = "PHOTO-${index + 1}",
@@ -1124,14 +1016,7 @@ fun PhotoRoutePlannerScreen(
                         extraComment = stop.metadata.comment
                     )
                 }
-                plannerPrefs.edit().clear().apply()
                 onApplyRoute(items, routeHeader)
-                if (segments.isNotEmpty()) {
-                    openYandexNavigator(context, segments.first())
-                    if (segments.size > 1) {
-                        Toast.makeText(context, "Первый участок открыт. Остальные участки сохранены в списке маршрута.", Toast.LENGTH_LONG).show()
-                    }
-                }
             }
         }
     }
