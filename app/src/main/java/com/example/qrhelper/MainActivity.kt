@@ -1356,13 +1356,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             false
                         }
                         if (closed) {
-                            val updated = routeItems.map {
-                                if (it.storeName == point.storeName && it.address == point.address) it.copy(isDelivered = true) else it
+                            val authoritativeItems = LogisticsRepository(context).activeRouteItems()
+                            routeItems = authoritativeItems
+                            selectedPointItems = authoritativeItems.filter {
+                                it.storeName == point.storeName && it.address == point.address
                             }
-                            routeItems = updated
-                            selectedPointItems = updated.filter { it.storeName == point.storeName && it.address == point.address }
+                            selectedItem = selectedItem?.let { selected ->
+                                authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                            }
                             val editor = prefs.edit()
-                            selectedPointItems.forEach { editor.putBoolean("delivered_" + routeItemKey(it), true) }
+                            selectedPointItems.forEach { saved ->
+                                editor.putBoolean("delivered_" + routeItemKey(saved), saved.isDelivered)
+                            }
                             editor.apply()
                             Toast.makeText(context, "Точка закрыта и отмечена как сданная", Toast.LENGTH_LONG).show()
                         } else {
