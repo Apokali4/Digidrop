@@ -2625,14 +2625,16 @@ fun RouteListScreen(
     val groups = remember(routeItems) {
         routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.toList()
     }
-    val points = groups.mapNotNull { group ->
+    val pendingGroups = groups.filter { group -> deliveryPointStatus(group) != DeliveryPointStatus.DELIVERED }
+    val points = pendingGroups.mapNotNull { group ->
         val first = group.firstOrNull() ?: return@mapNotNull null
         if (first.latitude != null && first.longitude != null) PhotoRouteCoordinate(first.latitude, first.longitude) else null
     }
-    val missingCoordinates = points.size != groups.size
+    val missingCoordinates = points.size != pendingGroups.size
     val segments = remember(points, missingCoordinates) {
         if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
     }
+    var navigationSegmentIndex by remember(segments) { mutableStateOf(0) }
     val photoPrefs = remember { context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE) }
     val photos = remember {
         runCatching {
@@ -2677,18 +2679,21 @@ fun RouteListScreen(
                     }
                     Button(onClick = {
                         if (segments.isNotEmpty()) {
-                            onNavigateSegment(0, segments.first())
-                            if (segments.size > 1) Toast.makeText(context,
-                                "Маршрут разделён на ${segments.size} участков с общей переходной точкой.",
-                                Toast.LENGTH_LONG).show()
+                            val index = navigationSegmentIndex.coerceIn(0, segments.lastIndex)
+                            onNavigateSegment(index, segments[index])
+                            navigationSegmentIndex = nextNavigationSegmentIndex(index, segments.size)
                         } else Toast.makeText(context,
-                            if (missingCoordinates) "Не у всех точек определены координаты" else "Нужны минимум две точки",
+                            if (missingCoordinates) "Не у всех незавершённых точек определены координаты" else "Нужны минимум две незавершённые точки",
                             Toast.LENGTH_LONG).show()
                     }, enabled = segments.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(46.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(13.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
-                        Text("В Яндекс Навигатор", fontWeight = FontWeight.Bold)
+                        Text(
+                            if (segments.size > 1 && navigationSegmentIndex > 0) "Следующий участок ${navigationSegmentIndex + 1} из ${segments.size}"
+                            else "В Яндекс Навигатор",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     Text("Точки можно переставлять за значок справа. Адрес проверяется отдельно в Яндекс Картах.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
