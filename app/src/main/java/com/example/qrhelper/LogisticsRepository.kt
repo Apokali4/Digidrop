@@ -346,8 +346,11 @@ internal class LogisticsRepository(context: Context) {
         return dao.closePoint(point.id)
     }
 
-    suspend fun archiveActiveRoute() {
-        database.dao().deactivateRoutes()
+    suspend fun archiveActiveRoute(): Boolean = database.withTransaction {
+        val dao = database.dao()
+        if (dao.activeRouteOnce() == null) return@withTransaction false
+        dao.deactivateRoutes()
+        dao.activeRouteOnce() == null
     }
 
     suspend fun searchProducts(query: String): List<ProductEntity> =
