@@ -38,7 +38,7 @@ internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
     val allRowsAccounted = items.all { item ->
         val expected = item.totalBoxes.coerceAtLeast(0)
         val accounted = item.scannedBoxes.coerceAtLeast(0) + item.discrepancyQty.coerceAtLeast(0)
-        expected == 0 || accounted >= expected
+        if (expected == 0) item.isDelivered else accounted >= expected
     }
     return when {
         hasDiscrepancy -> DeliveryStatus.HAS_DISCREPANCY
