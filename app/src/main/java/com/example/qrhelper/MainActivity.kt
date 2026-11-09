@@ -741,12 +741,12 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: error("Не удалось прочитать выбранное фото")
+                    LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
                     val updated = routeItems.map {
                         if (routeItemKey(it) == routeItemKey(item)) it.copy(photoDocUri = target.absolutePath) else it
                     }
                     routeItems = updated
                     selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
-                    LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
                     Toast.makeText(context, "Фото доказательства сохранено", Toast.LENGTH_SHORT).show()
                 }.onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить фото: ${error.message}", Toast.LENGTH_LONG).show()
@@ -1264,12 +1264,12 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                 target.outputStream().use { output ->
                                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
                                 }
+                                LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
                                 val updated = routeItems.map {
                                     if (routeItemKey(it) == routeItemKey(item)) it.copy(signaturePath = target.absolutePath) else it
                                 }
                                 routeItems = updated
                                 selectedItem = updated.firstOrNull { routeItemKey(it) == routeItemKey(item) }
-                                LogisticsRepository(context).saveSignatureForPoint(item.storeName, item.address, target.absolutePath)
                                 Toast.makeText(context, "Подпись получателя сохранена", Toast.LENGTH_SHORT).show()
                             }.onFailure { error ->
                                 Toast.makeText(context, "Не удалось сохранить подпись: ${error.message}", Toast.LENGTH_LONG).show()
