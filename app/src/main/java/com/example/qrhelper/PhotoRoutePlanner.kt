@@ -657,17 +657,100 @@ fun PhotoRoutePlannerScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val palette = MaterialTheme.colorScheme
-    var rawText by remember { mutableStateOf("") }
-    var routeHeader by remember { mutableStateOf(PhotoRouteHeader()) }
-    var routeCity by remember { mutableStateOf("Калуга") }
-    var addresses by remember { mutableStateOf(listOf<String>()) }
-    var located by remember { mutableStateOf(listOf<LocatedPhotoStop>()) }
+    val plannerPrefs = remember {
+        context.getSharedPreferences("digitdrop_photo_route_session", android.content.Context.MODE_PRIVATE)
+    }
+    fun readStringList(key: String): List<String> = runCatching {
+        val array = org.json.JSONArray(plannerPrefs.getString(key, "[]").orEmpty())
+        (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }
+    }.getOrDefault(emptyList())
+    fun readLocatedStops(): List<LocatedPhotoStop> = runCatching {
+        val array = org.json.JSONArray(plannerPrefs.getString("located_stops", "[]").orEmpty())
+        (0 until array.length()).mapNotNull { index ->
+            val item = array.optJSONObject(index) ?: return@mapNotNull null
+            val metadata = item.optJSONObject("metadata") ?: org.json.JSONObject()
+            val address = item.optString("address")
+            if (address.isBlank()) return@mapNotNull null
+            LocatedPhotoStop(
+                address = address,
+                latitude = item.optDouble("latitude", Double.NaN),
+                longitude = item.optDouble("longitude", Double.NaN),
+                metadata = PhotoStopMetadata(
+                    storeName = metadata.optString("storeName"),
+                    ownerName = metadata.optString("ownerName"),
+                    phone = metadata.optString("phone"),
+                    workingHours = metadata.optString("workingHours"),
+                    cashNote = metadata.optString("cashNote"),
+                    comment = metadata.optString("comment")
+                )
+            ).takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
+        }
+    }.getOrDefault(emptyList())
+    var rawText by remember { mutableStateOf(plannerPrefs.getString("raw_text", "").orEmpty()) }
+    var routeHeader by remember {
+        mutableStateOf(
+            PhotoRouteHeader(
+                driver = plannerPrefs.getString("header_driver", "").orEmpty(),
+                vehicle = plannerPrefs.getString("header_vehicle", "").orEmpty(),
+                vehicleNumber = plannerPrefs.getString("header_vehicle_number", "").orEmpty(),
+                routeNumber = plannerPrefs.getString("header_route_number", "").orEmpty()
+            )
+        )
+    }
+    var routeCity by remember { mutableStateOf(plannerPrefs.getString("route_city", "Калуга").orEmpty()) }
+    var addresses by remember { mutableStateOf(readStringList("addresses")) }
+    var located by remember { mutableStateOf(readLocatedStops()) }
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве.") }
     var busy by remember { mutableStateOf(false) }
     var showRawText by remember { mutableStateOf(false) }
     var cameraOpen by remember { mutableStateOf(false) }
-    var capturedUris by remember { mutableStateOf(listOf<Uri>()) }
+    var capturedUris by remember {
+        mutableStateOf(readStringList("captured_uris").mapNotNull { runCatching { Uri.parse(it) }.getOrNull() })
+    }
+    LaunchedEffect(rawText, routeHeader, routeCity, addresses, located, capturedUris) {
+        val addressJson = org.json.JSONArray().apply { addresses.forEach(::put) }
+        val photoJson = org.json.JSONArray().apply { capturedUris.forEach { put(it.toString()) } }
+        val stopJson = org.json.JSONArray().apply {
+            located.forEach { stop ->
+                put(org.json.JSONObject().apply {
+                    put("address", stop.address)
+                    put("latitude", stop.latitude)
+                    put("longitude", stop.longitude)
+                    put("metadata", org.json.JSONObject().apply {
+                        put("storeName", stop.metadata.storeName)
+                        put("ownerName", stop.metadata.ownerName)
+                        put("phone", stop.metadata.phone)
+                        put("workingHours", stop.metadata.workingHours)
+                        put("cashNote", stop.metadata.cashNote)
+                        put("comment", stop.metadata.comment)
+                    })
+                })
+            }
+        }
+        plannerPrefs.edit()
+            .putString("raw_text", rawText)
+            .putString("header_driver", routeHeader.driver)
+            .putString("header_vehicle", routeHeader.vehicle)
+            .putString("header_vehicle_number", routeHeader.vehicleNumber)
+            .putString("header_route_number", routeHeader.routeNumber)
+            .putString("route_city", routeCity)
+            .putString("addresses", addressJson.toString())
+            .putString("located_stops", stopJson.toString())
+            .putString("captured_uris", photoJson.toString())
+            .apply()
+    }
+    LaunchedEffect(initialAction, initialImageUri) {
+        if (initialAction == "camera" || initialImageUri != null) {
+            plannerPrefs.edit().clear().apply()
+            rawText = ""
+            routeHeader = PhotoRouteHeader()
+            addresses = emptyList()
+            located = emptyList()
+            capturedUris = emptyList()
+            routeCity = "Калуга"
+        }
+    }
 
     fun updateStopMetadata(index: Int, transform: (PhotoStopMetadata) -> PhotoStopMetadata) {
         if (index !in located.indices) return
@@ -1041,6 +1124,7 @@ fun PhotoRoutePlannerScreen(
                         extraComment = stop.metadata.comment
                     )
                 }
+                plannerPrefs.edit().clear().apply()
                 onApplyRoute(items, routeHeader)
                 if (segments.isNotEmpty()) {
                     openYandexNavigator(context, segments.first())
