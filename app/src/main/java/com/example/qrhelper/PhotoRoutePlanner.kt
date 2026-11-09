@@ -220,7 +220,7 @@ internal object PhotoRouteTextParser {
         val house = houseAfterStreet.find(line, street.range.last + 1) ?: return null
         val cityMatch = if (city.isNotBlank()) {
             val cityName = city.trim().replace(Regex("""(?iu)^г\.?\s*"""), "")
-            Regex("""(?iu)(?:\bг\.?\s*)?\${Regex.escape(cityName)}""").find(line)
+            Regex("(?iu)(?:\\bг\\.?\\s*)?${Regex.escape(cityName)}").find(line)
                 ?.takeIf { it.range.first <= street.range.first }
         } else {
             Regex("""(?iu)\bг\.?\s*[А-ЯЁ][А-Яа-яЁё-]+""").find(line)
