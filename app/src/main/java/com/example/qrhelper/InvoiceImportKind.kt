@@ -53,7 +53,7 @@ internal object InvoiceImportKind {
         return when {
             isImage(mime, uri) -> InvoiceDocumentFormat.IMAGE
             ext == ".pdf" || mime == "application/pdf" -> InvoiceDocumentFormat.PDF
-            ext == ".xlsx" || mime.contains("spreadsheetml") -> InvoiceDocumentFormat.XLSX
+            ext in setOf(".xlsx", ".xlsm") || mime.contains("spreadsheetml") || mime.contains("macroenabled") -> InvoiceDocumentFormat.XLSX
             ext == ".xls" || mime == "application/vnd.ms-excel" -> InvoiceDocumentFormat.XLS
             ext == ".csv" || mime == "application/csv" || mime == "text/csv" -> InvoiceDocumentFormat.CSV
             ext == ".tsv" || mime == "text/tab-separated-values" -> InvoiceDocumentFormat.TSV
