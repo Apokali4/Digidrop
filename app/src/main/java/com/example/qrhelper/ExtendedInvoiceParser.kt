@@ -69,7 +69,7 @@ internal object ExtendedInvoiceParser {
             .replace(Regex("\\\\'[0-9a-fA-F]{2}"), " ")
             .replace(Regex("\\\\[a-zA-Z]+-?\\d* ?"), " ")
             .replace(Regex("[{}]"), " ")
-            .replace(Regex("[ \t]+"), " ")
+            .replace(Regex(" +"), " ")
             .trim()
         require(plain.isNotBlank()) { "RTF не содержит извлекаемого текста" }
         return plain
