@@ -38,6 +38,18 @@ class InvoiceImportKindTest {
         assertTrue(InvoiceImportKind.detect("", "content://docs/photo.tiff") == InvoiceDocumentFormat.IMAGE)
     }
 
+    @Test fun detectsLegacyAndOpenDocumentFormats() {
+        assertTrue(InvoiceImportKind.detect("", "content://docs/word.doc") == InvoiceDocumentFormat.DOC)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/table.ods") == InvoiceDocumentFormat.ODS)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/text.odt") == InvoiceDocumentFormat.ODT)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/text.rtf") == InvoiceDocumentFormat.RTF)
+    }
+
+    @Test fun decodesRussianWindows1251CsvExports() {
+        val bytes = "магазин".toByteArray(charset("windows-1251"))
+        assertTrue(decodeInvoiceText(bytes).contains("магазин"))
+    }
+
     @Test fun keepsInvoiceDocumentsOutOfThePhotoOcrFlow() {
         assertFalse(InvoiceImportKind.isImage("application/pdf", "content://docs/route.pdf"))
         assertFalse(InvoiceImportKind.isImage("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "content://docs/route.xlsx"))
