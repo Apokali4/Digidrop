@@ -113,7 +113,12 @@ internal object ReportExporter {
 
         newPage()
         line("Дата формирования: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(java.util.Date())}")
-        line("Строк накладной: ${items.size} • Точек: ${items.map { it.storeName to it.address }.distinct().size}")
+        val summary = routeReportSummary(items)
+        line("Строк накладной: ${summary.rowCount} • Точек: ${summary.pointCount}")
+        line("Доставлено точек: ${summary.deliveredPoints} • В работе: ${summary.inProgressPoints}")
+        line("Ожидают: ${summary.pendingPoints} • С расхождениями: ${summary.problemPoints}")
+        line("План: ${summary.expectedBoxes} • Сканировано: ${summary.scannedBoxes}")
+        line("Расхождения: ${summary.discrepancyBoxes} • Осталось: ${summary.remainingBoxes}")
         line(" ")
         items.forEachIndexed { index, item ->
             val status = deliveryItemStatusLabel(item).uppercase()
