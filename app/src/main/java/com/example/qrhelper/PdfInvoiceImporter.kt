@@ -26,10 +26,10 @@ internal fun normalizeOcrTableText(text: String): String =
 internal object PdfInvoiceImporter {
     fun extractText(context: Context, uri: Uri): String {
         PDFBoxResourceLoader.init(context.applicationContext)
-        val input = context.contentResolver.openInputStream(uri)
-            ?: error("Не удалось открыть PDF-файл")
-        input.use { stream ->
-            PDDocument.load(stream).use { document ->
+        val pdfBytes = context.contentResolver.openInputStream(uri)?.use {
+            it.readInvoiceBytes()
+        } ?: error("Не удалось открыть PDF-файл")
+        PDDocument.load(pdfBytes.inputStream()).use { document ->
                 require(document.numberOfPages > 0) { "PDF не содержит страниц" }
                 require(document.numberOfPages <= 100) { "В PDF слишком много страниц (максимум 100)" }
                 val stripper = PDFTextStripper().apply {
@@ -39,8 +39,7 @@ internal object PdfInvoiceImporter {
                     pageStart = ""
                     pageEnd = "\n"
                 }
-                return stripper.getText(document).trim()
-            }
+            return stripper.getText(document).trim()
         }
     }
 
@@ -83,9 +82,10 @@ internal object PdfInvoiceImporter {
     ): String = withContext(Dispatchers.IO) {
         val temporaryPdf = File(context.cacheDir, "invoice_ocr_${System.currentTimeMillis()}.pdf")
         try {
-            val input = context.contentResolver.openInputStream(uri)
-                ?: error("Не удалось открыть PDF для распознавания")
-            input.use { source -> temporaryPdf.outputStream().use { target -> source.copyTo(target) } }
+            val pdfBytes = context.contentResolver.openInputStream(uri)?.use {
+                it.readInvoiceBytes()
+            } ?: error("Не удалось открыть PDF для распознавания")
+            temporaryPdf.writeBytes(pdfBytes)
             val descriptor = ParcelFileDescriptor.open(temporaryPdf, ParcelFileDescriptor.MODE_READ_ONLY)
             try {
                 val renderer = PdfRenderer(descriptor)
