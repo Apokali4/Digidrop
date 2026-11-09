@@ -28,6 +28,16 @@ class InvoiceImportKindTest {
         assertTrue(InvoiceImportKind.isImage("", "content://docs/route-photo.webp"))
     }
 
+    @Test fun detectsAdditionalOfficeAndStructuredFormats() {
+        assertTrue(InvoiceImportKind.detect("", "content://docs/old.xls") == InvoiceDocumentFormat.XLS)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/scan.docx") == InvoiceDocumentFormat.DOCX)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/data.xml") == InvoiceDocumentFormat.XML)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/data.json") == InvoiceDocumentFormat.JSON)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/page.html") == InvoiceDocumentFormat.HTML)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/list.tsv") == InvoiceDocumentFormat.TSV)
+        assertTrue(InvoiceImportKind.detect("", "content://docs/photo.tiff") == InvoiceDocumentFormat.IMAGE)
+    }
+
     @Test fun keepsInvoiceDocumentsOutOfThePhotoOcrFlow() {
         assertFalse(InvoiceImportKind.isImage("application/pdf", "content://docs/route.pdf"))
         assertFalse(InvoiceImportKind.isImage("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "content://docs/route.xlsx"))
