@@ -444,17 +444,6 @@ enum class AppScreen {
     PHOTO_ROUTE
 }
 
-// Цвета экранов берутся из активной Material 3 темы, поэтому переключатель
-// действительно перекрашивает весь интерфейс, а не только отдельные карточки.
-val BgDark: Color = DigiDropPalette.darkBackground
-val CardSurface: Color = DigiDropPalette.darkSurface
-val CardBorder: Color = DigiDropPalette.darkBorder
-val EmeraldPrimary: Color = DigiDropPalette.accent
-val MintAccent: Color = DigiDropPalette.accentLight
-val TextLight: Color = DigiDropPalette.darkText
-val TextMuted: Color = DigiDropPalette.darkTextSecondary
-val IndustrialPanel: Color = DigiDropPalette.darkSurfaceSoft
-val IndustrialDivider: Color = DigiDropPalette.darkDivider
 
 @Composable
 fun Modifier.bounceClick(
@@ -1589,19 +1578,19 @@ fun InvoiceLandingScreen(
     onLoadInvoice: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("← Назад", color = MintAccent, fontSize = 16.sp,
+        Text("← Назад", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(8.dp))
-        Text("Добавить маршрут", color = TextLight, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+        Text("Добавить маршрут", color = MaterialTheme.colorScheme.onSurface, fontSize = 29.sp, fontWeight = FontWeight.Bold)
         Text("Выберите источник. После обработки откроется список точек маршрута.",
-            color = TextMuted, fontSize = 15.sp)
-        HubTile("Сфотографировать", "Открыть камеру и распознать маршрутный лист", "▧", EmeraldPrimary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp)
+        HubTile("Сфотографировать", "Открыть камеру и распознать маршрутный лист", "▧", MaterialTheme.colorScheme.primary,
             Modifier.fillMaxWidth(), onTakePhoto)
-        HubTile("Выбрать файл или фото", "Загрузить PDF, Excel, CSV или снимок из галереи", "⇧", MintAccent,
+        HubTile("Выбрать файл или фото", "Загрузить PDF, Excel, CSV или снимок из галереи", "⇧", MaterialTheme.colorScheme.secondary,
             Modifier.fillMaxWidth(), onLoadInvoice)
     }
 }
@@ -1642,12 +1631,12 @@ fun HubScreen(
 private fun HubMetric(value: String, label: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = IndustrialPanel),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, color = TextLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text(label, color = TextMuted, fontSize = 11.sp, maxLines = 1)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
         }
     }
 }
@@ -1656,9 +1645,9 @@ private fun HubMetric(value: String, label: String, modifier: Modifier = Modifie
 private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         modifier = modifier.heightIn(min = 84.dp)
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .bounceClick { onClick() },
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -1672,8 +1661,8 @@ private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = M
                 "Отчёты" -> Icons.Outlined.Assessment
                 else -> Icons.Outlined.Settings
             }
-            Icon(icon, contentDescription = label, tint = MintAccent, modifier = Modifier.size(27.dp))
-            Text(label, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(27.dp))
+            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
@@ -1694,20 +1683,20 @@ fun MoreMenuScreen(
 ) {
     var confirmReset by remember { mutableStateOf(false) }
     Column(
-        Modifier.fillMaxSize().background(BgDark).statusBarsPadding().navigationBarsPadding()
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("← Назад", color = MintAccent, fontSize = 16.sp,
+        Text("← Назад", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp,
             modifier = Modifier.bounceClick { onBack() })
-        Text("Дополнительно", color = TextLight, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        HubTile("Точки и карта маршрута", "Список, статусы, порядок и навигация", "⌖", EmeraldPrimary,
+        Text("Дополнительно", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        HubTile("Точки и карта маршрута", "Список, статусы, порядок и навигация", "⌖", MaterialTheme.colorScheme.primary,
             Modifier.fillMaxWidth(), onOpenRoute)
-        HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", EmeraldPrimary,
+        HubTile("Следующая точка", "Открыть Яндекс Навигатор", "➜", MaterialTheme.colorScheme.primary,
             Modifier.fillMaxWidth(), onNavigateNext)
         HubTile("Отчёты и экспорт", "Сводка и выгрузки", "▤", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onOpenReports)
-        HubTile("История рейсов", "Архив завершённых маршрутов", "◷", MintAccent,
+        HubTile("История рейсов", "Архив завершённых маршрутов", "◷", MaterialTheme.colorScheme.secondary,
             Modifier.fillMaxWidth(), onOpenHistory)
         HubTile("Каталог товаров", "Локальная база штрихкодов", "▦", DigiDropPalette.accent,
             Modifier.fillMaxWidth(), onOpenProducts)
@@ -1747,12 +1736,12 @@ fun HubTile(
     onClick: () -> Unit,
     primary: Boolean = false
 ) {
-    val tileColor = if (primary) DigiDropPalette.accent else CardSurface
-    val foreground = if (primary) MaterialTheme.colorScheme.onPrimary else TextLight
-    val secondary = if (primary) DigiDropPalette.primarySoft else TextMuted
+    val tileColor = if (primary) DigiDropPalette.accent else MaterialTheme.colorScheme.surface
+    val foreground = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val secondary = if (primary) DigiDropPalette.primarySoft else MaterialTheme.colorScheme.onSurfaceVariant
     Card(
         modifier = modifier.heightIn(min = if (primary) 132.dp else 112.dp)
-            .border(1.dp, if (primary) EmeraldPrimary else CardBorder, RoundedCornerShape(22.dp))
+            .border(1.dp, if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp))
             .bounceClick(scaleDown = 0.985f) { onClick() },
         colors = CardDefaults.cardColors(containerColor = tileColor),
         shape = RoundedCornerShape(22.dp),
@@ -1900,7 +1889,7 @@ fun LiveCameraScannerScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Row(
@@ -1910,20 +1899,20 @@ fun LiveCameraScannerScreen(
                 ) {
                     Text(
                         text = "← Назад",
-                        color = TextLight,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.bounceClick { onBack() }
                     )
-                    Text("СКАНЕР", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("СКАНЕР", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Box(
                         modifier = Modifier.size(44.dp).clip(CircleShape)
-                            .background(if (isFlashOn) DigiDropPalette.accentDark else CardSurface)
-                            .border(1.dp, if (isFlashOn) EmeraldPrimary else CardBorder, CircleShape)
+                            .background(if (isFlashOn) DigiDropPalette.accentDark else MaterialTheme.colorScheme.surface)
+                            .border(1.dp, if (isFlashOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
                             .bounceClick { onFlashToggle() },
                         contentAlignment = Alignment.Center
                     ) {
-                        FlashlightVector(tint = if (isFlashOn) MintAccent else TextMuted)
+                        FlashlightVector(tint = if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -1931,12 +1920,12 @@ fun LiveCameraScannerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Card(
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Text(
                     text = "Наведите рамку на штрихкод накладной",
-                    color = TextLight,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp)
@@ -1955,21 +1944,21 @@ fun LiveCameraScannerScreen(
                     val cornerLen = 36.dp.toPx()
                     val stroke = 4.dp.toPx()
 
-                    drawLine(MintAccent, Offset(0f, 0f), Offset(cornerLen, 0f), strokeWidth = stroke)
-                    drawLine(MintAccent, Offset(0f, 0f), Offset(0f, cornerLen), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, 0f), Offset(cornerLen, 0f), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, 0f), Offset(0f, cornerLen), strokeWidth = stroke)
 
-                    drawLine(MintAccent, Offset(w, 0f), Offset(w - cornerLen, 0f), strokeWidth = stroke)
-                    drawLine(MintAccent, Offset(w, 0f), Offset(w, cornerLen), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, 0f), Offset(w - cornerLen, 0f), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, 0f), Offset(w, cornerLen), strokeWidth = stroke)
 
-                    drawLine(MintAccent, Offset(0f, h), Offset(cornerLen, h), strokeWidth = stroke)
-                    drawLine(MintAccent, Offset(0f, h), Offset(0f, h - cornerLen), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, h), Offset(cornerLen, h), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(0f, h), Offset(0f, h - cornerLen), strokeWidth = stroke)
 
-                    drawLine(MintAccent, Offset(w, h), Offset(w - cornerLen, h), strokeWidth = stroke)
-                    drawLine(MintAccent, Offset(w, h), Offset(w, h - cornerLen), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, h), Offset(w - cornerLen, h), strokeWidth = stroke)
+                    drawLine(MaterialTheme.colorScheme.secondary, Offset(w, h), Offset(w, h - cornerLen), strokeWidth = stroke)
 
                     val currentLaserY = h * laserY
                     drawLine(
-                        color = EmeraldPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         start = Offset(12.dp.toPx(), currentLaserY),
                         end = Offset(w - 12.dp.toPx(), currentLaserY),
                         strokeWidth = 3.dp.toPx(),
@@ -1982,7 +1971,7 @@ fun LiveCameraScannerScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = CardSurface.copy(alpha = 0.96f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
@@ -1990,13 +1979,13 @@ fun LiveCameraScannerScreen(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(9.dp).clip(CircleShape).background(EmeraldPrimary))
-                        Text("Готов к сканированию", color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+                        Text("Готов к сканированию", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                     Text("Наведите камеру на код коробки. DigiDrop автоматически найдёт накладную и точку доставки.",
-                        color = TextMuted, fontSize = 13.sp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     Text("Поддерживаются: EAN-13 • Data Matrix • QR • Code 128",
-                        color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -2013,17 +2002,17 @@ fun ScanResultsScreen(
 ) {
     val groups = matches.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.map { group -> (group.first().storeName to group.first().address) to group }
     Column(
-        modifier = Modifier.fillMaxSize().background(BgDark).padding(18.dp)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(18.dp)
     ) {
-        Text("← Назад к сканеру", color = MintAccent, fontSize = 16.sp,
+        Text("← Назад к сканеру", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp,
             fontWeight = FontWeight.Bold, modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Найдено несколько назначений", color = TextLight, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text("Найдено несколько назначений", color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
-        Text("Код: $code", color = TextMuted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Text("Код: $code", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
         Spacer(Modifier.height(8.dp))
         Text("Обычный товарный штрихкод не указывает на одну конкретную коробку. Выбери нужную точку по данным накладной.",
-            color = TextMuted, fontSize = 13.sp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(groups, key = { it.first.first + "|" + it.first.second }) { entry ->
@@ -2032,18 +2021,18 @@ fun ScanResultsScreen(
                 val scanned = pointItems.sumOf { it.scannedBoxes }
                 Card(
                     modifier = Modifier.fillMaxWidth().bounceClick { onOpenPoint(pointItems.first()) },
-                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(pointItems.first().storeName, color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text(pointItems.first().address, color = TextMuted, fontSize = 12.sp)
+                        Text(pointItems.first().storeName, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(pointItems.first().address, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("По накладным: $total", color = TextLight, fontSize = 14.sp)
-                            Text("Осталось: ${(total - scanned).coerceAtLeast(0)}", color = MintAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text("По накладным: $total", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                            Text("Осталось: ${(total - scanned).coerceAtLeast(0)}", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
-                        Text("${pointItems.size} строк(и) накладной • нажми для подробностей", color = TextMuted, fontSize = 11.sp)
+                        Text("${pointItems.size} строк(и) накладной • нажми для подробностей", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 }
             }
@@ -2065,25 +2054,25 @@ fun StoreGroupCard(
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
         modifier = Modifier.fillMaxWidth()
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(first.storeName.ifBlank { "Точка доставки" }, color = TextLight,
+                Text(first.storeName.ifBlank { "Точка доставки" }, color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(first.address, color = TextMuted, fontSize = 12.sp, maxLines = 2)
+                Text(first.address, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 2)
                 val details = listOf(first.workingHours, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
                 if (details.isNotBlank()) Text(details, color = DigiDropPalette.accent, fontSize = 11.sp, maxLines = 1)
                 Text("$total мест • ${items.size} накладных",
-                    color = TextMuted, fontSize = 11.sp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(when { hasProblem -> "Проблема"; delivered -> "Сдано"; else -> "В пути" },
-                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> DigiDropPalette.accent; else -> TextMuted },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> DigiDropPalette.accent; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                     fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(Modifier.size(32.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)
@@ -2107,53 +2096,53 @@ fun PointGroupScreen(
 ) {
     val total = items.sumOf { it.totalBoxes }
     val scanned = items.sumOf { it.scannedBoxes }
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
-        Text("← Точки маршрута", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(18.dp)) {
+        Text("← Точки маршрута", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(16.dp))
-        Text(items.firstOrNull()?.storeName.orEmpty(), color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text(items.firstOrNull()?.address.orEmpty(), color = TextMuted, fontSize = 14.sp)
+        Text(items.firstOrNull()?.storeName.orEmpty(), color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text(items.firstOrNull()?.address.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         items.firstOrNull()?.let { point ->
-            if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = TextLight, fontSize = 14.sp)
-            if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = TextLight, fontSize = 14.sp)
-            if (point.workingHours.isNotBlank()) Text("Время работы: ${point.workingHours}", color = TextLight, fontSize = 14.sp)
+            if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            if (point.workingHours.isNotBlank()) Text("Время работы: ${point.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = TextMuted, fontSize = 13.sp)
-            if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = TextMuted, fontSize = 13.sp)
+            if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Накладных/строк: ${items.size}", color = TextLight, fontSize = 14.sp)
-            Text("Всего мест: $total", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text("Накладных/строк: ${items.size}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text("Всего мест: $total", color = MaterialTheme.colorScheme.secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
-        Text("Учтено уникальных сканов: $scanned", color = TextMuted, fontSize = 12.sp)
+        Text("Учтено уникальных сканов: $scanned", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
-        HubActionButton("Проверить и закрыть точку", "Все места должны быть учтены сканами или расхождениями с причиной", CardSurface, TextLight, MintAccent, onClosePoint)
+        HubActionButton("Проверить и закрыть точку", "Все места должны быть учтены сканами или расхождениями с причиной", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onClosePoint)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubActionButton("Навигатор", "Открыть точку", CardSurface, TextLight, MintAccent, onNavigate)
-            HubActionButton("Позвонить", "Связаться с точкой", CardSurface, TextLight, MintAccent, onCall)
+            HubActionButton("Навигатор", "Открыть точку", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onNavigate)
+            HubActionButton("Позвонить", "Связаться с точкой", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onCall)
         }
         Spacer(Modifier.height(14.dp))
-        Text("Состав точки", color = TextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("Состав точки", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(items) { item ->
                 Card(Modifier.fillMaxWidth().bounceClick { onOpenInvoice(item) },
-                    colors = CardDefaults.cardColors(containerColor = CardSurface), shape = RoundedCornerShape(14.dp)) {
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
                     Column(Modifier.padding(14.dp)) {
-                        Text(item.itemName, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("Штрихкод: ${item.barcode}", color = TextMuted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                        Text(item.itemName, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("Штрихкод: ${item.barcode}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
+                            Text("Мест: ${item.totalBoxes}", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                             Text(
                                 when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
-                                color = when { item.discrepancyQty > 0 -> DigiDropPalette.accentDark; item.isDelivered -> MintAccent; else -> EmeraldPrimary },
+                                color = when { item.discrepancyQty > 0 -> DigiDropPalette.accentDark; item.isDelivered -> MaterialTheme.colorScheme.secondary; else -> MaterialTheme.colorScheme.primary },
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Text("Нажми, чтобы открыть накладную", color = TextMuted, fontSize = 11.sp)
+                        Text("Нажми, чтобы открыть накладную", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 }
             }
@@ -2197,7 +2186,7 @@ fun PointDetailsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -2213,7 +2202,7 @@ fun PointDetailsScreen(
             ) {
                 Text(
                     text = "← Точки маршрута",
-                    color = MintAccent,
+                    color = MaterialTheme.colorScheme.secondary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.bounceClick { onBack() }
@@ -2222,13 +2211,13 @@ fun PointDetailsScreen(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (item.isDelivered) EmeraldPrimary else CardSurface)
-                        .border(1.dp, if (item.isDelivered) MintAccent else CardBorder, RoundedCornerShape(12.dp))
+                        .background(if (item.isDelivered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                        .border(1.dp, if (item.isDelivered) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
-                        color = if (item.discrepancyQty > 0) DigiDropPalette.primaryDark else if (item.isDelivered) BgDark else MintAccent,
+                        color = if (item.discrepancyQty > 0) DigiDropPalette.primaryDark else if (item.isDelivered) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.secondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2239,31 +2228,31 @@ fun PointDetailsScreen(
 
             Text(
                 text = item.storeName,
-                color = TextLight,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.address,
-                color = TextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Card(
-                modifier = Modifier.fillMaxWidth().border(1.dp, CardBorder, RoundedCornerShape(18.dp)),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("ДАННЫЕ ТОЧКИ", color = MintAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    if (item.ownerName.isNotBlank()) Text("ИП / контакт: ${item.ownerName}", color = TextLight, fontSize = 15.sp)
-                    if (item.phone.isNotBlank()) Text("Телефон: ${item.phone}", color = TextLight, fontSize = 15.sp)
-                    if (item.workingHours.isNotBlank()) Text("Время работы: ${item.workingHours}", color = TextLight, fontSize = 15.sp)
+                    Text("ДАННЫЕ ТОЧКИ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    if (item.ownerName.isNotBlank()) Text("ИП / контакт: ${item.ownerName}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                    if (item.phone.isNotBlank()) Text("Телефон: ${item.phone}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                    if (item.workingHours.isNotBlank()) Text("Время работы: ${item.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
                     if (item.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${item.cashNote}", color = DigiDropPalette.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    if (item.extraComment.isNotBlank()) Text("Дополнительно: ${item.extraComment}", color = TextLight, fontSize = 14.sp)
+                    if (item.extraComment.isNotBlank()) Text("Дополнительно: ${item.extraComment}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 }
             }
 
@@ -2272,21 +2261,21 @@ fun PointDetailsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, CardBorder, RoundedCornerShape(18.dp)),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
                         text = "Состав накладной к выгрузке",
-                        color = MintAccent,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = item.itemName,
-                        color = TextLight,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2308,10 +2297,10 @@ fun PointDetailsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "Всего мест к сдаче:", color = TextMuted, fontSize = 14.sp)
+                        Text(text = "Всего мест к сдаче:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                         Text(
                             text = "" + item.totalBoxes + " мест",
-                            color = EmeraldPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -2321,10 +2310,10 @@ fun PointDetailsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "Штрихкод / ТТН:", color = TextMuted, fontSize = 14.sp)
+                        Text(text = "Штрихкод / ТТН:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                         Text(
                             text = item.barcode,
-                            color = TextLight,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace
                         )
@@ -2337,21 +2326,21 @@ fun PointDetailsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, CardBorder, RoundedCornerShape(18.dp)),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Инструкция к заезду",
-                        color = TextMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = item.note,
-                        color = TextLight,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp
                     )
                 }
@@ -2360,26 +2349,26 @@ fun PointDetailsScreen(
             HubActionButton(
                 if (item.signaturePath.isNotBlank()) "Обновить подпись получателя" else "Подпись получателя",
                 "Подтверждение передачи груза",
-                CardSurface,
-                TextLight,
-                MintAccent
+                MaterialTheme.colorScheme.surface,
+                MaterialTheme.colorScheme.onSurface,
+                MaterialTheme.colorScheme.secondary
             ) { showSignatureDialog = true }
             if (signaturePreview != null) {
                 Image(
                     bitmap = signaturePreview,
                     contentDescription = "Подпись получателя",
                     modifier = Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(10.dp))
-                        .background(CardSurface).padding(5.dp),
+                        .background(MaterialTheme.colorScheme.surface).padding(5.dp),
                     contentScale = ContentScale.Fit
                 )
-                Text("Подпись получателя сохранена на устройстве", color = MintAccent, fontSize = 12.sp)
+                Text("Подпись получателя сохранена на устройстве", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
             }
             HubActionButton(
                 if (item.photoDocUri.isNotBlank()) "Заменить фото доказательства" else "Добавить фото доказательства",
                 "Сохранить фото в памяти телефона",
-                CardSurface,
-                TextLight,
-                MintAccent,
+                MaterialTheme.colorScheme.surface,
+                MaterialTheme.colorScheme.onSurface,
+                MaterialTheme.colorScheme.secondary,
                 onAddPhoto
             )
             if (photoPreview != null) {
@@ -2389,13 +2378,13 @@ fun PointDetailsScreen(
                     modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
-                Text("Фото доказательства хранится на устройстве", color = MintAccent, fontSize = 12.sp)
+                Text("Фото доказательства хранится на устройстве", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
             }
             HubActionButton(
                 if (item.discrepancyQty > 0) "Изменить расхождение: ${item.discrepancyQty}" else "Зафиксировать расхождение",
                 "Недовоз, брак или излишек",
-                CardSurface,
-                TextLight,
+                MaterialTheme.colorScheme.surface,
+                MaterialTheme.colorScheme.onSurface,
                 DigiDropPalette.primary
             ) { showDiscrepancyDialog = true }
             if (item.discrepancyQty > 0) {
@@ -2417,12 +2406,12 @@ fun PointDetailsScreen(
                         .weight(1f)
                         .height(52.dp)
                         .clip(RoundedCornerShape(26.dp))
-                        .background(CardSurface)
-                        .border(1.5.dp, MintAccent, RoundedCornerShape(26.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(26.dp))
                         .bounceClick { onCall() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "Позвонить", color = MintAccent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Позвонить", color = MaterialTheme.colorScheme.secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Box(
@@ -2430,12 +2419,12 @@ fun PointDetailsScreen(
                         .weight(1f)
                         .height(52.dp)
                         .clip(RoundedCornerShape(26.dp))
-                        .background(CardSurface)
-                        .border(1.dp, CardBorder, RoundedCornerShape(26.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(26.dp))
                         .bounceClick { onNavigate() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "Навигатор", color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Навигатор", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -2446,10 +2435,10 @@ fun PointDetailsScreen(
                     .fillMaxWidth()
                     .height(54.dp)
                     .clip(RoundedCornerShape(27.dp))
-                    .background(if (item.isDelivered) CardSurface else EmeraldPrimary)
+                    .background(if (item.isDelivered) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary)
                     .border(
                         1.dp,
-                        if (item.isDelivered) CardBorder else EmeraldPrimary,
+                        if (item.isDelivered) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
                         RoundedCornerShape(27.dp)
                     )
                     .bounceClick { onToggleDelivered() },
@@ -2457,7 +2446,7 @@ fun PointDetailsScreen(
             ) {
                 Text(
                     text = if (item.isDelivered) "Отменить сдачу (вернуть в путь)" else "Подтвердить сдачу точки",
-                    color = if (item.isDelivered) TextMuted else BgDark,
+                    color = if (item.isDelivered) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.background,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -2487,7 +2476,7 @@ fun PointDetailsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             listOf("НЕДОВОЗ", "БРАК", "ИЗЛИШЕК").forEach { value ->
                                 TextButton(onClick = { discrepancyReason = value; discrepancyError = "" }) {
-                                    Text(value, color = if (discrepancyReason == value) MintAccent else TextMuted)
+                                    Text(value, color = if (discrepancyReason == value) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -2531,10 +2520,10 @@ fun SignatureCaptureDialog(
         title = { Text("Подпись получателя") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Попроси получателя расписаться пальцем в поле ниже.", color = TextMuted, fontSize = 12.sp)
+                Text("Попроси получателя расписаться пальцем в поле ниже.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 Canvas(
                     Modifier.fillMaxWidth().height(180.dp)
-                        .background(CardSurface, RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
                         .onSizeChanged { padSize = it }
                         .pointerInput(Unit) {
                             detectDragGestures(
@@ -2669,7 +2658,7 @@ fun RouteListScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -2691,14 +2680,14 @@ fun RouteListScreen(
                 ) {
                     Text(
                         text = "← Хаб",
-                        color = MintAccent,
+                        color = MaterialTheme.colorScheme.secondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "Точки",
-                        color = TextLight,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2717,7 +2706,7 @@ fun RouteListScreen(
                             TextButton(onClick = { pointFilter = filter }) {
                                 Text(
                                     label,
-                                    color = if (pointFilter == filter) MintAccent else TextMuted,
+                                    color = if (pointFilter == filter) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = if (pointFilter == filter) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -2730,21 +2719,21 @@ fun RouteListScreen(
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("ДАННЫЕ РЕЙСА", color = MintAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        if (routeHeader.routeNumber.isNotBlank()) Text("Маршрут: ${routeHeader.routeNumber}", color = TextLight, fontSize = 14.sp)
-                        if (routeHeader.driver.isNotBlank()) Text("Водитель: ${routeHeader.driver}", color = TextLight, fontSize = 14.sp)
+                        Text("ДАННЫЕ РЕЙСА", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        if (routeHeader.routeNumber.isNotBlank()) Text("Маршрут: ${routeHeader.routeNumber}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        if (routeHeader.driver.isNotBlank()) Text("Водитель: ${routeHeader.driver}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                         val vehicleLine = listOf(routeHeader.vehicle, routeHeader.vehicleNumber).filter { it.isNotBlank() }.joinToString(" • ")
-                        if (vehicleLine.isNotBlank()) Text("Автомобиль: $vehicleLine", color = TextLight, fontSize = 14.sp)
+                        if (vehicleLine.isNotBlank()) Text("Автомобиль: $vehicleLine", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                     }
                 }
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onEditRoute) { Text("Редактировать / добавить / удалить точки", color = MintAccent) }
+                TextButton(onClick = onEditRoute) { Text("Редактировать / добавить / удалить точки", color = MaterialTheme.colorScheme.secondary) }
             }
 
             Row(
@@ -2769,25 +2758,25 @@ fun RouteListScreen(
             if (pendingNavigationGroups.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("НАВИГАЦИЯ ПО МАРШРУТУ", color = MintAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("НАВИГАЦИЯ ПО МАРШРУТУ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         when {
                             missingNavigationCoordinates > 0 -> Text(
                                 "Не хватает координат у $missingNavigationCoordinates точек. Полный маршрут в Навигатор пока не отправить.",
-                                color = TextMuted, fontSize = 13.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
                             )
                             navigationSegments.isEmpty() -> Text(
                                 "Для маршрута нужны минимум две незавершённые точки.",
-                                color = TextMuted, fontSize = 13.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
                             )
                             else -> navigationSegments.forEachIndexed { index, segment ->
                                 Button(
                                     onClick = { onNavigateSegment(index, segment) },
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Text(
@@ -2833,7 +2822,7 @@ fun RouteListScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
                             .clickable { onApplyAlternative(alternative.map { it.id }) },
-                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         Row(
@@ -2842,10 +2831,10 @@ fun RouteListScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text("Вариант ${alternativeIndex + 1}", color = TextLight, fontWeight = FontWeight.Bold)
-                                Text("Старт: $firstName", color = TextMuted, fontSize = 13.sp)
+                                Text("Вариант ${alternativeIndex + 1}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                                Text("Старт: $firstName", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                             }
-                            Text("Применить ›", color = EmeraldPrimary, fontWeight = FontWeight.SemiBold)
+                            Text("Применить ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -2858,24 +2847,24 @@ fun RouteListScreen(
                 if (displayedGroups.isEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
-                            .border(1.dp, CardBorder, RoundedCornerShape(20.dp)),
-                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(22.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("▤", color = EmeraldPrimary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
+                            Text("▤", color = MaterialTheme.colorScheme.primary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(10.dp))
                             Text(
                                 if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
-                                color = TextLight, fontSize = 19.sp, fontWeight = FontWeight.Bold
+                                color = MaterialTheme.colorScheme.onSurface, fontSize = 19.sp, fontWeight = FontWeight.Bold
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
-                                color = TextMuted, fontSize = 13.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
                             )
                         }
                     }
@@ -2917,7 +2906,7 @@ fun RouteListScreen(
         Box(
             modifier = Modifier.align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(BgDark)
+                .background(MaterialTheme.colorScheme.background)
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
@@ -2947,7 +2936,7 @@ fun TopBarSection(
     ) {
         Text(
             text = title,
-            color = TextLight,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.SansSerif
@@ -2980,7 +2969,7 @@ fun TopBarSection(
                             path = path,
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    MintAccent.copy(alpha = 0.55f),
+                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.55f),
                                     Color.Transparent
                                 )
                             )
@@ -2993,11 +2982,11 @@ fun TopBarSection(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(if (isFlashOn) EmeraldPrimary.copy(alpha = 0.25f) else Color.Transparent)
-                    .border(1.dp, if (isFlashOn) MintAccent else CardBorder, CircleShape),
+                    .background(if (isFlashOn) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent)
+                    .border(1.dp, if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                FlashlightVector(tint = if (isFlashOn) MintAccent else TextMuted)
+                FlashlightVector(tint = if (isFlashOn) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -3049,11 +3038,11 @@ fun RouteItemCard(
             .fillMaxWidth()
             .border(
                 1.dp,
-                if (item.isDelivered) CardBorder else EmeraldPrimary.copy(alpha = 0.6f),
+                if (item.isDelivered) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                 RoundedCornerShape(18.dp)
             )
             .bounceClick(scaleDown = 0.98f) { onCardClick() },
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(18.dp)
     ) {
         Row(
@@ -3066,40 +3055,40 @@ fun RouteItemCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (item.isDelivered) "Доставлено" else "В пути",
-                    color = if (item.isDelivered) MintAccent else EmeraldPrimary,
+                    color = if (item.isDelivered) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = item.storeName,
-                    color = TextLight,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = item.address,
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
                 Spacer(modifier = Modifier.height(5.dp))
                 Text(
                     text = item.itemName,
-                    color = EmeraldPrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
                 Text(
                     text = "Сканировано: ${item.scannedBoxes} / ${item.totalBoxes}",
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = "Мест: " + item.totalBoxes + " • ТТН: " + item.barcode,
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace
                 )
@@ -3115,35 +3104,35 @@ fun RouteItemCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(CardBorder)
+                        .background(MaterialTheme.colorScheme.outline)
                         .bounceClick(scaleDown = 0.88f) { onMapClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    MapIconVector(tint = MintAccent)
+                    MapIconVector(tint = MaterialTheme.colorScheme.secondary)
                 }
 
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(CardBorder)
+                        .background(MaterialTheme.colorScheme.outline)
                         .bounceClick(scaleDown = 0.88f) { onCallClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    PhoneIconVector(tint = MintAccent)
+                    PhoneIconVector(tint = MaterialTheme.colorScheme.secondary)
                 }
 
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(if (item.isDelivered) EmeraldPrimary else Color.Transparent)
-                        .border(2.dp, if (item.isDelivered) MintAccent else CardBorder, CircleShape)
+                        .background(if (item.isDelivered) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        .border(2.dp, if (item.isDelivered) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, CircleShape)
                         .bounceClick(scaleDown = 0.86f) { onToggleStatus() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (item.isDelivered) {
-                        CheckmarkVector(tint = BgDark)
+                        CheckmarkVector(tint = MaterialTheme.colorScheme.background)
                     }
                 }
             }
@@ -3165,7 +3154,7 @@ fun MapIconVector(tint: Color) {
             close()
         }
         drawPath(path, color = tint)
-        drawCircle(color = CardSurface, radius = w * 0.15f, center = Offset(w * 0.5f, h * 0.45f))
+        drawCircle(color = MaterialTheme.colorScheme.surface, radius = w * 0.15f, center = Offset(w * 0.5f, h * 0.45f))
     }
 }
 
@@ -3232,7 +3221,7 @@ fun CheckmarkVector(tint: Color) {
 
 @Composable
 fun BarcodeGraphic(isCompleted: Boolean) {
-    val barColor = if (isCompleted) TextMuted.copy(alpha = 0.35f) else MintAccent.copy(alpha = 0.7f)
+    val barColor = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
     Row(
         modifier = Modifier
             .width(130.dp)
@@ -3266,13 +3255,13 @@ fun BottomActionButtons(
                 .weight(1f)
                 .height(52.dp)
                 .clip(RoundedCornerShape(26.dp))
-                .background(EmeraldPrimary)
+                .background(MaterialTheme.colorScheme.primary)
                 .bounceClick { onRouteClick() },
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Маршрут",
-                color = BgDark,
+                color = MaterialTheme.colorScheme.background,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -3283,14 +3272,14 @@ fun BottomActionButtons(
                 .weight(1f)
                 .height(52.dp)
                 .clip(RoundedCornerShape(26.dp))
-                .background(CardSurface)
-                .border(1.5.dp, MintAccent, RoundedCornerShape(26.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(26.dp))
                 .bounceClick { onScanClick() },
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Сканировать",
-                color = MintAccent,
+                color = MaterialTheme.colorScheme.secondary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -3315,11 +3304,11 @@ fun ReportsScreen(
     val scanned = routeItems.sumOf { it.scannedBoxes }
     val discrepancies = routeItems.sumOf { it.discrepancyQty }
     val remaining = (totalBoxes - scanned - discrepancies).coerceAtLeast(0)
-    Column(Modifier.fillMaxSize().background(BgDark).verticalScroll(rememberScrollState()).padding(18.dp)) {
-        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(18.dp)) {
+        Text("← Главная", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Отчёты и сверка", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Отчёты и сверка", color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         val stats = listOf(
             "Точек всего" to points.size.toString(),
@@ -3332,27 +3321,27 @@ fun ReportsScreen(
             "Строк накладных" to routeItems.size.toString()
         )
         stats.forEach { (label, value) ->
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = CardSurface),
+            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp)) {
                 Row(Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(label, color = TextMuted, fontSize = 14.sp)
-                    Text(value, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-        Text("Состояние точек", color = TextLight, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text("Состояние точек", color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         ReportStatusBar("Доставлено", delivered, points.size, DigiDropPalette.accent)
         ReportStatusBar("В работе", inProgressPoints, points.size, DigiDropPalette.accent)
         ReportStatusBar("Ожидают", pendingPoints, points.size, DigiDropPalette.accentDark)
         ReportStatusBar("Расхождения", problemPoints, points.size, DigiDropPalette.primaryDark)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Экспорт CSV", "Универсальный табличный формат", CardSurface, TextLight, MintAccent, onExport)
+        HubActionButton("Экспорт CSV", "Универсальный табличный формат", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onExport)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Экспорт Excel", "Файл XLSX с отдельными колонками и статусами", CardSurface, TextLight, MintAccent, onExportExcel)
+        HubActionButton("Экспорт Excel", "Файл XLSX с отдельными колонками и статусами", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onExportExcel)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Экспорт PDF", "Печатный отчёт по точкам и грузу", CardSurface, TextLight, MintAccent, onExportPdf)
+        HubActionButton("Экспорт PDF", "Печатный отчёт по точкам и грузу", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onExportPdf)
         Spacer(Modifier.height(8.dp))
-        Text("В отчёты входят штрихкод, точка, адрес, товар, план, факт, расхождения, остаток и статус.", color = TextMuted, fontSize = 12.sp)
+        Text("В отчёты входят штрихкод, точка, адрес, товар, план, факт, расхождения, остаток и статус.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
 }
 
@@ -3361,11 +3350,11 @@ private fun ReportStatusBar(label: String, value: Int, total: Int, color: Color)
     val fraction = if (total > 0) (value.toFloat() / total).coerceIn(0f, 1f) else 0f
     Column(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = TextMuted, fontSize = 12.sp)
-            Text("$value / $total", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text("$value / $total", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
         Box(
-            Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)).background(CardBorder)
+            Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.outline)
         ) {
             Box(
                 Modifier.fillMaxWidth(fraction).height(8.dp).background(color, RoundedCornerShape(8.dp))
@@ -3391,28 +3380,28 @@ fun SettingsScreen(
     onArchiveRoute: () -> Unit
 ) {
     var showArchiveConfirmation by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
-        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(18.dp)) {
+        Text("← Главная", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Настройки", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Настройки", color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте; сохранить исходный порядок точек. Навигация запускается через Яндекс Навигатор.", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение кодов упаковок", "Помнить уже отсканированные уникальные коды между перезапусками. Прогресс рейса всегда сохраняется в Room.", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         SettingToggleRow("Графитовая тема", "Включает матовую тёмную палитру DigiDrop без чисто чёрного фона", darkTheme, onDarkThemeChange)
         Spacer(Modifier.height(12.dp))
-        HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", CardSurface, TextLight, MintAccent, onBackup)
+        HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onBackup)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", CardSurface, TextLight, MintAccent, onRestore)
+        HubActionButton("Восстановить копию", "Загрузить ZIP-резервную копию DigiDrop", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onRestore)
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", CardSurface, TextLight, DigiDropPalette.primary) {
+        HubActionButton("Завершить рейс и отправить в архив", "Проверить и сохранить текущий рейс в истории", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, DigiDropPalette.primary) {
             showArchiveConfirmation = true
         }
         Spacer(Modifier.height(8.dp))
-        HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", CardSurface, TextLight, DigiDropPalette.primary, onClearUnknown)
+        HubActionButton("Очистить неизвестные коды", "Удалить локальный список нераспознанных сканов", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, DigiDropPalette.primary, onClearUnknown)
         Spacer(Modifier.height(14.dp))
-        Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = TextMuted, fontSize = 12.sp)
+        Text("Резервная копия включает маршрут, сканы, расхождения, настройки и локальные фото/подписи.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
     if (showArchiveConfirmation) {
         AlertDialog(
@@ -3434,16 +3423,16 @@ fun SettingsScreen(
 
 @Composable
 fun SettingToggleRow(title: String, subtitle: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = CardSurface),
+    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title, color = TextLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = TextMuted, fontSize = 11.sp)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            Text(if (enabled) "ВКЛ" else "ВЫКЛ", color = if (enabled) MintAccent else TextMuted,
+            Text(if (enabled) "ВКЛ" else "ВЫКЛ", color = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp)).background(BgDark).padding(horizontal = 12.dp, vertical = 10.dp)
+                    .clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.background).padding(horizontal = 12.dp, vertical = 10.dp)
                     .bounceClick { onChange(!enabled) })
         }
     }
@@ -3456,35 +3445,35 @@ internal fun HistoryScreen(
     onRestoreRoute: (Long) -> Unit
 ) {
     val formatter = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("ru", "RU")) }
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
-        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(18.dp)) {
+        Text("← Главная", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("История рейсов", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text("Архив хранится локально на этом устройстве.", color = TextMuted, fontSize = 12.sp)
+        Text("История рейсов", color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Архив хранится локально на этом устройстве.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         if (routes.isEmpty()) {
-            Text("Завершённых или заменённых рейсов пока нет.", color = TextMuted, fontSize = 14.sp)
+            Text("Завершённых или заменённых рейсов пока нет.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(routes, key = { it.routeId }) { route ->
                     val percent = if (route.expectedQty > 0) {
                         (route.scannedQty * 100 / route.expectedQty).coerceIn(0, 100)
                     } else 0
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(14.dp)) {
                         Column(Modifier.padding(14.dp)) {
-                            Text(route.routeNumber, color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text(formatter.format(Date(route.createdAt)), color = TextMuted, fontSize = 12.sp)
+                            Text(route.routeNumber, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(formatter.format(Date(route.createdAt)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             Spacer(Modifier.height(7.dp))
                             Text(
                                 "${route.completedPointCount} / ${route.pointCount} точек завершено • ${route.scannedQty} / ${route.expectedQty} мест",
-                                color = MintAccent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                                color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
                             )
-                            Text("Выполнение по сканам: $percent%", color = TextMuted, fontSize = 12.sp)
+                            Text("Выполнение по сканам: $percent%", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             Spacer(Modifier.height(8.dp))
                             TextButton(onClick = { onRestoreRoute(route.routeId) }) {
-                                Text("Восстановить этот рейс", color = MintAccent)
+                                Text("Восстановить этот рейс", color = MaterialTheme.colorScheme.secondary)
                             }
                         }
                     }
@@ -3496,26 +3485,26 @@ internal fun HistoryScreen(
 
 @Composable
 fun UnknownCodesScreen(codes: List<String>, onBack: () -> Unit, onClear: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(BgDark).padding(18.dp)) {
-        Text("← Главная", color = MintAccent, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(18.dp)) {
+        Text("← Главная", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
         Spacer(Modifier.height(18.dp))
-        Text("Неизвестные коды", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-        Text("Скан-коды, которых нет в загруженных накладных: ${codes.size}", color = TextMuted, fontSize = 12.sp)
+        Text("Неизвестные коды", color = MaterialTheme.colorScheme.onSurface, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Скан-коды, которых нет в загруженных накладных: ${codes.size}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         if (codes.isEmpty()) {
-            Text("Пока нет неизвестных кодов.", color = TextMuted, fontSize = 14.sp)
+            Text("Пока нет неизвестных кодов.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         } else {
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(codes) { code ->
-                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(12.dp)) {
-                        Text(code, Modifier.padding(14.dp), color = TextLight, fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+                        Text(code, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onSurface, fontFamily = FontFamily.Monospace, fontSize = 13.sp)
                     }
                 }
             }
             Spacer(Modifier.height(10.dp))
-            HubActionButton("Очистить список", "Удалить неизвестные сканы", CardSurface, TextLight, DigiDropPalette.primary, onClear)
+            HubActionButton("Очистить список", "Удалить неизвестные сканы", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, DigiDropPalette.primary, onClear)
         }
     }
 }
