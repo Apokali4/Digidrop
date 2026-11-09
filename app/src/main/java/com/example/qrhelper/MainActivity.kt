@@ -1044,36 +1044,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         )
                     }
                 }
-                val imageUris = uris.filter { uri ->
-                    InvoiceImportKind.isImage(
-                        context.contentResolver.getType(uri),
-                        uri.toString().lowercase()
-                    )
-                }
-                if (imageUris.size == 1) {
-                    val uri = imageUris.single()
-                    val mime = context.contentResolver.getType(uri).orEmpty()
-                    val cachedPhoto = withContext(Dispatchers.IO) {
-                        val extension = when {
-                            mime.contains("png", ignoreCase = true) -> ".png"
-                            mime.contains("webp", ignoreCase = true) -> ".webp"
-                            mime.contains("heic", ignoreCase = true) || mime.contains("heif", ignoreCase = true) -> ".heic"
-                            else -> ".jpg"
-                        }
-                        val target = File(context.cacheDir, "route_import_${System.currentTimeMillis()}$extension")
-                        val imageBytes = context.contentResolver.openInputStream(uri)?.use {
-                            it.readInvoiceBytes()
-                        } ?: error("Android не предоставил доступ к выбранной фотографии")
-                        target.writeBytes(imageBytes)
-                        check(target.length() > 0L) { "Выбранная фотография оказалась пустой" }
-                        target
-                    }
-                    photoRouteInitialUri = Uri.fromFile(cachedPhoto)
-                    photoRouteInitialAction = null
-                    navigateTo(AppScreen.PHOTO_ROUTE)
-                    return@launch
-                }
-
                 val importErrors = mutableListOf<String>()
                 val imported = withContext(Dispatchers.IO) {
                     uris.flatMapIndexed { index, uri ->
