@@ -704,20 +704,33 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             return
         }
         importScope.launch {
-            runCatching {
-                LogisticsRepository(context).archiveActiveRoute()
-                val editor = prefs.edit().remove("active_manifest").remove("scan_codes")
+            try {
+                val repository = LogisticsRepository(context)
+                repository.archiveActiveRoute()
+                val archived = repository.history()
+                val editor = prefs.edit()
+                    .remove("active_manifest")
+                    .remove("scan_codes")
+                    .remove("unknown_codes")
+                    .remove("route_header_number")
+                    .remove("route_header_driver")
+                    .remove("route_header_vehicle")
+                    .remove("route_header_vehicle_number")
                 routeItems.forEach { item ->
                     editor.remove("delivered_" + routeItemKey(item))
                     editor.remove("scanned_" + routeItemKey(item))
                 }
                 editor.apply()
+                archivedRoutes = archived
                 routeItems = emptyList()
+                routeHeader = PhotoRouteHeader()
+                sessionScanCodes = emptySet()
+                unknownCodes = emptyList()
                 selectedItem = null
                 selectedPointItems = emptyList()
                 navigateTo(AppScreen.HUB)
                 Toast.makeText(context, "Рейс отправлен в историю", Toast.LENGTH_LONG).show()
-            }.onFailure { error ->
+            } catch (error: Exception) {
                 Toast.makeText(context, "Не удалось архивировать рейс: ${error.message}", Toast.LENGTH_LONG).show()
             }
         }
@@ -1516,9 +1529,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             restored to repository.activeUniqueScanCodes()
                         }
                             .onSuccess { (restored, restoredCodes) ->
-                                routeItems = restored
-                                sessionScanCodes = restoredCodes
-                                prefs.edit().putStringSet("scan_codes", restoredCodes).apply()
                                 val manifest = restored.joinToString("\n") { item ->
                                     listOf(
                                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
@@ -1526,7 +1536,21 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                         item.ownerName, item.workingHours, item.cashNote, item.extraComment
                                     ).joinToString("\t") { it.replace("\t", " ") }
                                 }
-                                prefs.edit().putString("active_manifest", manifest).apply()
+                                val editor = prefs.edit()
+                                    .putString("active_manifest", manifest)
+                                    .putStringSet("scan_codes", restoredCodes)
+                                    .remove("unknown_codes")
+                                restored.forEach { item ->
+                                    editor.remove("delivered_" + routeItemKey(item))
+                                        .remove("scanned_" + routeItemKey(item))
+                                }
+                                editor.apply()
+                                routeItems = restored
+                                sessionScanCodes = restoredCodes
+                                unknownCodes = emptyList()
+                                selectedItem = null
+                                selectedPointItems = emptyList()
+                                archivedRoutes = LogisticsRepository(context).history()
                                 navigateTo(AppScreen.ROUTE_LIST)
                                 Toast.makeText(context, "Архивный рейс восстановлен", Toast.LENGTH_LONG).show()
                             }
