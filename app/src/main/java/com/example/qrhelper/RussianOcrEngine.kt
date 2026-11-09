@@ -8,9 +8,50 @@ import com.googlecode.tesseract.android.TessBaseAPI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+
+internal const val MAX_RUSSIAN_OCR_MODEL_BYTES = 32L * 1024L * 1024L
+
+internal fun installOcrModel(input: InputStream, target: File) {
+    val directory = target.parentFile ?: error("У OCR-модели отсутствует папка")
+    check(directory.exists() || directory.mkdirs()) { "Не удалось создать папку OCR-модели" }
+    val temporary = File(directory, "${target.name}.download")
+    val backup = File(directory, "${target.name}.previous")
+    try {
+        FileOutputStream(temporary).use { output ->
+            val buffer = ByteArray(8192)
+            var total = 0L
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                total += count
+                require(total <= MAX_RUSSIAN_OCR_MODEL_BYTES) {
+                    "OCR-модель превышает допустимые 32 МБ"
+                }
+                output.write(buffer, 0, count)
+            }
+            output.flush()
+            output.fd.sync()
+        }
+        check(temporary.length() >= 1_000_000L) {
+            "OCR-модель скачалась не полностью (${temporary.length()} байт)"
+        }
+        if (backup.exists()) check(backup.delete()) { "Не удалось удалить резерв OCR-модели" }
+        if (target.exists()) check(target.renameTo(backup)) { "Не удалось сохранить предыдущую OCR-модель" }
+        if (!temporary.renameTo(target)) {
+            if (backup.exists()) backup.renameTo(target)
+            error("Не удалось установить OCR-модель")
+        }
+        backup.delete()
+    } catch (error: Exception) {
+        temporary.delete()
+        if (!target.exists() && backup.exists()) backup.renameTo(target)
+        throw error
+    }
+}
 
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
 internal object RussianOcrEngine {
@@ -96,16 +137,8 @@ internal object RussianOcrEngine {
 
         val bundledModel = runCatching { context.assets.open("tessdata/rus.traineddata") }.getOrNull()
         if (bundledModel != null) {
-            val assetCopy = File(dataDirectory, "rus.traineddata.asset")
-            bundledModel.use { input ->
-                assetCopy.outputStream().use { output -> input.copyTo(output) }
-            }
-            if (assetCopy.length() >= 1_000_000L) {
-                if (trainedData.exists()) trainedData.delete()
-                check(assetCopy.renameTo(trainedData)) { "Не удалось установить встроенную OCR-модель" }
-                return
-            }
-            assetCopy.delete()
+            bundledModel.use { input -> installOcrModel(input, trainedData) }
+            return
         }
 
         withContext(Dispatchers.Main) {
@@ -123,16 +156,7 @@ internal object RussianOcrEngine {
             check(responseCode in 200..299) {
                 "Сервер OCR-модели ответил HTTP $responseCode. Проверьте интернет и повторите."
             }
-            connection.inputStream.use { input ->
-                temporary.outputStream().use { output -> input.copyTo(output) }
-            }
-            check(temporary.length() >= 1_000_000L) {
-                "OCR-модель скачалась не полностью (${temporary.length()} байт)"
-            }
-            if (trainedData.exists() && !trainedData.delete()) {
-                error("Не удалось обновить старую OCR-модель")
-            }
-            check(temporary.renameTo(trainedData)) { "Не удалось сохранить OCR-модель" }
+            connection.inputStream.use { input -> installOcrModel(input, trainedData) }
         } finally {
             connection.disconnect()
             if (temporary.exists()) temporary.delete()
