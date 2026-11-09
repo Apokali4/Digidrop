@@ -2,6 +2,8 @@ package com.example.qrhelper
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -54,5 +56,29 @@ class ExtendedInvoiceParserTest {
         val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.RTF, rtf.toByteArray())
         assertTrue(rows.any { it.storeName == "Магазин Д" && it.totalBoxes == 6 })
     }
+
+    @Test fun parsesOdsSpreadsheetTable() {
+        val xml = """<office:document-content xmlns:table="urn:table" xmlns:text="urn:text"><table:table><table:table-row><table:table-cell><text:p>Штрихкод</text:p></table:table-cell><table:table-cell><text:p>Магазин</text:p></table:table-cell><table:table-cell><text:p>Адрес</text:p></table:table-cell><table:table-cell><text:p>Товар</text:p></table:table-cell><table:table-cell><text:p>Количество</text:p></table:table-cell></table:table-row><table:table-row><table:table-cell><text:p>4601234567890</text:p></table:table-cell><table:table-cell><text:p>Магазин Ж</text:p></table:table-cell><table:table-cell><text:p>Калуга, Театральная 7</text:p></table:table-cell><table:table-cell><text:p>Сахар</text:p></table:table-cell><table:table-cell><text:p>7</text:p></table:table-cell></table:table-row></table:table></office:document-content>"""
+        val bytes = zippedContent(xml)
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODS, bytes)
+        assertTrue(rows.any { it.storeName == "Магазин Ж" && it.totalBoxes == 7 })
+    }
+
+    @Test fun parsesOdtTableRows() {
+        val xml = """<office:document-content xmlns:text="urn:text"><text:table><text:table-row><text:table-cell><text:p>Штрихкод</text:p></text:table-cell><text:table-cell><text:p>Магазин</text:p></text:table-cell><text:table-cell><text:p>Адрес</text:p></text:table-cell><text:table-cell><text:p>Товар</text:p></text:table-cell><text:table-cell><text:p>Количество</text:p></text:table:table-cell></text:table-row><text:table-row><text:table-cell><text:p>4601234567890</text:p></text:table-cell><text:table-cell><text:p>Магазин З</text:p></text:table-cell><text:table-cell><text:p>Калуга, Суворова 8</text:p></text:table-cell><text:table-cell><text:p>Крупа</text:p></text:table-cell><text:table-cell><text:p>8</text:p></text:table-cell></text:table-row></text:table></office:document-content>"""
+        val bytes = zippedContent(xml)
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.ODT, bytes)
+        assertTrue(rows.any { it.storeName == "Магазин З" && it.totalBoxes == 8 })
+    }
+
+    private fun zippedContent(xml: String): ByteArray =
+        ByteArrayOutputStream().use { output ->
+            ZipOutputStream(output).use { zip ->
+                zip.putNextEntry(ZipEntry("content.xml"))
+                zip.write(xml.toByteArray())
+                zip.closeEntry()
+            }
+            output.toByteArray()
+        }
 
 }
