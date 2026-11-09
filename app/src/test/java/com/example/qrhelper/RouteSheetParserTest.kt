@@ -63,4 +63,21 @@ class RouteSheetParserTest {
 
         assertEquals(2, result.size)
     }
+    @Test fun parsesMultipleWorkbookSheetsAsOneRouteList() {
+        val sheets = listOf(
+            listOf(
+                listOf("№", "Код", "Клиент", "Адрес доставки", "Комментарий"),
+                listOf("1", "1708", "Балтика ПК ООО", "г. Калуга, ул. Врубовая, д. 2", "")
+            ),
+            listOf(
+                listOf("№", "Код", "Клиент", "Адрес доставки", "Комментарий"),
+                listOf("2", "1646", "Альфа Рязань ООО", "г. Калуга, ул. Болдина, д. 9", "")
+            )
+        )
+        val result = RouteSheetParser.parseSheets(sheets)
+        assertEquals(2, result.size)
+        assertEquals("Балтика ПК ООО", result[0].storeName)
+        assertEquals("Альфа Рязань ООО", result[1].storeName)
+    }
+
 }
