@@ -81,4 +81,21 @@ class ExtendedInvoiceParserTest {
             output.toByteArray()
         }
 
+    @Test fun parsesDocxTableRows() {
+        val xml = """<w:document xmlns:w="urn:word"><w:body><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Штрихкод</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Магазин</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Адрес</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Товар</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Количество</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>4601234567890</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Магазин И</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Калуга, Кирова 9</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Мука</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>9</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>"""
+        val bytes = zippedEntry("word/document.xml", xml)
+        val rows = ExtendedInvoiceParser.parse(InvoiceDocumentFormat.DOCX, bytes)
+        assertTrue(rows.any { it.storeName == "Магазин И" && it.totalBoxes == 9 })
+    }
+
+    private fun zippedEntry(name: String, xml: String): ByteArray =
+        ByteArrayOutputStream().use { output ->
+            ZipOutputStream(output).use { zip ->
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(xml.toByteArray())
+                zip.closeEntry()
+            }
+            output.toByteArray()
+        }
+
 }
