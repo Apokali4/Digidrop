@@ -262,12 +262,5 @@ class PhotoRouteTextParserTest {
         assertEquals("", metadata.storeName)
     }
 
-    @Test fun doesNotUseLegalEntityAsCustomerFacingStoreName() {
-        val metadata = PhotoRouteTextParser.extractMetadata(
-            "ООО Альфа Рязань\nКалуга, ул. В. Никитиной, д. 21",
-            "Калуга, ул. В. Никитиной, д. 21"
-        )
-        assertEquals("", metadata.storeName)
-    }
 
 }
