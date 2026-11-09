@@ -35,6 +35,11 @@ class RouteImportMapperTest {
         assertEquals(DeliveryStatus.IN_PROGRESS, RouteImportMapper.map(listOf(item)).single().status)
     }
 
+    @Test fun doesNotAutoCompleteZeroQuantityRowWithoutManualConfirmation() {
+        val item = RouteItem("a", "Магазин", "Адрес", "Услуга", 0, "")
+        assertEquals(DeliveryStatus.PENDING, RouteImportMapper.map(listOf(item)).single().status)
+    }
+
     @Test fun completesOnlyWhenEveryCargoRowIsAccounted() {
         val items = listOf(
             RouteItem("a", "Магазин", "Адрес", "Товар 1", 2, "", scannedBoxes = 2),
