@@ -22,9 +22,13 @@ internal fun mergeInvoiceImport(
         return InvoiceImportMergeResult(current, isDuplicate = true)
     }
 
-    val previousByIdentity = current.associateBy { it.invoiceIdentity() }
+    // A barcode can legitimately occur on multiple invoice rows. Keep each
+    // previous row in a queue instead of silently retaining only the last one.
+    val previousByIdentity = current.groupBy { it.invoiceIdentity() }
+        .mapValues { (_, rows) -> ArrayDeque(rows) }
     val merged = incoming.map { fresh ->
-        val previous = previousByIdentity[fresh.invoiceIdentity()] ?: return@map fresh
+        val previous = previousByIdentity[fresh.invoiceIdentity()]?.removeFirstOrNull()
+            ?: return@map fresh
         fresh.copy(
             isDelivered = previous.isDelivered,
             scannedBoxes = previous.scannedBoxes,
