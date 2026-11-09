@@ -920,28 +920,9 @@ fun PhotoRoutePlannerScreen(
 
             located.forEachIndexed { index, stop ->
                 var dragDistance by remember(stop.address) { mutableStateOf(0f) }
+                var editing by remember(stop.address) { mutableStateOf(false) }
                 Card(
-                    modifier = Modifier.fillMaxWidth().pointerInput(stop.address, located.size) {
-                        detectDragGesturesAfterLongPress(
-                            onDragEnd = { dragDistance = 0f },
-                            onDragCancel = { dragDistance = 0f },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                dragDistance += amount.y
-                                if (dragDistance > 72f && index < located.lastIndex) {
-                                    located = located.toMutableList().also { list ->
-                                        val item = list.removeAt(index); list.add(index + 1, item)
-                                    }
-                                    dragDistance = 0f
-                                } else if (dragDistance < -72f && index > 0) {
-                                    located = located.toMutableList().also { list ->
-                                        val item = list.removeAt(index); list.add(index - 1, item)
-                                    }
-                                    dragDistance = 0f
-                                }
-                            }
-                        )
-                    },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.outline),
@@ -950,29 +931,82 @@ fun PhotoRoutePlannerScreen(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.titleMedium)
-                            Text("⠿ ПЕРЕТАЩИТЬ", color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                "⠿",
+                                modifier = Modifier
+                                    .background(palette.surfaceVariant, RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .pointerInput(stop.address, located.size) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragEnd = { dragDistance = 0f },
+                                            onDragCancel = { dragDistance = 0f },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragDistance += amount.y
+                                                if (dragDistance > 72f && index < located.lastIndex) {
+                                                    located = located.toMutableList().also { list ->
+                                                        val item = list.removeAt(index); list.add(index + 1, item)
+                                                    }
+                                                    dragDistance = 0f
+                                                } else if (dragDistance < -72f && index > 0) {
+                                                    located = located.toMutableList().also { list ->
+                                                        val item = list.removeAt(index); list.add(index - 1, item)
+                                                    }
+                                                    dragDistance = 0f
+                                                }
+                                            }
+                                        )
+                                    },
+                                color = palette.onSurfaceVariant,
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                         Text(stop.metadata.storeName.ifBlank { "Название магазина не распознано" },
                             color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
                         Text(stop.address, color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
-                        PhotoPlannerTile("Проверить адрес в Яндекс Навигаторе", "Откроется найденная координата") {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yandexnavi://show_point_on_map")
-                                    .buildUpon()
-                                    .appendQueryParameter("lat", stop.latitude.toString())
-                                    .appendQueryParameter("lon", stop.longitude.toString())
-                                    .appendQueryParameter("zoom", "16")
-                                    .build())
-                                    .setPackage("ru.yandex.yandexnavi")
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("yandexnavi://show_point_on_map")
+                                        .buildUpon()
+                                        .appendQueryParameter("lat", stop.latitude.toString())
+                                        .appendQueryParameter("lon", stop.longitude.toString())
+                                        .appendQueryParameter("zoom", "16")
+                                        .build())
+                                        .setPackage("ru.yandex.yandexnavi")
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "Яндекс Навигатор не установлен. Установите его и повторите.", Toast.LENGTH_LONG).show()
+                                }
+                            }) { Text("Адрес") }
+                            if (stop.metadata.phone.isNotBlank()) {
+                                TextButton(onClick = {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(stop.metadata.phone))))
+                                }) { Text("Позвонить") }
+                            }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { editing = !editing }) {
+                                Text(if (editing) "Свернуть" else "Изменить")
                             }
                         }
-                        PhotoMetadataField("Магазин", stop.metadata.storeName) { value -> updateStopMetadata(index) { it.copy(storeName = value) } }
-                        PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value -> updateStopMetadata(index) { it.copy(workingHours = value) } }
-                        PhotoMetadataField("Телефон", stop.metadata.phone) { value -> updateStopMetadata(index) { it.copy(phone = value) } }
-                        PhotoMetadataField("Комментарий", stop.metadata.comment) { value -> updateStopMetadata(index) { it.copy(comment = value) } }
+                        if (stop.metadata.workingHours.isNotBlank()) {
+                            Text("Доставка: ${stop.metadata.workingHours}", color = palette.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (stop.metadata.phone.isNotBlank()) {
+                            Text("Телефон: ${stop.metadata.phone}", color = palette.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (stop.metadata.comment.isNotBlank()) {
+                            Text(stop.metadata.comment, color = palette.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (editing) {
+                            PhotoMetadataField("Магазин", stop.metadata.storeName) { value -> updateStopMetadata(index) { it.copy(storeName = value) } }
+                            PhotoMetadataField("Время / условие доставки", stop.metadata.workingHours) { value -> updateStopMetadata(index) { it.copy(workingHours = value) } }
+                            PhotoMetadataField("Телефон", stop.metadata.phone) { value -> updateStopMetadata(index) { it.copy(phone = value) } }
+                            PhotoMetadataField("Комментарий", stop.metadata.comment) { value -> updateStopMetadata(index) { it.copy(comment = value) } }
+                        }
                         PhotoPlannerTile("Удалить точку", "Убрать адрес из текущего маршрута") {
                             located = located.filterIndexed { i, _ -> i != index }
                             status = "Точка удалена."
@@ -981,24 +1015,15 @@ fun PhotoRoutePlannerScreen(
                 }
             }
 
-            Text("НАВИГАЦИЯ", color = palette.onSurface, style = MaterialTheme.typography.titleLarge)
             val coords = located.map { PhotoRouteCoordinate(it.latitude, it.longitude) }
             val segments = if (coords.size >= 2) PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
             if (segments.isEmpty()) {
                 Text("Для Яндекс Навигатора нужны минимум две точки с координатами.", color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else if (segments.size == 1) {
-                PhotoPlannerTile("Яндекс Навигатор", "Открыть все ${coords.size} точек в заданном порядке") {
-                    openYandexNavigator(context, segments.first())
-                }
-            } else {
-                segments.forEachIndexed { index, segment ->
-                    PhotoPlannerTile("Яндекс • участок ${index + 1} из ${segments.size}",
-                        "${segment.size} точек • соседние участки имеют общую переходную точку") {
-                        openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
-                    }
-                }
+            } else if (segments.size > 1) {
+                Text("Маршрут будет передан участками по 20 точек с общей переходной точкой. Участков: ${segments.size}.",
+                    color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            PhotoPlannerTile("Сохранить маршрут в DigiDrop", "Передать точки в рабочий список рейса", primary = true) {
+            PhotoPlannerTile("Одобрить маршрут и открыть в Яндекс Навигаторе", "Сохранить точки в DigiDrop и открыть первый участок", primary = true) {
                 val items = located.mapIndexed { index, stop ->
                     RouteItem(
                         barcode = "PHOTO-${index + 1}",
@@ -1017,6 +1042,12 @@ fun PhotoRoutePlannerScreen(
                     )
                 }
                 onApplyRoute(items, routeHeader)
+                if (segments.isNotEmpty()) {
+                    openYandexNavigator(context, segments.first())
+                    if (segments.size > 1) {
+                        Toast.makeText(context, "Первый участок открыт. Остальные участки сохранены в списке маршрута.", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }
     }
