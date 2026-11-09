@@ -317,8 +317,8 @@ class PhotoRouteTextParserTest {
         val groups = groupPhotoRouteAddresses(addresses)
 
         assertEquals(36, groups.sumOf { it.size })
-        assertEquals(23, groups.size)
-        assertEquals(10, groups.first().size + groups[1].size)
+        assertEquals(22, groups.size)
+        assertEquals(10, groups.first().size)
     }
 
 }
