@@ -80,4 +80,15 @@ class RouteSheetParserTest {
         assertEquals("Альфа Рязань ООО", result[1].storeName)
     }
 
+    @Test fun preservesRepeatedAddressRowsForDifferentCustomersInOcrText() {
+        val text = """
+            1 1708 Балтика ПК ООО г. Калуга, ул. Болдина, д. 9, Красное и Белое
+            2 1646 Альфа Рязань ООО г. Калуга, ул. Болдина, д. 9, Красное и Белое
+            3 1631 Альфа-М ООО г. Калуга, ул. Советская, д. 12
+        """.trimIndent()
+        val result = RouteSheetParser.parseOcrText(text)
+        assertEquals(3, result.size)
+        assertEquals(result[0].address, result[1].address)
+    }
+
 }
