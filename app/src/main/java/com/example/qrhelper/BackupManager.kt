@@ -19,6 +19,10 @@ internal data class BackupSnapshot(
     val catalog: List<ProductCatalogRecord> = emptyList()
 )
 
+internal fun requireBackupEntryCount(count: Int) {
+    require(count in 1..2048) { "В резервной копии слишком много ZIP-файлов (максимум 2048)" }
+}
+
 internal object BackupManager {
     private const val MAX_ARCHIVE_ENTRIES = 2048
     private const val MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L
@@ -28,6 +32,12 @@ internal object BackupManager {
 
     fun writeBackup(output: OutputStream, snapshot: BackupSnapshot, filesDir: File) {
         require(snapshot.routeItems.size <= MAX_ROUTE_ITEMS) { "Слишком много строк накладной для резервной копии" }
+        // Validate the manifest plus all declared attachments before writing
+        // anything, so the app never creates a backup it cannot later restore.
+        val declaredEntries = 1 + snapshot.routeItems.sumOf { item ->
+            listOf(item.photoDocUri, item.signaturePath).count(String::isNotBlank)
+        }
+        requireBackupEntryCount(declaredEntries)
         ZipOutputStream(output).use { zip ->
             val evidenceDirectory = File(filesDir, "delivery-evidence")
             val items = JSONArray()
@@ -94,7 +104,7 @@ internal object BackupManager {
             while (true) {
                 val entry = zip.nextEntry ?: break
                 entryCount++
-                require(entryCount <= MAX_ARCHIVE_ENTRIES) { "В архиве слишком много файлов" }
+                requireBackupEntryCount(entryCount)
                 require(!entry.isDirectory) { "В архиве обнаружена неожиданная папка" }
                 require(entry.name == "backup.json" || entry.name.matches(
                     Regex("evidence/(photo_\\d+|signature_\\d+\\.png)")
