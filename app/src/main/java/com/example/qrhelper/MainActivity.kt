@@ -344,7 +344,6 @@ internal fun parseXlsxSheets(sheets: List<List<List<String>>>): List<RouteItem> 
     }
 
 internal fun parseManifest(text: String): List<RouteItem> {
-    LegacyRouteSheetParser.parse(text)?.let { return it }
     val lines = text.removePrefix("\uFEFF").lineSequence()
         .map { it.trimEnd('\r') }
         .filter { it.isNotBlank() && !it.trimStart().startsWith("#") }
