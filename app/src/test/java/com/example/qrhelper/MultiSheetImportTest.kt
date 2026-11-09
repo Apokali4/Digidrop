@@ -4,19 +4,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class MultiSheetImportTest {
-    @Test fun importsRowsFromEveryWorksheetInWorkbook() {
-        val headers = listOf("Штрихкод", "Магазин", "Адрес", "Товар", "Мест")
+    @Test fun importsRouteRowsFromEveryWorksheetInWorkbook() {
+        val headers = listOf("№", "Код", "Клиент", "Адрес доставки", "Комментарий")
         val sheetOne = listOf(
             headers,
-            listOf("4601234567890", "Магазин А", "Калуга, ул. Ленина, 1", "Товар А", "2")
+            listOf("1", "1708", "Балтика ПК ООО", "Калуга, ул. Ленина, д. 1", "До 10:00")
         )
         val sheetTwo = listOf(
             headers,
-            listOf("4601234567891", "Магазин Б", "Калуга, ул. Кирова, 2", "Товар Б", "3")
+            listOf("2", "1646", "Альфа Рязань ООО", "Калуга, ул. Кирова, д. 2", "Позвонить")
         )
         val items = parseXlsxSheets(listOf(sheetOne, sheetTwo))
         assertEquals(2, items.size)
-        assertEquals(listOf("Магазин А", "Магазин Б"), items.map { it.storeName })
-        assertEquals(listOf(2, 3), items.map { it.totalBoxes })
+        assertEquals(listOf("Балтика ПК ООО", "Альфа Рязань ООО"), items.map { it.storeName })
+        assertEquals(listOf("Калуга, ул. Ленина, д. 1", "Калуга, ул. Кирова, д. 2"), items.map { it.address })
+        assertEquals(listOf("", ""), items.map { it.barcode })
     }
 }
