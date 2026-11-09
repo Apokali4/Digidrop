@@ -233,31 +233,37 @@ internal class LogisticsRepository(context: Context) {
         return activeRouteItems()
     }
 
-    suspend fun savePhotoForPoint(storeName: String, address: String, path: String) {
-        val dao = database.dao()
-        val route = checkNotNull(dao.activeRouteOnce()) {
-            "Нет активного рейса для сохранения фото"
+    suspend fun savePhotoForPoint(storeName: String, address: String, path: String): String? =
+        database.withTransaction {
+            val dao = database.dao()
+            val route = checkNotNull(dao.activeRouteOnce()) {
+                "Нет активного рейса для сохранения фото"
+            }
+            val point = dao.pointsOnce(route.id).firstOrNull {
+                it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+            } ?: error("Точка доставки не найдена: $storeName, $address")
+            val previousPath = point.photoDocUri
+            check(dao.savePhoto(point.id, path) == 1) {
+                "Фото не записано в базу данных"
+            }
+            previousPath.takeIf { it.isNotBlank() && it != path }
         }
-        val point = dao.pointsOnce(route.id).firstOrNull {
-            it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
-        } ?: error("Точка доставки не найдена: $storeName, $address")
-        check(dao.savePhoto(point.id, path) == 1) {
-            "Фото не записано в базу данных"
-        }
-    }
 
-    suspend fun saveSignatureForPoint(storeName: String, address: String, path: String) {
-        val dao = database.dao()
-        val route = checkNotNull(dao.activeRouteOnce()) {
-            "Нет активного рейса для сохранения подписи"
+    suspend fun saveSignatureForPoint(storeName: String, address: String, path: String): String? =
+        database.withTransaction {
+            val dao = database.dao()
+            val route = checkNotNull(dao.activeRouteOnce()) {
+                "Нет активного рейса для сохранения подписи"
+            }
+            val point = dao.pointsOnce(route.id).firstOrNull {
+                it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
+            } ?: error("Точка доставки не найдена: $storeName, $address")
+            val previousPath = point.signaturePath
+            check(dao.saveSignature(point.id, path) == 1) {
+                "Подпись не записана в базу данных"
+            }
+            previousPath.takeIf { it.isNotBlank() && it != path }
         }
-        val point = dao.pointsOnce(route.id).firstOrNull {
-            it.storeName.trim() == storeName.trim() && it.address.trim() == address.trim()
-        } ?: error("Точка доставки не найдена: $storeName, $address")
-        check(dao.saveSignature(point.id, path) == 1) {
-            "Подпись не записана в базу данных"
-        }
-    }
 
     suspend fun syncProgress(items: List<RouteItem>) {
         database.withTransaction {
