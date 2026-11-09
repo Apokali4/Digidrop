@@ -248,9 +248,6 @@ internal class LogisticsRepository(context: Context) {
                     it.storeName.trim() == key.first && it.address.trim() == key.second
                 } ?: return@forEach
 
-                val status = deliveryStatusForItems(group)
-                dao.updateStatus(point.id, status)
-
                 val storedCargo = dao.cargoOnce(point.id)
                 group.groupBy { it.barcode.trim() to it.itemName.trim() }.forEach { (cargoKey, rows) ->
                     val matchingCargo = storedCargo.filter {
@@ -270,6 +267,23 @@ internal class LogisticsRepository(context: Context) {
                         }
                     }
                 }
+
+                // Status is derived only after the cargo rows have been persisted.
+                // This prevents an optimistic UI flag or a stale aggregate from
+                // completing a point while one of its own rows is still unresolved.
+                val refreshedCargo = dao.cargoOnce(point.id)
+                val hasDiscrepancy = refreshedCargo.any { it.discrepancyQty > 0 }
+                val allRowsAccounted = refreshedCargo.isNotEmpty() && refreshedCargo.all { cargo ->
+                    cargo.expectedQty <= 0 ||
+                        cargo.scannedQty.coerceAtLeast(0) + cargo.discrepancyQty.coerceAtLeast(0) >= cargo.expectedQty
+                }
+                val status = when {
+                    hasDiscrepancy -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
+                    allRowsAccounted -> com.example.qrhelper.data.DeliveryStatus.COMPLETED
+                    refreshedCargo.any { it.scannedQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
+                    else -> com.example.qrhelper.data.DeliveryStatus.PENDING
+                }
+                dao.updateStatus(point.id, status)
             }
         }
     }
