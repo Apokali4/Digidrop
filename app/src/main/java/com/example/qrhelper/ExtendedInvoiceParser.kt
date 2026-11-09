@@ -1,6 +1,8 @@
 package com.example.qrhelper
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
+import org.apache.poi.hwpf.HWPFDocument
+import org.apache.poi.hwpf.extractor.WordExtractor
 import org.apache.poi.ss.usermodel.DataFormatter
 import java.io.ByteArrayInputStream
 import java.util.zip.ZipInputStream
@@ -13,7 +15,11 @@ internal object ExtendedInvoiceParser {
     fun parse(format: InvoiceDocumentFormat, bytes: ByteArray): List<RouteItem> {
         val text = when (format) {
             InvoiceDocumentFormat.XLS -> legacyXlsToTsv(bytes)
+            InvoiceDocumentFormat.DOC -> legacyDocToText(bytes)
             InvoiceDocumentFormat.DOCX -> docxToTsv(bytes)
+            InvoiceDocumentFormat.RTF -> rtfToText(bytes.toString(Charsets.UTF_8))
+            InvoiceDocumentFormat.ODS -> openDocumentTable(bytes, "content.xml", true)
+            InvoiceDocumentFormat.ODT -> openDocumentTable(bytes, "content.xml", false)
             InvoiceDocumentFormat.XML -> xmlToTsv(bytes.toString(Charsets.UTF_8))
             InvoiceDocumentFormat.JSON -> jsonToTsv(bytes.toString(Charsets.UTF_8))
             InvoiceDocumentFormat.HTML -> htmlToTsv(bytes.toString(Charsets.UTF_8))
@@ -41,6 +47,51 @@ internal object ExtendedInvoiceParser {
                 }
             }
         }
+    }
+
+    private fun legacyDocToText(bytes: ByteArray): String {
+        HWPFDocument(ByteArrayInputStream(bytes)).use { document ->
+            WordExtractor(document).use { extractor ->
+                return extractor.text.orEmpty()
+            }
+        }
+    }
+
+    private fun rtfToText(rtf: String): String {
+        val plain = rtf.replace(Regex("\\\\\'[0-9a-fA-F]{2}"), " ")
+            .replace(Regex("\\\\[a-zA-Z]+-?\\d* ?"), " ")
+            .replace(Regex("[{}]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        require(plain.isNotBlank()) { "RTF не содержит извлекаемого текста" }
+        return plain
+    }
+
+    private fun openDocumentTable(bytes: ByteArray, entryName: String, spreadsheet: Boolean): String {
+        val xml = ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+            var result = ""
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.name == entryName) {
+                    result = zip.readBytes().toString(Charsets.UTF_8)
+                    break
+                }
+            }
+            result
+        }
+        require(xml.isNotBlank()) { "В OpenDocument-файле не найден $entryName" }
+        val rows = Regex("<table:table-row\\b[^>]*>(.*?)</table:table-row>", RegexOption.DOT_MATCHES_ALL)
+            .findAll(xml).map { row ->
+                Regex("<table:table-cell\\b[^>]*>(.*?)</table:table-cell>|<table:covered-table-cell\\b[^>]*/>", RegexOption.DOT_MATCHES_ALL)
+                    .findAll(row.groupValues[1]).joinToString("\\t") { cell ->
+                        val raw = cell.groupValues[1]
+                        Regex("<text:p\\b[^>]*>(.*?)</text:p>", RegexOption.DOT_MATCHES_ALL)
+                            .findAll(raw).joinToString(" ") { decodeXml(it.groupValues[1].replace(Regex("<[^>]+>"), "")) }
+                    }
+            }.filter(String::isNotBlank).toList()
+        if (rows.isNotEmpty()) return rows.joinToString("\\n")
+        if (!spreadsheet) return xml.replace(Regex("<[^>]+>"), " ").trim()
+        error("В ODS не найдена таблица")
     }
 
     private fun docxToTsv(bytes: ByteArray): String {
