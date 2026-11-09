@@ -40,6 +40,27 @@ internal object EvidenceFileStore {
         return candidate.delete()
     }
 
+    fun cleanupUnreferenced(directory: File, referencedPaths: Set<String>): Int {
+        if (!directory.isDirectory) return 0
+        val root = directory.canonicalFile
+        val referenced = referencedPaths.mapNotNull { path ->
+            runCatching { File(path).canonicalPath }.getOrNull()
+        }.toSet()
+        var removed = 0
+        directory.listFiles().orEmpty().forEach { file ->
+            val canonical = runCatching { file.canonicalFile }.getOrNull() ?: return@forEach
+            if (canonical.parentFile != root || !canonical.isFile) return@forEach
+            val temporary = canonical.name.startsWith(".") && canonical.name.endsWith(".tmp")
+            val managedEvidence = canonical.name.matches(
+                Regex("(photo|signature)_[a-zA-Z0-9_-]+\\.(jpg|jpeg|png)")
+            )
+            if (temporary || (managedEvidence && canonical.path !in referenced)) {
+                if (canonical.delete()) removed++
+            }
+        }
+        return removed
+    }
+
     fun copy(directory: File, fileName: String, input: InputStream): File =
         write(directory, fileName) { output ->
             val buffer = ByteArray(8192)
