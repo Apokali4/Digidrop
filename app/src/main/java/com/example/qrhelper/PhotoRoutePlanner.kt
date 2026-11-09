@@ -191,7 +191,7 @@ internal object PhotoRouteTextParser {
     private fun isPlausibleStoreSuffix(value: String): Boolean {
         val candidate = value.trim(' ', ',', ';', '|', '.', ':', '-', '—')
         if (candidate.isBlank() || candidate.length > 48) return false
-        if (Regex("""(?iu)^(?:крп\.?|корп\.?|корпус|к\.?|стр\.?|строение|д\.?|дом|кв\.?|квартира)\b""")
+        if (Regex("""(?iu)^(?:крп|корп\.?|корпус|к\.?|стр\.?|строение|д\.?|дом|кв\.?|квартира)\.?(?=\s|$|№|-|\d)""")
                 .containsMatchIn(candidate)) return false
         if (Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){8,}(?!\d)""").containsMatchIn(candidate)) return false
         if (streetHint.containsMatchIn(candidate) || metadataHint.containsMatchIn(candidate)) return false
