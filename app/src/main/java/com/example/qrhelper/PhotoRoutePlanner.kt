@@ -244,7 +244,14 @@ internal object PhotoRouteTextParser {
         return "$streetName#$houseNumber"
     }
 
-    fun extractCandidates(text: String, city: String = ""): List<String> {
+    fun extractCandidates(text: String, city: String = ""): List<String> =
+        extractAddressRows(text, city).distinctBy(::canonicalAddressKey)
+
+    /** Keeps repeated address rows: two customers can share one building. */
+    internal fun extractRouteAddressRows(text: String, city: String = ""): List<String> =
+        extractAddressRows(text, city)
+
+    private fun extractAddressRows(text: String, city: String): List<String> {
         val lines = text.lineSequence()
             .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
             .filter { it.isNotBlank() }
@@ -265,7 +272,6 @@ internal object PhotoRouteTextParser {
         return rows
             .filter { it.length >= 8 && !metadataHint.containsMatchIn(it) }
             .mapNotNull { cleanAddressFragment(it, city) }
-            .distinctBy(::canonicalAddressKey)
     }
 
     fun extractMetadata(text: String, address: String): PhotoStopMetadata {
