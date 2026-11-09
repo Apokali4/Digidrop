@@ -488,12 +488,18 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
-    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
+    val startupContext = LocalContext.current
+    val startupPrefs = remember { startupContext.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
+    val hasSavedRoute = !startupPrefs.getString("active_manifest", "").isNullOrBlank()
+    var currentScreen by remember {
+        mutableStateOf(screenToRestore(startupPrefs.getString("last_screen", null), hasSavedRoute))
+    }
     var screenHistory by remember { mutableStateOf(emptyList<AppScreen>()) }
     fun navigateTo(screen: AppScreen) {
         if (screen != currentScreen) {
             screenHistory = AppScreenHistory.push(screenHistory, currentScreen, screen)
             currentScreen = screen
+            startupPrefs.edit().putString("last_screen", screen.name).apply()
         }
     }
     var photoRouteInitialAction by remember { mutableStateOf<String?>(null) }
@@ -580,6 +586,12 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             val restored = repository.activeRouteItems()
             if (restored.isNotEmpty()) {
                 routeItems = restored
+                if (currentScreen == AppScreen.HUB || currentScreen == AppScreen.SPLASH) {
+                    currentScreen = screenToRestore(
+                        prefs.getString("last_screen", AppScreen.ROUTE_LIST.name),
+                        hasActiveRoute = true
+                    )
+                }
                 val manifest = restored.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
