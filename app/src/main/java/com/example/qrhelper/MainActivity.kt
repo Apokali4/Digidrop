@@ -2906,10 +2906,10 @@ fun SignatureCaptureDialog(
                         }
                 ) {
                     strokes.forEach { points ->
-                        if (points == 1) {
+                        if (points.size == 1) {
                             drawCircle(Color.Black, radius = 2.dp.toPx(), center = points.first())
                         } else {
-                            for (index in 1 until points) {
+                            for (index in 1 until points.size) {
                                 drawLine(Color.Black, points[index - 1], points[index], strokeWidth = 3.dp.toPx())
                             }
                         }
@@ -3001,9 +3001,9 @@ fun RouteListScreen(
         val first = group.firstOrNull() ?: return@mapNotNull null
         if (first.latitude != null && first.longitude != null) PhotoRouteCoordinate(first.latitude, first.longitude) else null
     }
-    val missingCoordinates = points != pendingGroups.size
+    val missingCoordinates = points.size != pendingGroups.size
     val segments = remember(points, missingCoordinates) {
-        if (!missingCoordinates && points >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
+        if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
     }
     var navigationSegmentIndex by remember(segments) { mutableStateOf(0) }
     val photoPrefs = remember { context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE) }
