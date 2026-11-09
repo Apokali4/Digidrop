@@ -11,7 +11,7 @@ class LegacyRouteSheetParserTest {
             №\tКод\tКлиент\tАдрес доставки\tКомментарий
             1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Врубовая, д. 2, Бристоль\t
             2\t1646\tАльфа Рязань ООО (Красное и Белое)\tг. Калуга, ул. В. Никитиной, д. 21 Б, корп. 2, Красное и Белое\t
-        """.trimIndent()
+        """.trimIndent().replace("\\t", "\t")
         val rows = LegacyRouteSheetParser.parse(text)
         assertNotNull(rows)
         assertEquals(2, rows!!.size)
