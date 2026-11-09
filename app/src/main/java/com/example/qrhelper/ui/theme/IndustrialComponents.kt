@@ -73,8 +73,8 @@ fun DigiDropActionTile(
             .then(Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (pressed) 1.dp else 3.dp)
+        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outline),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (pressed) 1.dp else 6.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
