@@ -38,6 +38,11 @@ class InvoiceImportKindTest {
         assertTrue(InvoiceImportKind.detect("", "content://docs/photo.tiff") == InvoiceDocumentFormat.IMAGE)
     }
 
+    @Test fun detectsFormatsFromBareFileNames() {
+        assertTrue(InvoiceImportKind.detect("", "delivery.xls") == InvoiceDocumentFormat.XLS)
+        assertTrue(InvoiceImportKind.detect("", "manifest.pdf") == InvoiceDocumentFormat.PDF)
+    }
+
     @Test fun detectsLegacyAndOpenDocumentFormats() {
         assertTrue(InvoiceImportKind.detect("", "content://docs/word.doc") == InvoiceDocumentFormat.DOC)
         assertTrue(InvoiceImportKind.detect("", "content://docs/table.ods") == InvoiceDocumentFormat.ODS)
