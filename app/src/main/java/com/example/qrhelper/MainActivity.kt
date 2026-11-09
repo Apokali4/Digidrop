@@ -1098,7 +1098,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                             item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
                             item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
                     }
-                    prefs.edit().putString("active_manifest", content).apply()
+                    prefs.edit().putString("active_manifest", content).putBoolean("manual_route_order", false).apply()
                     routeItems = imported
                     importScope.launch {
                         runCatching { LogisticsRepository(context).replaceActiveRoute(imported) }
@@ -1120,10 +1120,34 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onOpenScanner = { openScanner() },
                 onEditRoute = { /* Редактирование порядка выполняется прямо в списке маршрута. */ },
                 onNavigateSegment = { index, segment ->
-                    openYandexNavigator(context, segment, startsFromPreviousStop = index > 0)
+                    val manualOrder = prefs.getBoolean("manual_route_order", false)
+                    val navigationItems = routeForNavigation(routeItems, manualOrder)
+                    if (!manualOrder && navigationItems.map(::routeItemKey) != routeItems.map(::routeItemKey)) {
+                        routeItems = navigationItems
+                        importScope.launch { runCatching { LogisticsRepository(context).syncOrder(navigationItems) } }
+                        val saved = navigationItems.joinToString("\n") { item ->
+                            listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                                .joinToString("\t") { it.replace("\t", " ") }
+                        }
+                        prefs.edit().putString("active_manifest", saved).apply()
+                    }
+                    val pending = navigationItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+                        .values.filter { group -> deliveryPointStatus(group) != DeliveryPointStatus.DELIVERED }
+                    val coords = pending.mapNotNull { group ->
+                        group.firstOrNull()?.let { point ->
+                            if (point.latitude != null && point.longitude != null) PhotoRouteCoordinate(point.latitude, point.longitude) else null
+                        }
+                    }
+                    val nextSegments = if (coords.size == pending.size && coords.size >= 2)
+                        PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
+                    val chosen = nextSegments.getOrNull(index) ?: segment
+                    openYandexNavigator(context, chosen, startsFromPreviousStop = index > 0)
                 },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
+                    prefs.edit().putBoolean("manual_route_order", false).apply()
                     if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
                         Toast.makeText(context, "Маршрут уже оптимален или не хватает координат точек", Toast.LENGTH_LONG).show()
                     } else {
@@ -1173,6 +1197,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         groups.add(to, moved)
                         val reorderedItems = groups.flatMap { it.second }
                         routeItems = reorderedItems
+                        prefs.edit().putBoolean("manual_route_order", true).apply()
                         importScope.launch { runCatching { LogisticsRepository(context).syncOrder(reorderedItems) } }
                         val saved = routeItems.joinToString("\n") { item ->
                             listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
