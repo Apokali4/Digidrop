@@ -18,9 +18,9 @@ internal object ReportExporter {
             item.storeName,
             item.address,
             item.itemName,
-            item.totalBoxes.toString(),
-            item.scannedBoxes.toString(),
-            item.discrepancyQty.toString(),
+            item.totalBoxes.coerceAtLeast(0).toString(),
+            item.scannedBoxes.coerceAtLeast(0).toString(),
+            item.discrepancyQty.coerceAtLeast(0).toString(),
             item.discrepancyReason.orEmpty(),
             remainingBoxes(item).toString(),
             deliveryItemStatusLabel(item)
@@ -122,14 +122,14 @@ internal object ReportExporter {
         line(" ")
         items.forEachIndexed { index, item ->
             val status = deliveryItemStatusLabel(item).uppercase()
-            val discrepancy = if (item.discrepancyQty > 0) {
+            val discrepancy = if (item.discrepancyQty.coerceAtLeast(0) > 0) {
                 " • расхождение: ${item.discrepancyQty} (${item.discrepancyReason ?: "причина не указана"})"
             } else ""
             val content = listOf(
                 "${index + 1}. ${item.storeName}",
                 "Адрес: ${item.address}",
                 "Товар: ${item.itemName} • код: ${item.barcode}",
-                "План: ${item.totalBoxes} • скан: ${item.scannedBoxes} • осталось: ${remainingBoxes(item)} • ${status}${discrepancy}",
+                "План: ${item.totalBoxes.coerceAtLeast(0)} • скан: ${item.scannedBoxes.coerceAtLeast(0)} • осталось: ${remainingBoxes(item)} • ${status}${discrepancy}",
                 if (item.note.isNotBlank()) "Примечание: ${item.note}" else ""
             ).filter { it.isNotBlank() }
             content.forEach { text ->
