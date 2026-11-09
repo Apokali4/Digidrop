@@ -6,7 +6,9 @@ internal data class InvoiceImportMergeResult(
 )
 
 private fun RouteItem.invoiceIdentity(): String =
-    listOf(barcode, storeName, address, itemName, phone)
+    // Phone is mutable delivery metadata, not cargo identity. A corrected
+    // contact number must not detach already scanned cargo or its evidence.
+    listOf(barcode, storeName, address, itemName)
         .joinToString("|") { it.trim().lowercase().replace("ё", "е") }
 
 private fun List<RouteItem>.invoiceSignature(): List<String> =
