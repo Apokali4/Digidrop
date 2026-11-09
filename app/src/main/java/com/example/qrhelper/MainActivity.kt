@@ -1618,6 +1618,7 @@ fun HubScreen(
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                 containerColor = DigiDropPalette.accent, contentColor = MaterialTheme.colorScheme.onPrimary
             ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
             shape = RoundedCornerShape(20.dp)
         ) {
             Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
@@ -2763,7 +2764,8 @@ fun RouteListScreen(
                 )
                 Button(
                     onClick = { if (manualDestination.isNotBlank()) onOpenPointMap(manualDestination.trim()) },
-                    enabled = manualDestination.isNotBlank()
+                    enabled = manualDestination.isNotBlank(),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)
                 ) { Text("Маршрут") }
             }
 
@@ -2790,6 +2792,7 @@ fun RouteListScreen(
                                     onClick = { onNavigateSegment(index, segment) },
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp, pressedElevation = 1.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Text(
