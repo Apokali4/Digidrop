@@ -178,6 +178,9 @@ internal object BackupManager {
         if (rawPath.isBlank()) return null
         val file = File(rawPath)
         if (!file.isFile || !file.canonicalPath.startsWith(directory.canonicalPath + File.separator)) return null
+        require(file.length() <= MAX_EVIDENCE_BYTES) {
+            "Файл вложения слишком большой для резервной копии: ${file.name}"
+        }
         zip.putNextEntry(ZipEntry(entryName))
         file.inputStream().use { it.copyTo(zip) }
         zip.closeEntry()
@@ -186,7 +189,8 @@ internal object BackupManager {
 
     private fun restoreEvidence(entries: Map<String, ByteArray>, entryName: String?, directory: File): String? {
         if (entryName.isNullOrBlank()) return null
-        val bytes = entries[entryName] ?: return null
+        val bytes = entries[entryName]
+            ?: error("В резервной копии отсутствует файл вложения: $entryName")
         val target = File(directory, entryName.substringAfterLast('/'))
         target.writeBytes(bytes)
         return target.absolutePath
