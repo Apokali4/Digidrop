@@ -698,7 +698,15 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
             it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
         }
         routeItems = resetItems
-        importScope.launch { runCatching { LogisticsRepository(context).syncProgress(resetItems) } }
+        importScope.launch {
+            runCatching {
+                val repository = LogisticsRepository(context)
+                repository.clearActiveUniqueScanCodes()
+                repository.syncProgress(resetItems)
+            }.onFailure { error ->
+                Toast.makeText(context, "Не удалось полностью сбросить прогресс: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }
         Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
@@ -1403,10 +1411,15 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onBack = { navigateTo(AppScreen.HUB) },
                 onRestoreRoute = { routeId ->
                     importScope.launch {
-                        runCatching { LogisticsRepository(context).restoreArchivedRoute(routeId) }
-                            .onSuccess { restored ->
+                        runCatching {
+                            val repository = LogisticsRepository(context)
+                            val restored = repository.restoreArchivedRoute(routeId)
+                            restored to repository.activeUniqueScanCodes()
+                        }
+                            .onSuccess { (restored, restoredCodes) ->
                                 routeItems = restored
-                                sessionScanCodes = emptySet()
+                                sessionScanCodes = restoredCodes
+                                prefs.edit().putStringSet("scan_codes", restoredCodes).apply()
                                 val manifest = restored.joinToString("\n") { item ->
                                     listOf(
                                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
