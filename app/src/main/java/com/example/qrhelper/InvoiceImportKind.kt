@@ -38,7 +38,7 @@ internal enum class InvoiceDocumentFormat {
 
 internal object InvoiceImportKind {
     private val imageExtensions = setOf(".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp", ".tif", ".tiff")
-    private fun extension(uri: String?) = uri.orEmpty().substringBefore('?').substringAfterLast('/', "").let {
+    private fun extension(uri: String?) = uri.orEmpty().substringBefore('?').substringAfterLast('/').let {
         if (it.contains('.')) "." + it.substringAfterLast('.').lowercase() else ""
     }
 
