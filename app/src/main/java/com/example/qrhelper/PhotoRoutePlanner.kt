@@ -900,8 +900,17 @@ fun PhotoRoutePlannerScreen(
     }
     LaunchedEffect(initialImageUri) {
         initialImageUri?.let { uri ->
-            status = "Фотография получена. Запускаю распознавание…"
-            processPhotoUris(listOf(uri), onFinished = onInitialImageConsumed)
+            status = "Фотография получена. Сохраняю копию…"
+            runCatching { copyPhotoIntoRouteStorage(uri) }
+                .onSuccess { saved ->
+                    capturedUris = capturedUris + saved
+                    status = "Фото сохранено локально. Запускаю распознавание…"
+                    processPhotoUris(listOf(saved), onFinished = onInitialImageConsumed)
+                }
+                .onFailure { error ->
+                    status = "Не удалось сохранить фото: ${error.message}"
+                    onInitialImageConsumed()
+                }
         }
     }
     if (cameraOpen) {
