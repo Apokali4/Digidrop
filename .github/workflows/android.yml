@@ -1,4 +1,5 @@
 name: Android CI
+# Final validated APK build trigger: [build-apk].
 # Final APK build trigger for the validated 1.2.5 release.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
