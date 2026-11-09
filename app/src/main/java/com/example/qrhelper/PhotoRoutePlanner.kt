@@ -274,14 +274,22 @@ internal object PhotoRouteTextParser {
             .mapNotNull { cleanAddressFragment(it, city) }
     }
 
-    fun extractMetadata(text: String, address: String): PhotoStopMetadata {
-        val normalizedText = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\r", "\n")
+    fun extractMetadata(text: String, address: String): PhotoStopMetadata =
+        extractMetadataForOccurrence(text, address, 0)
+
+    internal fun extractMetadataForOccurrence(
+        text: String,
+        address: String,
+        occurrence: Int
+    ): PhotoStopMetadata {
+        val normalizedText = text.replace("\\r\\n", "\\n").replace("\\n", "\\n").replace("\\r", "\\n")
         val lines = normalizedText.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }.toList()
         val targetKey = canonicalAddressKey(address)
-        val index = lines.indexOfFirst { line ->
-            cleanAddressFragment(line, "")?.let(::canonicalAddressKey) == targetKey
-        }.takeIf { it >= 0 } ?: lines.indexOfFirst { line ->
+        val matchingIndices = lines.indices.filter { lineIndex ->
+            cleanAddressFragment(lines[lineIndex], "")?.let(::canonicalAddressKey) == targetKey
+        }
+        val index = matchingIndices.getOrNull(occurrence) ?: lines.indexOfFirst { line ->
             val street = streetHint.find(address)?.value.orEmpty()
             street.isNotBlank() && line.contains(street, ignoreCase = true)
         }
