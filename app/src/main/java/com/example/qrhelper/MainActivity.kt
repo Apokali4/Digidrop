@@ -27,6 +27,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.Toast
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +60,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1586,25 +1588,38 @@ fun HubScreen(
     onOpenRoute: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenHistory: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onThemeToggle: () -> Unit = {}
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding().navigationBarsPadding().padding(22.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Button(
-            onClick = onLoadInvoice,
-            modifier = Modifier.fillMaxWidth().height(76.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = DigiDropPalette.accent, contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
-            Spacer(Modifier.width(12.dp))
-            Text("Загрузить накладную", fontSize = 19.sp, fontWeight = FontWeight.Bold)
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        .statusBarsPadding().navigationBarsPadding().padding(22.dp), contentAlignment = Alignment.Center) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Box(Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape).clickable { onThemeToggle() },
+                    contentAlignment = Alignment.Center) {
+                    Text("◐", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp)
+                }
+            }
+            Button(onClick = onLoadInvoice, modifier = Modifier.fillMaxWidth().height(76.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = DigiDropPalette.accent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
+                shape = RoundedCornerShape(20.dp)) {
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.size(26.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Маршрут по фото / накладной", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(onClick = onOpenScanner, modifier = Modifier.fillMaxWidth().height(68.dp),
+                shape = RoundedCornerShape(18.dp)) {
+                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Сканер", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (routeItems.isNotEmpty()) TextButton(onClick = onOpenRoute) {
+                Text("Открыть текущий маршрут • ${routeItems.size} позиций")
+            }
         }
     }
 }
@@ -2575,6 +2590,17 @@ fun SignatureCaptureDialog(
 
 // --- СПИСОК ТОЧЕК ---
 @Composable
+private fun RoutePhotoThumbnail(uri: Uri) {
+    Card(Modifier.size(width = 82.dp, height = 62.dp), shape = RoundedCornerShape(9.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        AndroidView(factory = { ctx -> ImageView(ctx).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageURI(uri)
+        } }, modifier = Modifier.fillMaxSize())
+    }
+}
+
+@Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
     routeHeader: PhotoRouteHeader,
@@ -2591,333 +2617,157 @@ fun RouteListScreen(
     onMoveGroup: (Int, Int) -> Unit,
     onApplyAlternative: (List<String>) -> Unit
 ) {
-    var pointFilter by remember { mutableStateOf(PointFilter.ALL) }
-    var manualDestination by remember { mutableStateOf("") }
-
-    val allGroups = remember(routeItems) {
-        routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
-            .values
-            .map { group -> (group.first().storeName to group.first().address) to group }
+    val context = LocalContext.current
+    val groups = remember(routeItems) {
+        routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.toList()
     }
-    val routeAlternatives = remember(allGroups) {
-        val stops = allGroups.map { (key, group) ->
-            val first = group.first()
-            com.example.qrhelper.domain.RouteStop(
-                id = PhotoRouteTextParser.canonicalAddressKey(first.address),
-                latitude = first.latitude,
-                longitude = first.longitude,
-                completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
-            )
+    val points = groups.mapNotNull { group ->
+        val first = group.firstOrNull() ?: return@mapNotNull null
+        if (first.latitude != null && first.longitude != null) PhotoRouteCoordinate(first.latitude, first.longitude) else null
+    }
+    val missingCoordinates = points.size != groups.size
+    val segments = remember(points, missingCoordinates) {
+        if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
+    }
+    val photoPrefs = remember { context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE) }
+    val photos = remember {
+        runCatching {
+            val array = org.json.JSONArray(photoPrefs.getString("captured_uris", "[]").orEmpty())
+            (0 until array.length()).mapNotNull { index -> runCatching { Uri.parse(array.optString(index)) }.getOrNull() }
+        }.getOrDefault(emptyList())
+    }
+    var expandedPoint by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        .statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text("← Хаб", color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.clickable { onBackToHub() }.padding(6.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Маршрут • ${groups.size}", color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onOpenScanner) { Text("Сканер") }
         }
-        com.example.qrhelper.domain.RouteOrderOptimizer.alternatives(stops)
-    }
-    var showRouteAlternatives by remember { mutableStateOf(false) }
-    val pendingNavigationGroups = remember(allGroups) {
-        allGroups.filter { (_, group) ->
-            deliveryPointStatus(group) != com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
-        }
-    }
-    val navigationStops = remember(pendingNavigationGroups) {
-        pendingNavigationGroups.mapNotNull { (_, group) ->
-            val point = group.first()
-            if (point.latitude != null && point.longitude != null) {
-                PhotoRouteCoordinate(point.latitude, point.longitude)
-            } else null
-        }
-    }
-    val missingNavigationCoordinates = pendingNavigationGroups.size - navigationStops.size
-    val navigationSegments = remember(navigationStops, missingNavigationCoordinates) {
-        if (missingNavigationCoordinates == 0 && navigationStops.size >= 2) {
-            PhotoRouteNavigationUrls.yandexSegments(navigationStops)
-        } else emptyList()
-    }
-    val displayedGroups = remember(allGroups, pointFilter) {
-        val snapshots = allGroups.mapIndexed { index, entry ->
-            val group = entry.second
-            val expected = group.sumOf { it.totalBoxes.coerceAtLeast(0) }
-            val scanned = group.sumOf { it.scannedBoxes.coerceAtLeast(0) }
-            val status = deliveryPointStatus(group)
-            DeliveryPointSnapshot(
-                id = PhotoRouteTextParser.canonicalAddressKey(group.first().address),
-                sortOrder = index,
-                status = status,
-                expectedUnits = expected,
-                scannedUnits = scanned,
-                discrepancyUnits = group.sumOf { it.discrepancyQty.coerceAtLeast(0) }
-            )
-        }
-        val visibleIds = RouteProgress.filter(snapshots, pointFilter).map { it.id }.toSet()
-        allGroups.filter { (_, group) -> PhotoRouteTextParser.canonicalAddressKey(group.first().address) in visibleIds }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp)
-                .padding(bottom = 100.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.bounceClick { onBackToHub() }
-                ) {
-                    Text(
-                        text = "← Хаб",
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Точки",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        listOf(
-                            PointFilter.ALL to "Все",
-                            PointFilter.ACTIVE to "В пути",
-                            PointFilter.DELIVERED to "Сданы",
-                            PointFilter.PROBLEMS to "Проблемы"
-                        ).forEach { (filter, label) ->
-                            TextButton(onClick = { pointFilter = filter }) {
-                                Text(
-                                    label,
-                                    color = if (pointFilter == filter) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = if (pointFilter == filter) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            item(key = "route_top") {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (photos.isNotEmpty()) {
+                        Text("ФОТО НАКЛАДНОЙ • ${photos.size}", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            photos.forEach { RoutePhotoThumbnail(it) }
                         }
                     }
-            }
-
-            if (routeHeader.driver.isNotBlank() || routeHeader.vehicle.isNotBlank() ||
-                routeHeader.vehicleNumber.isNotBlank() || routeHeader.routeNumber.isNotBlank()
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("ДАННЫЕ РЕЙСА", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        if (routeHeader.routeNumber.isNotBlank()) Text("Маршрут: ${routeHeader.routeNumber}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                        if (routeHeader.driver.isNotBlank()) Text("Водитель: ${routeHeader.driver}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                        val vehicleLine = listOf(routeHeader.vehicle, routeHeader.vehicleNumber).filter { it.isNotBlank() }.joinToString(" • ")
-                        if (vehicleLine.isNotBlank()) Text("Автомобиль: $vehicleLine", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    val header = listOf(routeHeader.routeNumber, routeHeader.driver, routeHeader.vehicle, routeHeader.vehicleNumber)
+                        .filter { it.isNotBlank() }.joinToString(" • ")
+                    if (header.isNotBlank()) Text(header, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    Button(onClick = onRebuildRoute, enabled = groups.size >= 2,
+                        modifier = Modifier.fillMaxWidth().height(46.dp), shape = RoundedCornerShape(13.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
+                        Text("Оптимизировать маршрут", fontWeight = FontWeight.Bold)
                     }
+                    Button(onClick = {
+                        if (segments.isNotEmpty()) {
+                            onNavigateSegment(0, segments.first())
+                            if (segments.size > 1) Toast.makeText(context,
+                                "Маршрут разделён на ${segments.size} участков с общей переходной точкой.",
+                                Toast.LENGTH_LONG).show()
+                        } else Toast.makeText(context,
+                            if (missingCoordinates) "Не у всех точек определены координаты" else "Нужны минимум две точки",
+                            Toast.LENGTH_LONG).show()
+                    }, enabled = segments.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(46.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        shape = RoundedCornerShape(13.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
+                        Text("В Яндекс Навигатор", fontWeight = FontWeight.Bold)
+                    }
+                    Text("Точки можно переставлять за значок справа. Адрес проверяется отдельно в Яндекс Картах.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 }
             }
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onEditRoute) { Text("Редактировать / добавить / удалить точки", color = MaterialTheme.colorScheme.secondary) }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = manualDestination,
-                    onValueChange = { manualDestination = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    label = { Text("Адрес или точка на карте") },
-                    placeholder = { Text("Введите адрес вручную") }
-                )
-                Button(
-                    onClick = { if (manualDestination.isNotBlank()) onOpenPointMap(manualDestination.trim()) },
-                    enabled = manualDestination.isNotBlank(),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)
-                ) { Text("Маршрут") }
-            }
-
-            if (pendingNavigationGroups.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("НАВИГАЦИЯ ПО МАРШРУТУ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        when {
-                            missingNavigationCoordinates > 0 -> Text(
-                                "Не хватает координат у $missingNavigationCoordinates точек. Полный маршрут в Навигатор пока не отправить.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
-                            )
-                            navigationSegments.isEmpty() -> Text(
-                                "Для маршрута нужны минимум две незавершённые точки.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
-                            )
-                            else -> navigationSegments.forEachIndexed { index, segment ->
-                                Button(
-                                    onClick = { onNavigateSegment(index, segment) },
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp, pressedElevation = 1.dp),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        if (navigationSegments.size == 1) "Открыть весь маршрут в Яндекс Навигаторе"
-                                        else if (index == 0) "Яндекс Навигатор • участок 1 из ${navigationSegments.size}"
-                                        else "Яндекс Навигатор • участок ${index + 1} из ${navigationSegments.size} (после переходной точки)",
-                                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold
-                                    )
+            if (groups.isEmpty()) {
+                item(key = "empty") { Text("Маршрут пока пуст. Загрузите накладную или маршрутный лист.",
+                    modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                itemsIndexed(groups, key = { index, group ->
+                    PhotoRouteTextParser.canonicalAddressKey(group.first().address).ifBlank { "point_${index}" }
+                }) { index, group ->
+                    val point = group.first()
+                    val key = PhotoRouteTextParser.canonicalAddressKey(point.address)
+                    val expanded = expandedPoint == key
+                    var dragAmount by remember(key) { mutableStateOf(0f) }
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 1.dp)) {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${index + 1}.", color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelMedium)
+                                Spacer(Modifier.width(6.dp))
+                                Text(point.storeName.ifBlank { "Точка без названия" },
+                                    modifier = Modifier.weight(1f).clickable { onPointClick(group) },
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text("⠿", modifier = Modifier.clip(RoundedCornerShape(7.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .pointerInput(key, groups.size) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragEnd = { dragAmount = 0f },
+                                            onDragCancel = { dragAmount = 0f },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragAmount += amount.y
+                                                if (kotlin.math.abs(dragAmount) > 40f) {
+                                                    val target = (index + if (dragAmount > 0) 1 else -1).coerceIn(0, groups.lastIndex)
+                                                    if (target != index) onMoveGroup(index, target)
+                                                    dragAmount = 0f
+                                                }
+                                            }
+                                        )
+                                    }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (point.workingHours.isNotBlank()) Text("◷ ${point.workingHours}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                if (point.phone.isNotBlank()) {
+                                    Spacer(Modifier.width(9.dp))
+                                    Text("☎ ${point.phone}", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                 }
                             }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(
-                    onClick = onRebuildRoute,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Перестроить маршрут", maxLines = 1, fontSize = 12.sp)
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { showRouteAlternatives = !showRouteAlternatives },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = routeAlternatives.isNotEmpty()
-            ) {
-                Text(if (showRouteAlternatives) "Скрыть варианты маршрута" else "Сравнить варианты маршрута (${routeAlternatives.size})")
-            }
-            if (showRouteAlternatives) {
-                routeAlternatives.forEachIndexed { alternativeIndex, alternative ->
-                    val firstId = alternative.firstOrNull { !it.completed }?.id
-                    val firstName = allGroups.firstOrNull {
-                        PhotoRouteTextParser.canonicalAddressKey(it.second.first().address) == firstId
-                    }?.second?.firstOrNull()?.storeName ?: "Точка старта"
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
-                            .clickable { onApplyAlternative(alternative.map { it.id }) },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(14.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Вариант ${alternativeIndex + 1}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                                Text("Старт: $firstName", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            val comment = point.extraComment.ifBlank { point.note }
+                            if (comment.isNotBlank()) Text(comment, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                TextButton(onClick = { if (point.phone.isNotBlank()) onCallClient(point.phone) },
+                                    enabled = point.phone.isNotBlank(),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+                                    Text("Позвонить", style = MaterialTheme.typography.labelSmall)
+                                }
+                                TextButton(onClick = { onOpenPointMap(point.address) },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+                                    Text("Проверить в Яндексе", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = { expandedPoint = if (expanded) null else key },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+                                    Text(if (expanded) "Скрыть" else "Адрес", style = MaterialTheme.typography.labelSmall)
+                                }
                             }
-                            Text("Применить ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            if (expanded) Text(point.address, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(if (compactMode) 7.dp else 14.dp)
-            ) {
-                if (displayedGroups.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(20.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(22.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("▤", color = MaterialTheme.colorScheme.primary, fontSize = 42.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Нет точек в этом фильтре" else "Рейс пока пуст",
-                                color = MaterialTheme.colorScheme.onSurface, fontSize = 19.sp, fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                if (pointFilter != PointFilter.ALL && routeItems.isNotEmpty()) "Выберите другой фильтр, чтобы увидеть остальные точки" else "Вернитесь на главный экран и загрузите накладную CSV или TSV",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp
-                            )
-                        }
-                    }
-                } else {
-                    displayedGroups.forEachIndexed { index, group ->
-                        val originalIndex = allGroups.indexOfFirst { it.first == group.first }
-                        Row(
-                            Modifier.fillMaxWidth().pointerInput(originalIndex, allGroups.size) {
-                                var dragDistance = 0f
-                                detectDragGestures(
-                                    onDrag = { change, amount ->
-                                        dragDistance += amount.y
-                                        if (kotlin.math.abs(dragDistance) >= 70f) {
-                                            val target = (originalIndex + if (dragDistance > 0f) 1 else -1)
-                                                .coerceIn(0, allGroups.lastIndex)
-                                            if (target != originalIndex) onMoveGroup(originalIndex, target)
-                                            dragDistance = 0f
-                                        }
-                                    }
-                                )
-                            },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            StoreGroupCard(
-                                items = group.second,
-                                compactMode = true,
-                                onClick = { onPointClick(group.second) },
-                                onMapClick = { onOpenPointMap(group.second.first().address) },
-                                onCallClick = { onCallClient(group.second.first().phone) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-        }
-        Box(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-        ) {
-            BottomActionButtons(
-                onRouteClick = {
-                    val nextPoint = nextPendingPoint(routeItems)?.firstOrNull()?.address.orEmpty()
-                    onOpenPointMap(nextPoint)
-                },
-                onScanClick = onOpenScanner
-            )
         }
     }
 }
