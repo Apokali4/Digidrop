@@ -984,17 +984,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         try {
             context.startActivity(navigatorIntent)
         } catch (_: Exception) {
-            // Если Навигатор не установлен/не доступен, пробуем универсальную ссылку Яндекса.
-            try {
-                val fallback = if (latitude != null && longitude != null) {
-                    "https://yandex.ru/maps/?rtext=~$latitude,$longitude&rtt=auto"
-                } else {
-                    "https://yandex.ru/maps/?rtext=~" + Uri.encode(address) + "&rtt=auto"
-                }
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(fallback)))
-            } catch (_: Exception) {
-                Toast.makeText(context, "Яндекс Навигатор недоступен. Точка сохранена в DigiDrop.", Toast.LENGTH_LONG).show()
-            }
+            Toast.makeText(
+                context,
+                "Яндекс Навигатор недоступен. Установите или обновите приложение; маршрут сохранён в DigiDrop.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
