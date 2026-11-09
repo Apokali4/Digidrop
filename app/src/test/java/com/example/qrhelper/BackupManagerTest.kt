@@ -31,16 +31,19 @@ class BackupManagerTest {
         }
     }
 
-    @Test fun rejectsDuplicateArchiveEntries() {
-        val bytes = archive(
-            "backup.json" to "{}".toByteArray(),
-            "backup.json" to "{}".toByteArray()
-        )
+    @Test fun rejectsArchivesWithTooManyEntries() {
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            repeat(2049) { index ->
+                zip.putNextEntry(ZipEntry("evidence/photo_$index"))
+                zip.closeEntry()
+            }
+        }
         try {
-            BackupManager.readBackup(ByteArrayInputStream(bytes), File("build/test-backup"))
-            fail("Ожидалось отклонение дублирующейся записи")
+            BackupManager.readBackup(ByteArrayInputStream(output.toByteArray()), File("build/test-backup"))
+            fail("Ожидалось ограничение числа файлов")
         } catch (expected: IllegalArgumentException) {
-            // Expected: duplicate entries are not accepted.
+            // Expected: entry count is bounded before JSON parsing.
         }
     }
 
