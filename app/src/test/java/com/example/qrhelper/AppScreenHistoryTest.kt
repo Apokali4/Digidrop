@@ -38,4 +38,21 @@ class AppScreenHistoryTest {
             AppScreenHistory.pop(emptyList(), AppScreen.ROUTE_LIST)
         )
     }
+
+    @Test
+    fun restoresRouteListWhenAnActiveRouteExistsAndSavedScreenIsTransient() {
+        assertEquals(AppScreen.ROUTE_LIST, screenToRestore("SCANNER", true))
+        assertEquals(AppScreen.ROUTE_LIST, screenToRestore(null, true))
+    }
+
+    @Test
+    fun restoresHubWhenThereIsNoActiveRoute() {
+        assertEquals(AppScreen.HUB, screenToRestore("ROUTE_LIST", false))
+    }
+
+    @Test
+    fun restoresTheSavedHubOrRouteList() {
+        assertEquals(AppScreen.HUB, screenToRestore("HUB", true))
+        assertEquals(AppScreen.ROUTE_LIST, screenToRestore("ROUTE_LIST", true))
+    }
 }
