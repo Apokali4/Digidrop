@@ -32,13 +32,13 @@ internal object EvidenceFileStore {
         }
     }
 
-    fun deleteOwned(directory: File, path: String?): Boolean {
-        if (path.isNullOrBlank()) return false
+    fun deleteOwned(directory: File, path: String?): Boolean = runCatching {
+        if (path.isNullOrBlank()) return@runCatching false
         val root = directory.canonicalFile
         val candidate = File(path).canonicalFile
-        if (candidate.parentFile != root || !candidate.isFile) return false
-        return candidate.delete()
-    }
+        if (candidate.parentFile != root || !candidate.isFile) return@runCatching false
+        candidate.delete()
+    }.getOrDefault(false)
 
     fun cleanupUnreferenced(directory: File, referencedPaths: Set<String>): Int {
         if (!directory.isDirectory) return 0
