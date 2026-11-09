@@ -999,8 +999,9 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         navigateBack()
     }
 
-    Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
-    when (screen) {
+    Box(Modifier.fillMaxSize()) {
+        Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
+        when (screen) {
         AppScreen.SPLASH -> {
             SplashScreen(onFinished = { screenHistory = emptyList(); currentScreen = AppScreen.HUB })
         }
@@ -1472,7 +1473,26 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 }
             )
         }
-    }
+        }
+        if (currentScreen != AppScreen.SPLASH) {
+            Box(
+                Modifier.align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 12.dp, bottom = 12.dp)
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .clickable {
+                        settingsDarkTheme = !settingsDarkTheme
+                        prefs.edit().putBoolean("dark_theme", settingsDarkTheme).apply()
+                        onThemeChange(settingsDarkTheme)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("◐", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp)
+            }
+        }
     }
 }
 
