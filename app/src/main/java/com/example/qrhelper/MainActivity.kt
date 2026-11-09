@@ -3546,15 +3546,16 @@ fun ReportsScreen(
     onExportExcel: () -> Unit,
     onExportPdf: () -> Unit
 ) {
-    val points = routeItems.groupBy { it.storeName to it.address }
-    val delivered = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.DELIVERED }
-    val problemPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.PROBLEM }
-    val inProgressPoints = points.values.count { group -> deliveryPointStatus(group) == DeliveryPointStatus.IN_PROGRESS }
-    val pendingPoints = (points.size - delivered - problemPoints - inProgressPoints).coerceAtLeast(0)
-    val totalBoxes = routeItems.sumOf { it.totalBoxes }
-    val scanned = routeItems.sumOf { it.scannedBoxes }
-    val discrepancies = routeItems.sumOf { it.discrepancyQty }
-    val remaining = (totalBoxes - scanned - discrepancies).coerceAtLeast(0)
+    val summary = routeReportSummary(routeItems)
+    val points = summary.pointCount
+    val delivered = summary.deliveredPoints
+    val problemPoints = summary.problemPoints
+    val inProgressPoints = summary.inProgressPoints
+    val pendingPoints = summary.pendingPoints
+    val totalBoxes = summary.expectedBoxes
+    val scanned = summary.scannedBoxes
+    val discrepancies = summary.discrepancyBoxes
+    val remaining = summary.remainingBoxes
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(18.dp)) {
         Text("← Главная", color = MaterialTheme.colorScheme.secondary, fontSize = 16.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.bounceClick { onBack() })
