@@ -69,6 +69,7 @@ fun DigiDropActionTile(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .then(Modifier.padding(vertical = 2.dp))
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .then(Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)),
         shape = RoundedCornerShape(20.dp),

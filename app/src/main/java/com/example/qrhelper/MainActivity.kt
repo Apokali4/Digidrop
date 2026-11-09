@@ -1634,6 +1634,7 @@ private fun HubMetric(value: String, label: String, modifier: Modifier = Modifie
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1651,7 +1652,8 @@ private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = M
             .bounceClick { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp, pressedElevation = 1.dp),
     ) {
         Column(
             Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
@@ -1739,9 +1741,9 @@ fun HubTile(
     onClick: () -> Unit,
     primary: Boolean = false
 ) {
-    val tileColor = if (primary) DigiDropPalette.accent else MaterialTheme.colorScheme.surface
+    val tileColor = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val foreground = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    val secondary = if (primary) DigiDropPalette.primarySoft else MaterialTheme.colorScheme.onSurfaceVariant
+    val secondary = if (primary) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.88f) else MaterialTheme.colorScheme.onSurfaceVariant
     Card(
         modifier = modifier.heightIn(min = if (primary) 132.dp else 112.dp)
             .border(1.dp, if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp))
@@ -1756,7 +1758,7 @@ fun HubTile(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (primary) {
-                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(32.dp))
             } else {
                 Text(symbol, color = accent, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
