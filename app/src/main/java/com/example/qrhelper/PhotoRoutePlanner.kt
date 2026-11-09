@@ -787,8 +787,39 @@ fun PhotoRoutePlannerScreen(
         }
         if (capturedUris.isNotEmpty()) {
             PhotoPlannerTile("Распознать все фотографии", "В очереди снимков: ${capturedUris.size}", enabled = !busy, primary = true) {
-                processPhotoUris(capturedUris)
-                capturedUris = emptyList()
+                processPhotoUris(capturedUris) {
+                    capturedUris = emptyList()
+                }
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("ФОТО В ОЧЕРЕДИ", color = palette.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    capturedUris.forEachIndexed { index, uri ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${index + 1}. ${uri.lastPathSegment?.substringAfterLast('/') ?: "Снимок"}",
+                                modifier = Modifier.weight(1f),
+                                color = palette.onSurface,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1
+                            )
+                            TextButton(
+                                enabled = !busy,
+                                onClick = {
+                                    capturedUris = capturedUris.filterIndexed { photoIndex, _ -> photoIndex != index }
+                                }
+                            ) { Text("Удалить") }
+                        }
+                    }
+                }
             }
         }
 
