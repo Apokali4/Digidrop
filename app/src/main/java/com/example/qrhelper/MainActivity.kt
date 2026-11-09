@@ -1370,7 +1370,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         persistRouteOrder(navigationItems, manualOrder = false)
                     }
                     val pending = navigationItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
-                        .values.filter { group -> deliveryPointStatus(group) != DeliveryPointStatus.DELIVERED }
+                        .values.filter { group -> !group.all { it.isDelivered } }
                     val coords = pending.mapNotNull { group ->
                         group.firstOrNull()?.let { point ->
                             if (point.latitude != null && point.longitude != null) PhotoRouteCoordinate(point.latitude, point.longitude) else null
@@ -3027,7 +3027,7 @@ fun RouteListScreen(
     val groups = remember(routeItems) {
         routeItems.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.toList()
     }
-    val pendingGroups = groups.filter { group -> deliveryPointStatus(group) != DeliveryPointStatus.DELIVERED }
+    val pendingGroups = groups.filter { group -> !group.all { it.isDelivered } }
     val points = pendingGroups.mapNotNull { group ->
         val first = group.firstOrNull() ?: return@mapNotNull null
         if (first.latitude != null && first.longitude != null) PhotoRouteCoordinate(first.latitude, first.longitude) else null
