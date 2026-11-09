@@ -68,6 +68,25 @@ class DeliveryPointStatusTest {
         assertEquals(0, routeReportSummary(items).remainingBoxes)
     }
 
+    @Test fun reportSummaryGroupsPointNamesAndAddressesIgnoringOuterWhitespace() {
+        val items = listOf(
+            RouteItem("a", "Store", "Address", "Item A", 1, ""),
+            RouteItem("b", " Store ", " Address ", "Item B", 1, "")
+        )
+        assertEquals(1, routeReportSummary(items).pointCount)
+    }
+
+    @Test fun negativeQuantitiesAreTreatedAsZeroInPointAndReportCalculations() {
+        val item = RouteItem("a", "Store", "Address", "Item", -4, "", scannedBoxes = -2, discrepancyQty = -1)
+        assertEquals(0, remainingBoxes(item))
+        val summary = routeReportSummary(listOf(item))
+        assertEquals(0, summary.expectedBoxes)
+        assertEquals(0, summary.scannedBoxes)
+        assertEquals(0, summary.discrepancyBoxes)
+        assertEquals(0, summary.remainingBoxes)
+        assertEquals("Ожидает", deliveryItemStatusLabel(item))
+    }
+
     @Test fun emptyPointIsPending() {
         assertEquals(DeliveryPointStatus.PENDING, deliveryPointStatus(emptyList()))
     }
