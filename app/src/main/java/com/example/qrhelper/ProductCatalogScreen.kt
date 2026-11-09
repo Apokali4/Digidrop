@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun ProductCatalogScreen(
     products: List<ProductEntity>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSearch: (String) -> Unit
 ) {
     val palette = MaterialTheme.colorScheme
     Column(
@@ -35,7 +36,7 @@ internal fun ProductCatalogScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
                 ) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(product.name, color = palette.onSurface, fontSize = 16.sp)
+                        Text(product.productName, color = palette.onSurface, fontSize = 16.sp)
                         Text(product.barcode, color = palette.primary, fontSize = 12.sp)
                     }
                 }
