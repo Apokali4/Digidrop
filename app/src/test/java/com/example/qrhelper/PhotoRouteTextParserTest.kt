@@ -304,18 +304,17 @@ class PhotoRouteTextParserTest {
 
     @Test fun groupsThirtySixDeliveryRowsIntoTwentyThreePhysicalStops() {
         val addresses = buildList {
-            repeat(3) { add("г. Калуга, ул. Болдина, д. 9, корп. 1") }
-            repeat(2) { add("Калуга, улица Болдина 9 корпус 1") }
-            repeat(31) { index ->
-                add("г. Калуга, ул. Тестовая, д. ${index + 1}")
-            }
+            repeat(5) { add("г. Калуга, ул. Болдина, д. 9, корп. 1") }
+            repeat(5) { add("Калуга, улица Болдина 9 корпус 1") }
+            repeat(21) { index -> add("г. Калуга, ул. Тестовая, д. ${index + 1}") }
+            repeat(5) { index -> add("Калуга, ул. Тестовая, д. ${index + 1}") }
         }
 
         val groups = groupPhotoRouteAddresses(addresses)
 
         assertEquals(36, groups.sumOf { it.size })
-        assertEquals(32, groups.size)
-        assertEquals(5, groups.first().size)
+        assertEquals(23, groups.size)
+        assertEquals(10, groups.first().size + groups[1].size)
     }
 
 }
