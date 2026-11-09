@@ -854,10 +854,13 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         if (uri != null && item != null) {
             importScope.launch {
                 runCatching {
-                    val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
-                    val target = File(directory, "photo_${System.currentTimeMillis()}.jpg")
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        target.outputStream().use { output -> input.copyTo(output) }
+                    val directory = File(context.filesDir, "delivery-evidence")
+                    val target = context.contentResolver.openInputStream(uri)?.use { input ->
+                        EvidenceFileStore.copy(
+                            directory,
+                            "photo_${System.currentTimeMillis()}.jpg",
+                            input
+                        )
                     } ?: error("Не удалось прочитать выбранное фото")
                     LogisticsRepository(context).savePhotoForPoint(item.storeName, item.address, target.absolutePath)
                     val authoritativeItems = LogisticsRepository(context).activeRouteItems()
@@ -1384,9 +1387,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     onCaptureSignature = { bitmap ->
                         importScope.launch {
                             runCatching {
-                                val directory = File(context.filesDir, "delivery-evidence").apply { mkdirs() }
-                                val target = File(directory, "signature_${System.currentTimeMillis()}.png")
-                                target.outputStream().use { output ->
+                                val directory = File(context.filesDir, "delivery-evidence")
+                                val target = EvidenceFileStore.write(
+                                    directory,
+                                    "signature_${System.currentTimeMillis()}.png"
+                                ) { output ->
                                     check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
                                         "Не удалось записать изображение подписи"
                                     }
