@@ -1007,33 +1007,44 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 }
                 if (imported.isNotEmpty()) {
                     // Новый файл накладной не должен наследовать водителя и машину прошлого рейса.
-                    routeHeader = PhotoRouteHeader()
-                    sessionScanCodes = emptySet()
-                    prefs.edit()
-                        .remove("route_header_number")
-                        .remove("route_header_driver")
-                        .remove("route_header_vehicle")
-                        .remove("route_header_vehicle_number")
-                        .remove("scan_codes")
-                        .apply()
                     val withProgress = mergeInvoiceRows(emptyList(), imported).map { item ->
                         item.copy(
                             isDelivered = prefs.getBoolean("delivered_" + routeItemKey(item), false),
                             scannedBoxes = prefs.getInt("scanned_" + routeItemKey(item), 0)
                         )
                     }
-                    navigateTo(AppScreen.ROUTE_LIST)
                     val ordered = if (settingsOffline) withProgress else geocodeRoute(context, withProgress)
-                    routeItems = ordered
-                    val manifest = ordered.joinToString("\n") { item ->
+                    val repository = LogisticsRepository(context)
+                    repository.replaceActiveRoute(ordered)
+                    val authoritativeItems = repository.activeRouteItems()
+                    val authoritativeCodes = repository.activeUniqueScanCodes()
+                    routeHeader = PhotoRouteHeader()
+                    sessionScanCodes = authoritativeCodes
+                    unknownCodes = emptyList()
+                    routeItems = authoritativeItems
+                    selectedItem = null
+                    selectedPointItems = emptyList()
+                    val manifest = authoritativeItems.joinToString("\n") { item ->
                         listOf(
                             item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                             item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
                             item.ownerName, item.workingHours, item.cashNote, item.extraComment
                         ).joinToString("\t") { it.replace("\t", " ") }
                     }
-                    prefs.edit().putString("active_manifest", manifest).apply()
-                    LogisticsRepository(context).replaceActiveRoute(ordered)
+                    prefs.edit()
+                        .remove("route_header_number")
+                        .remove("route_header_driver")
+                        .remove("route_header_vehicle")
+                        .remove("route_header_vehicle_number")
+                        .remove("unknown_codes")
+                        .putString("active_manifest", manifest)
+                        .putStringSet("scan_codes", authoritativeCodes)
+                        .apply()
+                    (routeItems).forEach { item ->
+                        prefs.edit().remove("delivered_" + routeItemKey(item))
+                            .remove("scanned_" + routeItemKey(item)).apply()
+                    }
+                    navigateTo(AppScreen.ROUTE_LIST)
                     val optimized = ordered.map(::routeItemKey) != withProgress.map(::routeItemKey)
                     val geocoded = ordered.count { it.latitude != null && it.longitude != null }
                     Toast.makeText(
