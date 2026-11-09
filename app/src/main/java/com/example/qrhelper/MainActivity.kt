@@ -520,6 +520,17 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var settingsDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", false)) }
     val screenBackgroundColor = MaterialTheme.colorScheme.background
 
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val evidenceDirectory = File(context.filesDir, "delivery-evidence")
+                val retainedEvidence = LogisticsRepository(context).allEvidencePaths()
+                EvidenceFileStore.cleanupUnreferenced(evidenceDirectory, retainedEvidence)
+            }
+        }
+    }
+
+
     SideEffect {
         val activity = windowContext as? Activity
         activity?.window?.let { window ->
