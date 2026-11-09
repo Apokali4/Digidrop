@@ -2746,7 +2746,7 @@ fun RouteListScreen(
                                     style = MaterialTheme.typography.labelMedium)
                                 Spacer(Modifier.width(6.dp))
                                 Text(point.storeName.ifBlank { "Точка без названия" },
-                                    modifier = Modifier.weight(1f).clickable { onPointClick(group) },
+                                    modifier = Modifier.weight(1f).clickable { expandedPoint = if (expanded) null else key },
                                     color = MaterialTheme.colorScheme.onSurface,
                                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                 Text("⠿", modifier = Modifier.clip(RoundedCornerShape(7.dp))
@@ -2818,8 +2818,44 @@ fun RouteListScreen(
                                     modifier = Modifier.clickable { expandedPoint = if (expanded) null else key }.padding(vertical = 2.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
-                            if (expanded) Text(point.address, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall)
+                            if (expanded) {
+                                if (point.address.isNotBlank()) Text(point.address,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall)
+                                if (point.ownerName.isNotBlank()) Text("Контакт: ${point.ownerName}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall)
+                                if (point.cashNote.isNotBlank()) Text("Оплата: ${point.cashNote}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall)
+                                group.forEach { item ->
+                                    Row(Modifier.fillMaxWidth().padding(top = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(item.itemName.ifBlank { "Товар без названия" },
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                                            Text("Штрихкод: ${item.barcode} • ${item.scannedBoxes}/${item.totalBoxes}",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.labelSmall)
+                                            if (item.discrepancyQty > 0) Text(
+                                                "Расхождение: ${item.discrepancyQty} • ${item.discrepancyReason.orEmpty()}",
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.labelSmall)
+                                        }
+                                        if (item.photoDocUri.isNotBlank() || item.signaturePath.isNotBlank() || item.discrepancyQty > 0) {
+                                            Text("Фото / подпись / акт",
+                                                modifier = Modifier.clickable { onPointClick(group) }.padding(4.dp),
+                                                color = MaterialTheme.colorScheme.secondary,
+                                                style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
+                                Text("Открыть документы и подпись точки",
+                                    modifier = Modifier.clickable { onPointClick(group) }.padding(vertical = 5.dp),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
