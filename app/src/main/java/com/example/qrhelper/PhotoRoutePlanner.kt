@@ -704,6 +704,8 @@ private fun PhotoPlannerTile(
     }
 }
 
+internal fun shouldResetPhotoRouteSession(initialAction: String?): Boolean = initialAction == "new"
+
 @Composable
 fun PhotoRoutePlannerScreen(
     initialAction: String? = null,
@@ -813,8 +815,8 @@ fun PhotoRoutePlannerScreen(
             .putString("captured_uris", photoJson.toString())
             .apply()
     }
-    LaunchedEffect(initialAction, initialImageUri) {
-        if (initialAction == "camera" || initialImageUri != null) {
+    LaunchedEffect(initialAction) {
+        if (shouldResetPhotoRouteSession(initialAction)) {
             plannerPrefs.edit().clear().apply()
             rawText = ""
             routeHeader = PhotoRouteHeader()
