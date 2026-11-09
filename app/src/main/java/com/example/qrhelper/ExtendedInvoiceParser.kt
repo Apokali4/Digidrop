@@ -27,8 +27,7 @@ internal object ExtendedInvoiceParser {
                 decodeInvoiceText(bytes)
             else -> error("Формат не поддерживается этим обработчиком: $format")
         }
-        val routeRows = RouteSheetParser.parse(text)
-        return routeRows.ifEmpty { parseManifest(text) }
+        return RouteSheetParser.parse(text)
     }
 
     private fun legacyXlsToTsv(bytes: ByteArray): String {
