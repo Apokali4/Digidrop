@@ -443,16 +443,17 @@ enum class AppScreen {
     PHOTO_ROUTE
 }
 
-// Единая светлая зелёная палитра DigiDrop для всех экранов.
-val BgDark = DigiDropPalette.background
-val CardSurface = DigiDropPalette.surface
-val CardBorder = DigiDropPalette.border
-val EmeraldPrimary = DigiDropPalette.primary
-val MintAccent = DigiDropPalette.primary
-val TextLight = DigiDropPalette.text
-val TextMuted = DigiDropPalette.textSecondary
-val IndustrialPanel = DigiDropPalette.surfaceSoft
-val IndustrialDivider = DigiDropPalette.divider
+// Цвета экранов берутся из активной Material 3 темы, поэтому переключатель
+// действительно перекрашивает весь интерфейс, а не только отдельные карточки.
+val BgDark: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.background
+val CardSurface: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.surface
+val CardBorder: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.outline
+val EmeraldPrimary: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.primary
+val MintAccent: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.secondary
+val TextLight: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+val TextMuted: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+val IndustrialPanel: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+val IndustrialDivider: Color @Composable get() = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant
 
 @Composable
 fun Modifier.bounceClick(
