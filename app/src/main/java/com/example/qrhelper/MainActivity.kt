@@ -1081,7 +1081,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         val mime = context.contentResolver.getType(uri).orEmpty()
                         val format = InvoiceImportKind.detect(mime, uri.toString())
                         require(format != InvoiceDocumentFormat.UNKNOWN) {
-                            "Файл №${index + 1}: формат не распознан. Поддерживаются PDF, XLS/XLSX, CSV/TSV/TXT, DOCX, XML, JSON и HTML."
+                            "Файл №${index + 1}: формат не распознан. Поддерживаются PDF, фото, XLS/XLSX, CSV/TSV/TXT, DOC/DOCX, RTF, ODS/ODT, XML, JSON и HTML."
                         }
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Читаю файл ${index + 1} из ${uris.size}…", Toast.LENGTH_SHORT).show()
