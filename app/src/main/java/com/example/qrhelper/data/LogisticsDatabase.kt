@@ -52,7 +52,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Query("SELECT * FROM cargo_items WHERE pointId=:id ORDER BY itemName") fun cargo(id:Long):Flow<List<CargoItemEntity>>
  @Query("SELECT * FROM cargo_items WHERE pointId=:pointId AND barcode=:barcode LIMIT 1") suspend fun findCargo(pointId:Long,barcode:String):CargoItemEntity?
  @Query("UPDATE cargo_items SET scannedQty=MIN(expectedQty-discrepancyQty,scannedQty+1) WHERE id=:id AND scannedQty+discrepancyQty<expectedQty") suspend fun incrementScanned(id:Long)
- @Query("UPDATE cargo_items SET discrepancyQty=:qty,discrepancyReason=:reason WHERE id=:id AND :qty>=0 AND (:reason IS NULL OR :reason='ИЗЛИШЕК' OR scannedQty+:qty<=expectedQty)") suspend fun updateDiscrepancy(id:Long,qty:Int,reason:DiscrepancyReason?)
+ @Query("UPDATE cargo_items SET discrepancyQty=:qty,discrepancyReason=:reason WHERE id=:id AND :qty>=0 AND (:reason IS NULL OR :reason='ИЗЛИШЕК' OR scannedQty+:qty<=expectedQty)") suspend fun updateDiscrepancy(id:Long,qty:Int,reason:DiscrepancyReason?):Int
  @Query("UPDATE delivery_points SET status=:status WHERE id=:id") suspend fun updateStatus(id:Long,status:DeliveryStatus)
  @Query("UPDATE delivery_points SET signaturePath=:path WHERE id=:id") suspend fun saveSignature(id:Long,path:String):Int
  @Query("UPDATE delivery_points SET photoDocUri=:uri WHERE id=:id") suspend fun savePhoto(id:Long,uri:String):Int
