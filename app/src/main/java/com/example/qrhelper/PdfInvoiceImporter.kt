@@ -50,6 +50,8 @@ internal object PdfInvoiceImporter {
     ): List<RouteItem> {
         val extracted = extractText(context, uri)
         if (!shouldRunPdfOcr(extracted)) {
+            val routeRows = RouteSheetParser.parse(extracted)
+            if (routeRows.isNotEmpty()) return routeRows
             val textRows = runCatching { parseManifest(extracted) }.getOrDefault(emptyList())
             if (textRows.isNotEmpty()) return textRows
         }
@@ -67,10 +69,11 @@ internal object PdfInvoiceImporter {
             "В PDF не удалось распознать текст. Проверьте качество скана и попробуйте ещё раз."
         }
         val parsed = listOf(invoiceText, recognized).firstNotNullOfOrNull { candidate ->
-            runCatching { parseManifest(candidate) }.getOrNull()?.takeIf { it.isNotEmpty() }
+            RouteSheetParser.parse(candidate).takeIf { it.isNotEmpty() }
+                ?: runCatching { parseManifest(candidate) }.getOrNull()?.takeIf { it.isNotEmpty() }
         }
         check(!parsed.isNullOrEmpty()) {
-            "OCR распознал текст, но не смог разделить колонки накладной. Лучше загрузить чёткий скан с видимыми границами колонок."
+            "OCR распознал текст, но не смог разделить колонки маршрутного списка. Лучше загрузить чёткий скан с видимыми границами колонок."
         }
         return parsed
     }
