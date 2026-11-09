@@ -20,7 +20,16 @@ internal object RouteSheetParser {
 
     fun parse(text: String): List<RouteItem> {
         val lines = text.removePrefix("\uFEFF").lineSequence()
-            .map { it.trimEnd('\r').trim() }
+            .map { line ->
+                val withoutCarriageReturn = line.trimEnd('\r')
+                // Preserve leading/trailing tabs: they represent empty table cells
+                // on wrapped continuation rows.
+                if (withoutCarriageReturn.contains('\t')) {
+                    withoutCarriageReturn.trim(' ', '\uFEFF')
+                } else {
+                    withoutCarriageReturn.trim()
+                }
+            }
             .filter { it.isNotBlank() }
             .toList()
         if (lines.isEmpty()) return emptyList()
