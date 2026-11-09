@@ -1007,7 +1007,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
     when (screen) {
         AppScreen.SPLASH -> {
-            SplashScreen(onFinished = { navigateTo(AppScreen.HUB) })
+            SplashScreen(onFinished = { screenHistory = emptyList(); currentScreen = AppScreen.HUB })
         }
         AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
