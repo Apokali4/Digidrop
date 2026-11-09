@@ -5,7 +5,7 @@ import com.example.qrhelper.domain.RouteProgress
 
 internal fun deliveryPointStatus(items: List<RouteItem>): DeliveryPointStatus {
     if (items.isEmpty()) return DeliveryPointStatus.PENDING
-    if (items.any { it.discrepancyQty > 0 }) return DeliveryPointStatus.PROBLEM
+    if (items.any { it.discrepancyQty.coerceAtLeast(0) > 0 }) return DeliveryPointStatus.PROBLEM
     if (items.all { it.isDelivered }) return DeliveryPointStatus.DELIVERED
     val expected = items.sumOf { it.totalBoxes.coerceAtLeast(0) }
     val scanned = items.sumOf { it.scannedBoxes.coerceAtLeast(0) }
@@ -13,13 +13,13 @@ internal fun deliveryPointStatus(items: List<RouteItem>): DeliveryPointStatus {
 }
 
 internal fun remainingBoxes(item: RouteItem): Int =
-    (item.totalBoxes - item.scannedBoxes - item.discrepancyQty).coerceAtLeast(0)
+    (item.totalBoxes.coerceAtLeast(0) - item.scannedBoxes.coerceAtLeast(0) - item.discrepancyQty.coerceAtLeast(0)).coerceAtLeast(0)
 
 
 internal fun deliveryItemStatusLabel(item: RouteItem): String = when {
-    item.discrepancyQty > 0 -> "Расхождение"
+    item.discrepancyQty.coerceAtLeast(0) > 0 -> "Расхождение"
     item.isDelivered -> "Доставлено"
-    item.scannedBoxes > 0 -> "В работе"
+    item.scannedBoxes.coerceAtLeast(0) > 0 -> "В работе"
     else -> "Ожидает"
 }
 
