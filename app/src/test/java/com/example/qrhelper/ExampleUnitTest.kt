@@ -27,10 +27,13 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun skipsRowsWithoutBarcodeOrDestination() {
+    fun keepsRowsWithDestinationWhenBarcodeIsMissingButSkipsRowsWithoutDestination() {
         val input = "Штрихкод;Магазин;Адрес;Товар;Мест\n" +
             ";Северный;ул. Гагарина;Вода;2\n" +
             "4601234567890;;;Вода;2"
-        assertTrue(parseManifest(input).isEmpty())
+        val result = parseManifest(input)
+        assertEquals(1, result.size)
+        assertTrue(result.single().barcode.isBlank())
+        assertEquals("Северный", result.single().storeName)
     }
 }
