@@ -23,6 +23,7 @@ internal object InvoiceImportKind {
         return output.toByteArray()
     }
 
+internal object InvoiceImportKind {
     private val imageExtensions = setOf(".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp")
 
     fun isImage(mimeType: String?, uri: String?): Boolean {
