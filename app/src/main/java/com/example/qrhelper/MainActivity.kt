@@ -738,11 +738,11 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 selectedPointItems = selectedPointItems.mapNotNull { selected ->
                     authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
                 }
-                val manifest = authoritativeItems.joinToString("\\n") { item ->
+                val manifest = authoritativeItems.joinToString("\n") { item ->
                     listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
                         item.ownerName, item.workingHours, item.cashNote, item.extraComment)
-                        .joinToString("\\t") { it.replace("\\t", " ") }
+                        .joinToString("\t") { it.replace("\t", " ") }
                 }
                 prefs.edit().putString("active_manifest", manifest)
                     .putBoolean("manual_route_order", manualOrder).apply()
