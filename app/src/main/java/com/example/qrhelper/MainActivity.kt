@@ -1050,9 +1050,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         uri.toString().lowercase()
                     )
                 }
-                require(imageUris.isEmpty() || uris.size == 1) {
-                    "Фотографии накладных пока обрабатываются отдельно. Выберите одну фотографию или пакет файлов PDF/Excel/CSV."
-                }
                 if (imageUris.size == 1) {
                     val uri = imageUris.single()
                     val mime = context.contentResolver.getType(uri).orEmpty()
@@ -1081,9 +1078,6 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     uris.flatMapIndexed { index, uri ->
                         val mime = context.contentResolver.getType(uri).orEmpty()
                         val format = InvoiceImportKind.detect(mime, uri.toString())
-                        require(format != InvoiceDocumentFormat.IMAGE) {
-                            "Фотографии пока обрабатываются отдельным OCR-сценарием. Для пакетной загрузки выберите документы."
-                        }
                         require(format != InvoiceDocumentFormat.UNKNOWN) {
                             "Файл №${index + 1}: формат не распознан. Поддерживаются PDF, XLS/XLSX, CSV/TSV/TXT, DOCX, XML, JSON и HTML."
                         }
@@ -1093,6 +1087,18 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
                             ?: error("Не удалось открыть файл №${index + 1}")
                         when (format) {
+                            InvoiceDocumentFormat.IMAGE -> {
+                                val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Файл ${index + 1}: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                val rows = parseManifest(normalizeOcrTableText(recognized))
+                                check(rows.isNotEmpty()) {
+                                    "Файл №${index + 1}: OCR прочитал текст, но не нашёл строки накладной с товарами и количеством."
+                                }
+                                rows
+                            }
                             InvoiceDocumentFormat.PDF -> PdfInvoiceImporter.parse(context, uri) { message ->
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
