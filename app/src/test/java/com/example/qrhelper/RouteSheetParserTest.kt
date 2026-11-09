@@ -50,6 +50,7 @@ class RouteSheetParserTest {
         assertEquals(2, result.size)
         assertEquals(result[0].address, result[1].address)
         assertTrue(result[0].storeName != result[1].storeName)
+        assertTrue(result[0].storeName != result[1].storeName)
     }
 
     @Test fun parsesWhitespaceSeparatedOcrRouteRows() {
