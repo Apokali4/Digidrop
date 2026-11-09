@@ -54,8 +54,6 @@ internal object PdfInvoiceImporter {
         if (!shouldRunPdfOcr(extracted)) {
             val routeRows = RouteSheetParser.parse(extracted)
             if (routeRows.isNotEmpty()) return routeRows
-            val textRows = runCatching { parseManifest(extracted) }.getOrDefault(emptyList())
-            if (textRows.isNotEmpty()) return textRows
         }
 
         withContext(Dispatchers.Main) {
@@ -74,7 +72,6 @@ internal object PdfInvoiceImporter {
             val tableRows = RouteSheetParser.parse(candidate)
             val addressRows = RouteSheetParser.parseOcrText(candidate)
             listOf(tableRows, addressRows).maxByOrNull { it.size }?.takeIf { it.isNotEmpty() }
-                ?: runCatching { parseManifest(candidate) }.getOrNull()?.takeIf { it.isNotEmpty() }
         }
         check(!parsed.isNullOrEmpty()) {
             "OCR распознал текст, но не смог разделить колонки маршрутного списка. Лучше загрузить чёткий скан с видимыми границами колонок."
