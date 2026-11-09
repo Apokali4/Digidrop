@@ -1623,13 +1623,6 @@ fun HubScreen(
         .statusBarsPadding().navigationBarsPadding().padding(22.dp), contentAlignment = Alignment.Center) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Box(Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape).clickable { onThemeToggle() },
-                    contentAlignment = Alignment.Center) {
-                    Text("◐", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp)
-                }
-            }
             Button(onClick = onLoadInvoice, modifier = Modifier.fillMaxWidth().height(76.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DigiDropPalette.accent,
                     contentColor = MaterialTheme.colorScheme.onPrimary),
@@ -2629,6 +2622,21 @@ private fun RoutePhotoThumbnail(uri: Uri) {
     }
 }
 
+private fun formatCompactRouteAddress(rawAddress: String): String {
+    val cleaned = rawAddress
+        .replace(Regex("""(?iu)\\b(?:контакт|телефон|оплата|комментарий|доставка|штрихкод)\\b.*$"""), "")
+        .replace(Regex("""[=|]+"""), " ")
+        .replace(Regex("""\\s+"""), " ")
+        .trim(' ', ',', ';', '.', ':')
+    val streetMatch = Regex("""(?iu)(?:ул\\.?|улица|пр-т|проспект|пер\\.?|переулок|шоссе|наб\\.?|набережная|б-р|бульвар)\\s*[^,;]+""").find(cleaned)
+        ?: return cleaned.take(1).uppercase() + cleaned.drop(1)
+    val streetPart = streetMatch.value.trim()
+    val houseMatch = Regex("""(?iu)(?:д\\.?\\s*)?[-–—]?\\s*(\\d{1,4}\\s*[а-яa-z]?)(?:\\s*(?:к\\.?|корп\\.?|стр\\.?|строение)\\s*\\d+[а-яa-z]?)?""")
+        .find(cleaned, streetMatch.range.last + 1)
+    val house = houseMatch?.groupValues?.getOrNull(1)?.replace(Regex("""\\s+"""), "")?.trim()
+    return if (house.isNullOrBlank()) streetPart else "$streetPart, $house"
+}
+
 @Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
@@ -2810,6 +2818,15 @@ fun RouteListScreen(
                                     )
                                 }
                             }
+                            if (point.address.isNotBlank()) {
+                                Text(
+                                    formatCompactRouteAddress(point.address),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (point.phone.isNotBlank()) {
                                     Text("Позвонить", modifier = Modifier.clickable { onCallClient(point.phone) }.padding(vertical = 2.dp),
@@ -2817,45 +2834,9 @@ fun RouteListScreen(
                                 }
                                 Text("Проверить в Яндексе", modifier = Modifier.clickable { onOpenPointMap(point.address) }.padding(vertical = 2.dp),
                                     color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
-                                Spacer(Modifier.weight(1f))
-                                Text(if (expanded) "Скрыть" else "Адрес",
-                                    modifier = Modifier.clickable { expandedPoint = if (expanded) null else key }.padding(vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
                             if (expanded) {
-                                if (point.address.isNotBlank()) Text(point.address,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall)
-                                if (point.ownerName.isNotBlank()) Text("Контакт: ${point.ownerName}",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelSmall)
-                                if (point.cashNote.isNotBlank()) Text("Оплата: ${point.cashNote}",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelSmall)
-                                group.forEach { item ->
-                                    Row(Modifier.fillMaxWidth().padding(top = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically) {
-                                        Column(Modifier.weight(1f)) {
-                                            Text(item.itemName.ifBlank { "Товар без названия" },
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                                            Text("Штрихкод: ${item.barcode} • ${item.scannedBoxes}/${item.totalBoxes}",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                style = MaterialTheme.typography.labelSmall)
-                                            if (item.discrepancyQty > 0) Text(
-                                                "Расхождение: ${item.discrepancyQty} • ${item.discrepancyReason.orEmpty()}",
-                                                color = MaterialTheme.colorScheme.error,
-                                                style = MaterialTheme.typography.labelSmall)
-                                        }
-                                        if (item.photoDocUri.isNotBlank() || item.signaturePath.isNotBlank() || item.discrepancyQty > 0) {
-                                            Text("Фото / подпись / акт",
-                                                modifier = Modifier.clickable { onPointClick(group) }.padding(4.dp),
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                style = MaterialTheme.typography.labelSmall)
-                                        }
-                                    }
-                                }
-                                Text("Открыть документы и подпись точки",
+                                Text("Открыть документы и товары точки",
                                     modifier = Modifier.clickable { onPointClick(group) }.padding(vertical = 5.dp),
                                     color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
