@@ -589,7 +589,7 @@ fun DigitDropRoot() {
         }
         routeItems = updatedItems
         importScope.launch {
-            runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedItems) } }
+            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedItems) } }
                 .onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить статус в базе: ${error.message}", Toast.LENGTH_SHORT).show()
                 }
@@ -1416,7 +1416,7 @@ fun DigitDropRoot() {
                             val updated = matchedItem.copy(scannedBoxes = matchedItem.scannedBoxes + 1)
                             val updatedRoute = routeItems.map { if (routeItemKey(it) == itemKey) updated else it }
                             routeItems = updatedRoute
-                            importScope.launch { runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedRoute) } } }
+                            importScope.launch { runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedRoute) } } }
                             selectedItem = updated
                             try {
                                 ToneGenerator(AudioManager.STREAM_MUSIC, 80).startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -3395,7 +3395,7 @@ fun SettingsScreen(
         Text("Настройки", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
         SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте. Встроенная карта работает без сети.", offlineMode, onOfflineChange)
-        SettingToggleRow("Автосохранение", "Сохранять прогресс сканирования на устройстве", autoSave, onAutoSaveChange)
+        SettingToggleRow("Автосохранение кодов упаковок", "Помнить уже отсканированные уникальные коды между перезапусками. Прогресс рейса всегда сохраняется в Room.", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
         HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", CardSurface, TextLight, MintAccent, onBackup)

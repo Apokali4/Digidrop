@@ -6,16 +6,9 @@ import org.junit.Test
 
 class ProgressPersistenceTest {
     @Test
-    fun doesNotPersistProgressWhenAutoSaveIsDisabled() = runBlocking {
+    fun persistsRouteProgressRegardlessOfLegacyAutoSavePreference() = runBlocking {
         var writes = 0
-        persistProgressIfEnabled(autoSaveEnabled = false) { writes++ }
-        assertEquals(0, writes)
-    }
-
-    @Test
-    fun persistsProgressWhenAutoSaveIsEnabled() = runBlocking {
-        var writes = 0
-        persistProgressIfEnabled(autoSaveEnabled = true) { writes++ }
+        persistRouteProgress { writes++ }
         assertEquals(1, writes)
     }
 }

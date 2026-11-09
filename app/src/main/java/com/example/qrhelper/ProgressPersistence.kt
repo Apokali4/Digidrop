@@ -1,9 +1,12 @@
 package com.example.qrhelper
 
-/** Persists delivery progress only when automatic saving is enabled. */
-internal suspend fun persistProgressIfEnabled(
-    autoSaveEnabled: Boolean,
+/**
+ * Core delivery progress is durable route data and must always be written to Room.
+ * The legacy auto-save preference only controls compatibility data such as the
+ * session set of unique package codes; it must never disable route progress writes.
+ */
+internal suspend fun persistRouteProgress(
     persist: suspend () -> Unit
 ) {
-    if (autoSaveEnabled) persist()
+    persist()
 }
