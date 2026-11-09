@@ -43,7 +43,9 @@ class PhotoRouteNavigationUrlsTest {
         assertEquals(3, segments[1].size - 1)
         assertEquals(segments[0].last(), segments[1].first())
         assertEquals(manyStops.last(), segments.last().last())
-    }\n\n    @Test fun yandexKeepsShortRoutesAsSingleSegment() {
+    }
+
+    @Test fun yandexKeepsShortRoutesAsSingleSegment() {
         assertEquals(1, PhotoRouteNavigationUrls.yandexSegments(stops).size)
     }
 
