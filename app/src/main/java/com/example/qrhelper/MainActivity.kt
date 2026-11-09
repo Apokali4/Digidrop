@@ -498,7 +498,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val appearancePrefs = getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE)
-            var darkTheme by remember { mutableStateOf(appearancePrefs.getBoolean("dark_theme", false)) }
+            if (!appearancePrefs.getBoolean("dark_theme_default_migrated", false)) {
+                appearancePrefs.edit().putBoolean("dark_theme", true)
+                    .putBoolean("dark_theme_default_migrated", true).apply()
+            }
+            var darkTheme by remember { mutableStateOf(appearancePrefs.getBoolean("dark_theme", true)) }
             QRHelperTheme(darkTheme = darkTheme) {
                 DigitDropRoot(
                     onThemeChange = { enabled ->
@@ -517,7 +521,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     val startupPrefs = remember { startupContext.getSharedPreferences("digitdrop_prefs", Context.MODE_PRIVATE) }
     val hasSavedRoute = !startupPrefs.getString("active_manifest", "").isNullOrBlank()
     var currentScreen by remember {
-        mutableStateOf(screenToRestore(startupPrefs.getString("last_screen", null), hasSavedRoute))
+        mutableStateOf(AppScreen.SPLASH)
     }
     var screenHistory by remember { mutableStateOf(emptyList<AppScreen>()) }
     fun navigateTo(screen: AppScreen) {
@@ -1246,7 +1250,10 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         Crossfade(targetState = currentScreen, animationSpec = tween(220), label = "screenTransition") { screen ->
         when (screen) {
         AppScreen.SPLASH -> {
-            SplashScreen(onFinished = { screenHistory = emptyList(); currentScreen = AppScreen.HUB })
+            SplashScreen(onFinished = {
+                screenHistory = emptyList()
+                currentScreen = screenToRestore(startupPrefs.getString("last_screen", null), hasSavedRoute)
+            })
         }
         AppScreen.INVOICE_IMPORT -> {
             InvoiceLandingScreen(
