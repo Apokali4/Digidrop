@@ -54,3 +54,16 @@ class RoutePlanningTest {
     }
 
 }
+
+
+class NavigationSegmentProgressTest {
+    @Test fun advancesToNextSegmentAndWrapsAfterLast() {
+        assertEquals(1, nextNavigationSegmentIndex(0, 3))
+        assertEquals(2, nextNavigationSegmentIndex(1, 3))
+        assertEquals(0, nextNavigationSegmentIndex(2, 3))
+    }
+
+    @Test fun emptyRouteHasNoNextSegment() {
+        assertEquals(0, nextNavigationSegmentIndex(0, 0))
+    }
+}
