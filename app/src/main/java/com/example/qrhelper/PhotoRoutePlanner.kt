@@ -632,7 +632,7 @@ fun PhotoRoutePlannerScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val palette = com.example.qrhelper.ui.theme.DigiDropPalette
+    val palette = MaterialTheme.colorScheme
     var rawText by remember { mutableStateOf("") }
     var routeHeader by remember { mutableStateOf(PhotoRouteHeader()) }
     var routeCity by remember { mutableStateOf("Калуга") }
