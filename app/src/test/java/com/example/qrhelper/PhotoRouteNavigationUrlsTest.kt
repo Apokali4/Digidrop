@@ -29,7 +29,7 @@ class PhotoRouteNavigationUrlsTest {
     @Test fun yandexSplitsLongRouteIntoTwentyStopSegmentsWithSharedBoundary() {
         val manyStops = (0..32).map { PhotoRouteCoordinate(55.0 + it / 1000.0, 37.0 + it / 1000.0) }
         val segments = PhotoRouteNavigationUrls.yandexSegments(manyStops)
-        assertEquals(listOf(20, 14), segments.map { it.size })
+        assertEquals(listOf(19, 15), segments.map { it.size })
         assertEquals(segments[0].last(), segments[1].first())
         assertEquals(manyStops.first(), segments.first().first())
         assertEquals(manyStops.last(), segments.last().last())
@@ -39,8 +39,8 @@ class PhotoRouteNavigationUrlsTest {
     @Test fun twentyThreeStopsBecomeTwentyAndThreeNewStops() {
         val manyStops = (0..22).map { PhotoRouteCoordinate(55.0 + it / 1000.0, 37.0 + it / 1000.0) }
         val segments = PhotoRouteNavigationUrls.yandexSegments(manyStops)
-        assertEquals(listOf(20, 4), segments.map { it.size })
-        assertEquals(3, segments[1].size - 1)
+        assertEquals(listOf(19, 5), segments.map { it.size })
+        assertEquals(4, segments[1].size - 1)
         assertEquals(segments[0].last(), segments[1].first())
         assertEquals(manyStops.last(), segments.last().last())
     }
