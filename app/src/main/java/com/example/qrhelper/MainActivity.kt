@@ -3764,9 +3764,9 @@ fun SettingsScreen(
     offlineMode: Boolean,
     autoSave: Boolean,
     compactMode: Boolean,
-    darkTheme: Boolean,
+    appearanceMode: AppearanceMode,
     onBack: () -> Unit,
-    onDarkThemeChange: (Boolean) -> Unit,
+    onAppearanceModeChange: (AppearanceMode) -> Unit,
     onOfflineChange: (Boolean) -> Unit,
     onAutoSaveChange: (Boolean) -> Unit,
     onCompactChange: (Boolean) -> Unit,
@@ -3785,7 +3785,7 @@ fun SettingsScreen(
         SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте; сохранить исходный порядок точек. Навигация запускается через Яндекс Навигатор.", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение кодов упаковок", "Помнить уже отсканированные уникальные коды между перезапусками. Прогресс рейса всегда сохраняется в Room.", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
-        SettingToggleRow("Графитовая тема", "Включает матовую тёмную палитру DigiDrop без чисто чёрного фона", darkTheme, onDarkThemeChange)
+        AppearanceModeSelector(appearanceMode, onAppearanceModeChange)
         Spacer(Modifier.height(12.dp))
         HubActionButton("Резервная копия", "Сохранить рейс, прогресс, настройки, фото и подписи в ZIP", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.secondary, onBackup)
         Spacer(Modifier.height(8.dp))
@@ -3814,6 +3814,37 @@ fun SettingsScreen(
                 TextButton(onClick = { showArchiveConfirmation = false }) { Text("Отмена") }
             }
         )
+    }
+}
+
+@Composable
+private fun AppearanceModeSelector(mode: AppearanceMode, onChange: (AppearanceMode) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 10.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("Тема оформления", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("По умолчанию DigiDrop повторяет режим и расписание темы Android.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        listOf(
+            AppearanceMode.SYSTEM to "Как в телефоне",
+            AppearanceMode.LIGHT to "Всегда светлая",
+            AppearanceMode.DARK to "Всегда тёмная"
+        ).forEach { (value, label) ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                    .background(if (mode == value) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.background)
+                    .clickable { onChange(value) }.padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(if (mode == value) "●" else "○", color = MaterialTheme.colorScheme.secondary, fontSize = 18.sp)
+                Spacer(Modifier.width(10.dp))
+                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp,
+                    fontWeight = if (mode == value) FontWeight.Bold else FontWeight.Normal)
+            }
+        }
     }
 }
 
