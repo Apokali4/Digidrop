@@ -13,6 +13,7 @@ internal object EvidenceFileStore {
         }
         check(directory.exists() || directory.mkdirs()) { "Не удалось создать папку доказательств" }
         val target = File(directory, fileName)
+        check(!target.exists()) { "Файл доказательства с таким именем уже существует" }
         val temporary = File(directory, ".$fileName.tmp")
         try {
             FileOutputStream(temporary).use { output ->
@@ -29,6 +30,14 @@ internal object EvidenceFileStore {
             temporary.delete()
             throw error
         }
+    }
+
+    fun deleteOwned(directory: File, path: String?): Boolean {
+        if (path.isNullOrBlank()) return false
+        val root = directory.canonicalFile
+        val candidate = File(path).canonicalFile
+        if (candidate.parentFile != root || !candidate.isFile) return false
+        return candidate.delete()
     }
 
     fun copy(directory: File, fileName: String, input: InputStream): File =
