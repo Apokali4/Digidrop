@@ -89,6 +89,7 @@ internal object RouteSheetParser {
         val result = mutableListOf<RouteItem>()
         var last: RouteItem? = null
         for (row in rows) {
+            if (isRouteHeader(row)) continue
             val number = value(row, "number")
             val code = value(row, "code")
             val client = value(row, "client")
