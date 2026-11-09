@@ -122,6 +122,10 @@ internal object PhotoRouteTextParser {
         """(?iu)(?:[,\s-]*(?:д\.?|дом|вх\.?|в)\s*№?\s*[-–—]?)?(\d{1,4}[А-Яа-яA-Za-z]?(?:(?:[/\-]|к)\d{1,4}[А-Яа-яA-Za-z]?)?)\b"""
     )
     private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор)""")
+    // Preserve корпус/строение/литера so separate buildings never collapse into one stop.
+    private val buildingSuffixPattern = Regex(
+        """(?iu)\\s*[,;]?\\s*(?:корп(?:ус)?\\.?|крп\\.?|строен(?:ие)?\\.?|стр\\.?|лит(?:ера)?\\.?)\\s*№?\\s*[0-9а-яёa-z-]+"""
+    )
     private val brandPatterns = listOf(
         Regex("""(?iu)красное\s+и(?:\s+бел(?:ое|\w*))?""") to "Красное и Белое",
         Regex("""(?iu)бристоль""") to "Бристоль",
@@ -222,7 +226,8 @@ internal object PhotoRouteTextParser {
                 ?.takeIf { it.range.first <= street.range.first }
         }
         val start = cityMatch?.range?.first ?: street.range.first
-        return line.substring(start, house.range.last + 1)
+        val buildingSuffix = buildingSuffixPattern.find(line.substring(house.range.last + 1))?.value.orEmpty()
+        return (line.substring(start, house.range.last + 1) + buildingSuffix)
             .replace(Regex("""\s*,\s*"""), ", ")
             .replace(Regex("""\s+"""), " ")
             .trim(' ', ',', ';', '|', '.', ':')
@@ -241,7 +246,12 @@ internal object PhotoRouteTextParser {
             .replace(Regex("""[\s.,;:|()_-]+"""), "")
         val houseNumber = house.groupValues[1].lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
-        return "$streetName#$houseNumber"
+        val buildingSuffix = buildingSuffixPattern.find(address.substring(house.range.last + 1))
+            ?.value.orEmpty()
+            .lowercase(Locale("ru", "RU"))
+            .replace(Regex("""(?iu)^(?:\s*[,;]?\s*)?(?:корп(?:ус)?\.?|крп\.?|строен(?:ие)?\.?|стр\.?|лит(?:ера)?\.?)\s*№?\s*"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
+        return "$streetName#$houseNumber#$buildingSuffix"
     }
 
     fun extractCandidates(text: String, city: String = ""): List<String> =
