@@ -54,7 +54,7 @@ private val DigiDropDarkScheme = darkColorScheme(
     onError = DigiDropPalette.onAccent
 )
 
-/** Follows the device appearance setting; both appearances use the shared industrial graphite and safety-orange palette. */
+/** Uses the shared industrial graphite and safety-orange palette. */
 @Composable
 fun QRHelperTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
