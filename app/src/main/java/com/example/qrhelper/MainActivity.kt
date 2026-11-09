@@ -687,6 +687,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         editor.remove("unknown_codes")
         editor.apply()
         sessionScanCodes = emptySet()
+        unknownCodes = emptyList()
         val resetItems = routeItems.map {
             it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
         }
