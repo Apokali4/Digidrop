@@ -1327,7 +1327,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onBack = { navigateTo(AppScreen.SCANNER) },
                 onOpenPoint = { item ->
                     val uniqueCode = pendingUniqueScanCode
-                    if (uniqueCode != null) {
+                    if (uniqueCode != null && remainingBoxes(item) > 0) {
                         val itemKey = routeItemKey(item)
                         val updated = item.copy(scannedBoxes = item.scannedBoxes + 1)
                         val updatedRoute = routeItems.map { current ->
@@ -1346,12 +1346,15 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                                     Toast.makeText(context, "Не удалось сохранить скан: " + failure.message, Toast.LENGTH_LONG).show()
                                 }
                         }
-                        pendingUniqueScanCode = null
                         Toast.makeText(context, "Скан принят: " + updated.scannedBoxes + " / " + updated.totalBoxes, Toast.LENGTH_SHORT).show()
                         selectedItem = updated
                     } else {
+                        if (uniqueCode != null) {
+                            Toast.makeText(context, "Все места по этой позиции уже учтены. Скан не засчитан.", Toast.LENGTH_LONG).show()
+                        }
                         selectedItem = item
                     }
+                    pendingUniqueScanCode = null
                     navigateTo(AppScreen.DETAILS)
                 }
             )
