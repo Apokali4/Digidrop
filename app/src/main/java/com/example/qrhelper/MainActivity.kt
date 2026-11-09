@@ -1084,17 +1084,12 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                                 val tableRows = RouteSheetParser.parse(normalizeOcrTableText(recognized))
                                 val ocrAddressRows = RouteSheetParser.parseOcrText(recognized)
                                 val routeRows = listOf(tableRows, ocrAddressRows).maxByOrNull { it.size }.orEmpty()
-                                routeRows.ifEmpty { parseManifest(normalizeOcrTableText(recognized)) }
+                                routeRows
                             }
                             InvoiceDocumentFormat.PDF -> {
                                 val extracted = PdfInvoiceImporter.extractText(context, uri)
                                 val routeRows = RouteSheetParser.parse(extracted)
-                                if (routeRows.isNotEmpty()) routeRows
-                                else PdfInvoiceImporter.parse(context, uri) { message ->
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                                routeRows
                             }
                             InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
                             else -> ExtendedInvoiceParser.parse(format, bytes)
