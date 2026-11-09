@@ -2751,7 +2751,7 @@ fun RouteListScreen(
                                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
                                 Text("⠿", modifier = Modifier.clip(RoundedCornerShape(7.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 10.dp, vertical = 4.dp)
-                                    .pointerInput(key, groups.size) {
+                                    .pointerInput(key, index, groups.size) {
                                         detectDragGesturesAfterLongPress(
                                             onDragEnd = { dragAmount = 0f },
                                             onDragCancel = { dragAmount = 0f },
