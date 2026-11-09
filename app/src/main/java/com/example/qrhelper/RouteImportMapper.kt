@@ -49,11 +49,8 @@ internal fun deliveryStatusForItems(items: List<RouteItem>): DeliveryStatus {
 }
 
 /**
- * A delivery stop is identified by address AND recipient identity.
- *
- * Store branding wins over legal/supplier names. If branding is absent, the legal
- * entity and then phone are used as conservative fallbacks. Address alone is never
- * enough to merge rows: that could send two shops in one building to one stop.
+ * A physical address is one navigation stop. Every supplier/customer row at that
+ * address remains a separate cargo/delivery entry inside the same Room point.
  */
 internal object RouteImportMapper {
     private val legalEntityPattern = Regex(
@@ -161,6 +158,6 @@ internal fun requireCompleteRouteImport(
         "В маршрутном списке есть строки без адреса точки доставки"
     }
     require(points.isNotEmpty() && points.sumOf { it.cargo.size } == items.size) {
-        "Не все строки накладной удалось включить в маршрут"
+        "Не все записи доставки удалось включить в маршрут"
     }
 }
