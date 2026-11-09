@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.net.URI
 
 class PhotoRouteNavigationUrlsTest {
     private val stops = listOf(
@@ -40,21 +41,23 @@ class PhotoRouteNavigationUrlsTest {
     }
 
     @Test fun yandexNavigatorDeepLinkPreservesAllOrderedStops() {
-        val uri = PhotoRouteNavigationUrls.yandexNavigator(stops)
+        val uri = URI(PhotoRouteNavigationUrls.yandexNavigatorUrl(stops))
+        val params = uri.rawQuery.split("&").associate { it.substringBefore("=") to it.substringAfter("=") }
         assertEquals("yandexnavi", uri.scheme)
         assertEquals("build_route_on_map", uri.host)
-        assertEquals("55.78", uri.getQueryParameter("lat_to"))
-        assertEquals("55.76", uri.getQueryParameter("lat_via_0"))
-        assertEquals("55.77", uri.getQueryParameter("lat_via_1"))
-        assertEquals(null, uri.getQueryParameter("lat_from"))
+        assertEquals("55.78", params["lat_to"])
+        assertEquals("55.76", params["lat_via_0"])
+        assertEquals("55.77", params["lat_via_1"])
+        assertEquals(null, params["lat_from"])
     }
 
     @Test fun nextYandexSegmentStartsAtSharedTransitionPoint() {
         val segment = stops.takeLast(2)
-        val uri = PhotoRouteNavigationUrls.yandexNavigator(segment, startsFromPreviousStop = true)
-        assertEquals("55.77", uri.getQueryParameter("lat_from"))
-        assertEquals("55.78", uri.getQueryParameter("lat_to"))
-        assertEquals(null, uri.getQueryParameter("lat_via_0"))
+        val uri = URI(PhotoRouteNavigationUrls.yandexNavigatorUrl(segment, startsFromPreviousStop = true))
+        val params = uri.rawQuery.split("&").associate { it.substringBefore("=") to it.substringAfter("=") }
+        assertEquals("55.77", params["lat_from"])
+        assertEquals("55.78", params["lat_to"])
+        assertEquals(null, params["lat_via_0"])
     }
 
     @Test fun geocodingQueryAddsSelectedCityToAmbiguousStreetAddress() {
