@@ -4,6 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PhotoRouteTextParserTest {
+    @Test fun cameraAndPhotoImportDoNotResetSavedPlannerSession() {
+        assertEquals(false, shouldResetPhotoRouteSession("camera"))
+        assertEquals(false, shouldResetPhotoRouteSession(null))
+        assertEquals(true, shouldResetPhotoRouteSession("new"))
+    }
+
     @Test fun extractsRussianStreetAndHouseAddressLines() {
         val text = """
             Маршрут № 18
