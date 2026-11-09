@@ -32,4 +32,20 @@ class InvoiceZipLimitsTest {
         }
     }
 
+    @Test fun rejectsWorkbookWithTooManyZipEntries() {
+        assertThrows(IllegalArgumentException::class.java) {
+            requireXlsxEntryCount(MAX_XLSX_ENTRIES + 1)
+        }
+    }
+
+    @Test fun acceptsMaximumZipEntryCount() {
+        requireXlsxEntryCount(MAX_XLSX_ENTRIES)
+    }
+
+    @Test fun rejectsDuplicateRelevantXmlEntries() {
+        assertThrows(IllegalArgumentException::class.java) {
+            requireUniqueXlsxEntry(setOf("xl/sharedStrings.xml"), "xl/sharedStrings.xml")
+        }
+    }
+
 }
