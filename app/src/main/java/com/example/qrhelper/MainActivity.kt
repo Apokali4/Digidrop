@@ -335,13 +335,16 @@ internal fun parseXlsx(input: InputStream): List<RouteItem> {
     return parseXlsxSheets(sheets)
 }
 
-internal fun parseXlsxSheets(sheets: List<List<List<String>>>): List<RouteItem> =
-    sheets.flatMap { rows ->
+internal fun parseXlsxSheets(sheets: List<List<List<String>>>): List<RouteItem> {
+    val routeRows = RouteSheetParser.parseSheets(sheets)
+    if (routeRows.isNotEmpty()) return routeRows
+    return sheets.flatMap { rows ->
         val tsv = rows.joinToString("\n") { row ->
             row.joinToString("\t") { value -> "\"" + value.replace("\"", "\"\"") + "\"" }
         }
         parseManifest(tsv)
     }
+}
 
 internal fun parseManifest(text: String): List<RouteItem> {
     val lines = text.removePrefix("\uFEFF").lineSequence()
