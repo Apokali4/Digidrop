@@ -27,15 +27,25 @@ internal data class RouteHistorySnapshot(
 internal class LogisticsRepository(context: Context) {
     private val database = LogisticsDatabase.get(context.applicationContext)
 
-    suspend fun replaceActiveRoute(items: List<RouteItem>) {
+    suspend fun replaceActiveRoute(
+        items: List<RouteItem>,
+        scanCodes: Set<String> = emptySet(),
+        catalog: List<ProductCatalogRecord> = emptyList()
+    ) {
         val points = RouteImportMapper.map(items)
         database.withTransaction {
             val dao = database.dao()
             dao.deactivateRoutes()
-            val catalog = mapProductCatalog(items).map { product ->
+            val routeCatalog = mapProductCatalog(items).map { product ->
                 ProductEntity(barcode = product.barcode, productName = product.productName)
             }
-            if (catalog.isNotEmpty()) dao.upsertProducts(catalog)
+            val restoredCatalog = catalog.map { product ->
+                ProductEntity(barcode = product.barcode, productName = product.productName)
+            }
+            (routeCatalog + restoredCatalog)
+                .distinctBy { it.barcode.trim() }
+                .takeIf { it.isNotEmpty() }
+                ?.let(dao::upsertProducts)
             val routeId = dao.insertRoute(
                 DeliveryRouteEntity(routeNumber = "Импорт ${System.currentTimeMillis()}")
             )
@@ -73,6 +83,9 @@ internal class LogisticsRepository(context: Context) {
                         )
                     }
                 )
+            }
+            scanCodes.map(String::trim).filter(String::isNotEmpty).distinct().forEach { code ->
+                dao.insertScanCode(ScanCodeEntity(routeId = routeId, code = code))
             }
         }
     }
