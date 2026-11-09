@@ -1,5 +1,6 @@
 name: Android CI
 # Final validated APK build trigger: [build-apk].
+# [build-apk] Build verified route-navigation APK after green unit tests.
 # Release build is intentionally opt-in after import-format verification.
 # Release build is intentionally opt-in after import-format verification.
 # [build-apk] Rebuild after wiring duplicate-safe camera route extraction.
