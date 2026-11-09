@@ -1213,41 +1213,53 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                 onInitialImageConsumed = { photoRouteInitialUri = null },
                 onBack = { photoRouteInitialAction = null; photoRouteInitialUri = null; navigateBack() },
                 onApplyRoute = { imported, header ->
-                    routeHeader = header
-                    prefs.edit()
-                        .putString("route_header_number", header.routeNumber)
-                        .putString("route_header_driver", header.driver)
-                        .putString("route_header_vehicle", header.vehicle)
-                        .putString("route_header_vehicle_number", header.vehicleNumber)
-                        .apply()
-                    sessionScanCodes = emptySet()
-                    val resetSession = prefs.edit()
-                        .remove("scan_codes")
-                        .remove("unknown_codes")
-                    (routeItems + imported).distinctBy(::routeItemKey).forEach { item ->
-                        resetSession
-                            .remove("delivered_" + routeItemKey(item))
-                            .remove("scanned_" + routeItemKey(item))
-                    }
-                    resetSession.apply()
-                    unknownCodes = emptyList()
-                    selectedItem = null
-                    selectedPointItems = emptyList()
-                    val content = imported.joinToString("\n") { item ->
-                        listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(), item.phone, item.note,
-                            item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(), item.ownerName, item.workingHours,
-                            item.cashNote, item.extraComment).joinToString("\t") { it.replace("\t", " ") }
-                    }
-                    prefs.edit().putString("active_manifest", content).putBoolean("manual_route_order", false).apply()
-                    routeItems = imported
                     importScope.launch {
-                        runCatching { LogisticsRepository(context).replaceActiveRoute(imported) }
-                            .onFailure { error ->
-                                Toast.makeText(context, "Маршрут добавлен, но база не обновлена: ${error.message}", Toast.LENGTH_LONG).show()
+                        try {
+                            val repository = LogisticsRepository(context)
+                            repository.replaceActiveRoute(imported)
+                            val authoritativeItems = repository.activeRouteItems()
+                            val authoritativeCodes = repository.activeUniqueScanCodes()
+                            routeHeader = header
+                            prefs.edit()
+                                .putString("route_header_number", header.routeNumber)
+                                .putString("route_header_driver", header.driver)
+                                .putString("route_header_vehicle", header.vehicle)
+                                .putString("route_header_vehicle_number", header.vehicleNumber)
+                                .putString("active_manifest", authoritativeItems.joinToString("\\n") { item ->
+                                    listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                        item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                                        .joinToString("\\t") { it.replace("\\t", " ") }
+                                })
+                                .putBoolean("manual_route_order", false)
+                                .putStringSet("scan_codes", authoritativeCodes)
+                                .remove("unknown_codes")
+                                .apply()
+                            (routeItems + authoritativeItems).distinctBy(::routeItemKey).forEach { item ->
+                                prefs.edit()
+                                    .remove("delivered_" + routeItemKey(item))
+                                    .remove("scanned_" + routeItemKey(item))
+                                    .apply()
                             }
+                            sessionScanCodes = authoritativeCodes
+                            unknownCodes = emptyList()
+                            routeItems = authoritativeItems
+                            selectedItem = null
+                            selectedPointItems = emptyList()
+                            navigateTo(AppScreen.ROUTE_LIST)
+                            Toast.makeText(
+                                context,
+                                "Маршрут добавлен: ${authoritativeItems.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } catch (error: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Не удалось сохранить новый маршрут: ${error.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
-                    navigateTo(AppScreen.ROUTE_LIST)
-                    Toast.makeText(context, "Маршрут добавлен: ${imported.size} точек\\n${header.driver} • ${header.vehicle} ${header.vehicleNumber} • рейс ${header.routeNumber}", Toast.LENGTH_LONG).show()
                 },
             )
         }
