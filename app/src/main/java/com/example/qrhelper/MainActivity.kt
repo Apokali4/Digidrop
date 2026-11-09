@@ -608,7 +608,7 @@ fun DigitDropRoot() {
         routeItems = updatedItems
         selectedItem = updatedItems.firstOrNull { routeItemKey(it) == routeItemKey(item) }
         importScope.launch {
-            runCatching { persistProgressIfEnabled(settingsAutoSave) { LogisticsRepository(context).syncProgress(updatedItems) } }
+            runCatching { persistRouteProgress { LogisticsRepository(context).syncProgress(updatedItems) } }
                 .onFailure { error ->
                     Toast.makeText(context, "Не удалось сохранить расхождение: ${error.message}", Toast.LENGTH_LONG).show()
                 }
@@ -3394,7 +3394,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(18.dp))
         Text("Настройки", color = TextLight, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
-        SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте. Встроенная карта работает без сети.", offlineMode, onOfflineChange)
+        SettingToggleRow("Офлайн-режим", "Не искать координаты через интернет при импорте; сохранить исходный порядок точек. Навигация запускается через Яндекс Навигатор.", offlineMode, onOfflineChange)
         SettingToggleRow("Автосохранение кодов упаковок", "Помнить уже отсканированные уникальные коды между перезапусками. Прогресс рейса всегда сохраняется в Room.", autoSave, onAutoSaveChange)
         SettingToggleRow("Компактный режим", "Уменьшает отступы и плотность карточек маршрута", compactMode, onCompactChange)
         Spacer(Modifier.height(12.dp))
