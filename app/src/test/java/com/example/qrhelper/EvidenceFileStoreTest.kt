@@ -53,4 +53,37 @@ class EvidenceFileStoreTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun deletesOnlyFilesDirectlyInsideEvidenceDirectory() {
+        val directory = Files.createTempDirectory("digidrop-evidence-cleanup").toFile()
+        val outside = File(directory.parentFile, "digidrop-outside-${System.nanoTime()}.jpg")
+        try {
+            val owned = File(directory, "photo_old.jpg").apply { writeBytes(byteArrayOf(1)) }
+            outside.writeBytes(byteArrayOf(2))
+
+            assertTrue(EvidenceFileStore.deleteOwned(directory, owned.absolutePath))
+            assertFalse(owned.exists())
+            assertFalse(EvidenceFileStore.deleteOwned(directory, outside.absolutePath))
+            assertFalse(EvidenceFileStore.deleteOwned(directory, File(directory, "../${outside.name}").path))
+            assertTrue(outside.exists())
+        } finally {
+            directory.deleteRecursively()
+            outside.delete()
+        }
+    }
+
+    @Test fun refusesToOverwriteAnExistingEvidenceFile() {
+        val directory = Files.createTempDirectory("digidrop-evidence-no-overwrite").toFile()
+        try {
+            val existing = File(directory, "photo_same.jpg").apply { writeBytes(byteArrayOf(7)) }
+            try {
+                EvidenceFileStore.copy(directory, existing.name, ByteArrayInputStream(byteArrayOf(8)))
+                throw AssertionError("Expected an existing evidence file to be protected")
+            } catch (expected: IllegalStateException) {
+                assertArrayEquals(byteArrayOf(7), existing.readBytes())
+            }
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
 }
