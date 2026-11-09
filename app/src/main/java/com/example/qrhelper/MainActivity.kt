@@ -27,6 +27,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.Toast
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -2619,6 +2620,25 @@ fun SignatureCaptureDialog(
 
 // --- СПИСОК ТОЧЕК ---
 @Composable
+private fun RoutePhotoThumbnail(uri: Uri) {
+    Card(
+        modifier = Modifier.size(width = 82.dp, height = 62.dp),
+        shape = RoundedCornerShape(9.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        AndroidView(
+            factory = { viewContext ->
+                ImageView(viewContext).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageURI(uri)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
 fun RouteListScreen(
     routeItems: List<RouteItem>,
     routeHeader: PhotoRouteHeader,
@@ -2650,10 +2670,12 @@ fun RouteListScreen(
     val photoPrefs = remember {
         context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE)
     }
-    val photoNames = remember {
+    val routePhotos = remember {
         runCatching {
             val array = org.json.JSONArray(photoPrefs.getString("captured_uris", "[]").orEmpty())
-            (0 until array.length()).map { Uri.parse(array.optString(it)).lastPathSegment ?: "Фото ${it + 1}" }
+            (0 until array.length()).mapNotNull { index ->
+                runCatching { Uri.parse(array.optString(index)) }.getOrNull()
+            }
         }.getOrDefault(emptyList())
     }
     var expandedPoint by remember { mutableStateOf<String?>(null) }
@@ -2677,16 +2699,14 @@ fun RouteListScreen(
         ) {
             item(key = "route_top") {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    if (photoNames.isNotEmpty()) {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                Text("ФОТО НАКЛАДНОЙ • ${photoNames.size}",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                                Text(photoNames.joinToString("   •   "),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                    if (routePhotos.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("ФОТО НАКЛАДНОЙ • ${routePhotos.size}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                routePhotos.forEach { uri -> RoutePhotoThumbnail(uri) }
                             }
                         }
                     }
