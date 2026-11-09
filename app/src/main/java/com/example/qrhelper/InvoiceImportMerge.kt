@@ -12,7 +12,7 @@ private fun RouteItem.invoiceIdentity(): String =
         .joinToString("|") { it.trim().lowercase().replace("ё", "е") }
 
 private fun List<RouteItem>.invoiceSignature(): List<String> =
-    map { item -> "${item.invoiceIdentity()}|${item.totalBoxes}" }.sorted()
+    map { item -> "${item.invoiceIdentity()}|${item.totalBoxes}|${item.phone.trim()}" }.sorted()
 
 internal fun mergeInvoiceImport(
     current: List<RouteItem>,
