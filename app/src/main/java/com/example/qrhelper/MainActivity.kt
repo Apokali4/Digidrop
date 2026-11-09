@@ -84,6 +84,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -3010,29 +3011,28 @@ fun HubActionButton(
     borderColor: Color? = null,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (borderColor != null) Modifier.border(1.5.dp, borderColor, RoundedCornerShape(18.dp)) else Modifier)
-            .bounceClick { onClick() },
-        colors = CardDefaults.cardColors(containerColor = buttonColor),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                color = textColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(3.dp))
-            Text(
-                text = subtitle,
-                color = if (textColor == BgDark) BgDark.copy(alpha = 0.8f) else TextMuted,
-                fontSize = 12.sp
-            )
-        }
+    val icon = when {
+        title.contains("наклад", ignoreCase = true) || title.contains("загруз", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.MANIFEST
+        title.contains("маршрут", ignoreCase = true) || title.contains("точк", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.ROUTE
+        title.contains("скан", ignoreCase = true) || title.contains("штрих", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.SCAN
+        title.contains("отч", ignoreCase = true) || title.contains("истор", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.REPORTS
+        title.contains("настр", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.SETTINGS
+        title.contains("товар", ignoreCase = true) || title.contains("каталог", ignoreCase = true) ->
+            com.example.qrhelper.ui.theme.DigiDropIcon.INVENTORY
+        else -> com.example.qrhelper.ui.theme.DigiDropIcon.HUB
     }
+    com.example.qrhelper.ui.theme.DigiDropActionTile(
+        title = title,
+        subtitle = subtitle,
+        icon = icon,
+        accent = if (borderColor != null) borderColor else com.example.qrhelper.ui.theme.DigiDropPalette.accent,
+        onClick = onClick
+    )
 }
 
 @Composable
