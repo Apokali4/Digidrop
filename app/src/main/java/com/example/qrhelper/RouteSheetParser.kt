@@ -94,7 +94,7 @@ internal object RouteSheetParser {
             return line.split(Regex("\\s{2,}")).map(String::trim)
         }
         if (delimiter == ',') return splitQuotedLine(line, delimiter)
-        if (delimiter == ';') return splitCsvLine(line, delimiter)
+        if (delimiter == ';') return splitQuotedLine(line, delimiter)
         return line.split(delimiter).map { it.trim().trim('"') }
     }
 
