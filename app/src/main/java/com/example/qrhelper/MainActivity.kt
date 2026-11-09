@@ -1570,10 +1570,10 @@ fun SplashScreen(onFinished: () -> Unit) {
             }
             Spacer(Modifier.height(26.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Digi", color = DigiDropPalette.lightText, fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Digi", color = TextLight, fontSize = 35.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Drop", color = DigiDropPalette.accentLight, fontSize = 42.sp, fontWeight = FontWeight.ExtraBold)
             }
-            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = DigiDropPalette.lightTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("МАРШРУТЫ  •  ДОСТАВКА  •  QR", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(56.dp))
             Canvas(Modifier.fillMaxWidth(0.68f).height(8.dp)) {
                 val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f)
@@ -1590,7 +1590,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Text("Подготавливаем маршрут", color = DigiDropPalette.lightText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("Подготавливаем маршрут", color = TextLight, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -1640,7 +1640,7 @@ fun HubScreen(
             onClick = onLoadInvoice,
             modifier = Modifier.fillMaxWidth().height(76.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = DigiDropPalette.accent, contentColor = Color.White
+                containerColor = DigiDropPalette.accent, contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             shape = RoundedCornerShape(20.dp)
         ) {
@@ -1761,7 +1761,7 @@ fun HubTile(
     primary: Boolean = false
 ) {
     val tileColor = if (primary) DigiDropPalette.accent else CardSurface
-    val foreground = if (primary) Color.White else TextLight
+    val foreground = if (primary) MaterialTheme.colorScheme.onPrimary else TextLight
     val secondary = if (primary) DigiDropPalette.primarySoft else TextMuted
     Card(
         modifier = modifier.heightIn(min = if (primary) 132.dp else 112.dp)
@@ -2078,25 +2078,25 @@ fun StoreGroupCard(
     val hasProblem = items.any { it.discrepancyQty > 0 }
     Card(
         modifier = Modifier.fillMaxWidth()
-            .border(1.dp, DigiDropPalette.lightBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(first.storeName.ifBlank { "Точка доставки" }, color = DigiDropPalette.lightText,
+                Text(first.storeName.ifBlank { "Точка доставки" }, color = TextLight,
                     fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                Text(first.address, color = DigiDropPalette.lightTextSecondary, fontSize = 12.sp, maxLines = 2)
+                Text(first.address, color = TextMuted, fontSize = 12.sp, maxLines = 2)
                 val details = listOf(first.workingHours, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
                 if (details.isNotBlank()) Text(details, color = DigiDropPalette.accent, fontSize = 11.sp, maxLines = 1)
                 Text("$total мест • ${items.size} накладных",
-                    color = DigiDropPalette.lightTextSecondary, fontSize = 11.sp)
+                    color = TextMuted, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(when { hasProblem -> "Проблема"; delivered -> "Сдано"; else -> "В пути" },
-                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> DigiDropPalette.accent; else -> DigiDropPalette.lightTextSecondary },
+                    color = when { hasProblem -> Color(0xFFB3261E); delivered -> DigiDropPalette.accent; else -> TextMuted },
                     fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(Modifier.size(32.dp).clip(CircleShape).background(DigiDropPalette.primarySoft)
@@ -2161,7 +2161,7 @@ fun PointGroupScreen(
                             Text("Мест: ${item.totalBoxes}", color = TextLight, fontSize = 13.sp)
                             Text(
                                 when { item.discrepancyQty > 0 -> "Расхождение"; item.isDelivered -> "Сдано"; else -> "В пути" },
-                                color = when { item.discrepancyQty > 0 -> DigiDropPalette.primaryDark; item.isDelivered -> MintAccent; else -> EmeraldPrimary },
+                                color = when { item.discrepancyQty > 0 -> DigiDropPalette.accentDark; item.isDelivered -> MintAccent; else -> EmeraldPrimary },
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -2382,7 +2382,7 @@ fun PointDetailsScreen(
                     bitmap = signaturePreview,
                     contentDescription = "Подпись получателя",
                     modifier = Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(10.dp))
-                        .background(Color.White).padding(5.dp),
+                        .background(CardSurface).padding(5.dp),
                     contentScale = ContentScale.Fit
                 )
                 Text("Подпись получателя сохранена на устройстве", color = MintAccent, fontSize = 12.sp)
@@ -2547,7 +2547,7 @@ fun SignatureCaptureDialog(
                 Text("Попроси получателя расписаться пальцем в поле ниже.", color = TextMuted, fontSize = 12.sp)
                 Canvas(
                     Modifier.fillMaxWidth().height(180.dp)
-                        .background(Color.White, RoundedCornerShape(10.dp))
+                        .background(CardSurface, RoundedCornerShape(10.dp))
                         .onSizeChanged { padSize = it }
                         .pointerInput(Unit) {
                             detectDragGestures(
