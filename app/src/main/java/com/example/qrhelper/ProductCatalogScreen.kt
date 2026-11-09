@@ -1,6 +1,7 @@
 package com.example.qrhelper
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +31,7 @@ internal fun ProductCatalogScreen(
         Modifier.fillMaxSize().background(palette.background).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("← НАЗАД", modifier = Modifier.padding(vertical = 8.dp), color = palette.primary)
+        Text("← НАЗАД", modifier = Modifier.padding(vertical = 8.dp).clickable(onClick = onBack), color = palette.primary)
         Text("Каталог товаров", color = palette.onBackground, fontSize = 25.sp)
         OutlinedTextField(value = query, onValueChange = { query = it; onSearch(it) }, modifier = Modifier.fillMaxWidth(), label = { Text("Поиск по названию или штрихкоду") }, singleLine = true)
         Text("Локальная база штрихкодов из загруженных накладных",
