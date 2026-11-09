@@ -69,7 +69,9 @@ internal object PdfInvoiceImporter {
             "В PDF не удалось распознать текст. Проверьте качество скана и попробуйте ещё раз."
         }
         val parsed = listOf(invoiceText, recognized).firstNotNullOfOrNull { candidate ->
-            RouteSheetParser.parse(candidate).takeIf { it.isNotEmpty() }
+            val tableRows = RouteSheetParser.parse(candidate)
+            val addressRows = RouteSheetParser.parseOcrText(candidate)
+            listOf(tableRows, addressRows).maxByOrNull { it.size }?.takeIf { it.isNotEmpty() }
                 ?: runCatching { parseManifest(candidate) }.getOrNull()?.takeIf { it.isNotEmpty() }
         }
         check(!parsed.isNullOrEmpty()) {
