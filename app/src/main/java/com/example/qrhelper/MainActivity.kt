@@ -583,6 +583,7 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     var isUpdatingItemStatus by remember { mutableStateOf(false) }
     var isUpdatingDiscrepancy by remember { mutableStateOf(false) }
     var isUpdatingScan by remember { mutableStateOf(false) }
+    var isResettingProgress by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -722,30 +723,44 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
     }
 
     fun resetRouteProgress() {
-        val editor = prefs.edit()
-        routeItems.forEach { item ->
-            editor.remove("delivered_" + routeItemKey(item))
-            editor.remove("scanned_" + routeItemKey(item))
-        }
-        editor.remove("scan_codes")
-        editor.remove("unknown_codes")
-        editor.apply()
-        sessionScanCodes = emptySet()
-        unknownCodes = emptyList()
+        if (isResettingProgress) return
         val resetItems = routeItems.map {
             it.copy(isDelivered = false, scannedBoxes = 0, discrepancyQty = 0, discrepancyReason = null)
         }
-        routeItems = resetItems
+        isResettingProgress = true
         importScope.launch {
-            runCatching {
+            try {
                 val repository = LogisticsRepository(context)
-                repository.clearActiveUniqueScanCodes()
-                repository.syncProgress(resetItems)
-            }.onFailure { error ->
-                Toast.makeText(context, "Не удалось полностью сбросить прогресс: ${error.message}", Toast.LENGTH_LONG).show()
+                repository.resetActiveRouteProgress(resetItems)
+                val authoritativeItems = repository.activeRouteItems()
+                routeItems = authoritativeItems
+                selectedItem = selectedItem?.let { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                }
+                selectedPointItems = selectedPointItems.mapNotNull { selected ->
+                    authoritativeItems.firstOrNull { routeItemKey(it) == routeItemKey(selected) }
+                }
+                sessionScanCodes = repository.activeUniqueScanCodes()
+                unknownCodes = emptyList()
+                val editor = prefs.edit()
+                    .remove("scan_codes")
+                    .remove("unknown_codes")
+                authoritativeItems.forEach { saved ->
+                    editor.remove("delivered_" + routeItemKey(saved))
+                    editor.remove("scanned_" + routeItemKey(saved))
+                }
+                editor.apply()
+                Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
+            } catch (error: Exception) {
+                Toast.makeText(
+                    context,
+                    "Не удалось сбросить прогресс: ${error.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                isResettingProgress = false
             }
         }
-        Toast.makeText(context, "Статусы точек сброшены", Toast.LENGTH_SHORT).show()
     }
 
     val reportLauncher = rememberLauncherForActivityResult(
