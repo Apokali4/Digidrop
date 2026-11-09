@@ -913,17 +913,17 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) importScope.launch {
-            runCatching {
+            try {
                 val snapshot = context.contentResolver.openInputStream(uri)?.use {
                     BackupManager.readBackup(it, context.filesDir)
                 } ?: error("Не удалось прочитать резервную копию")
-                routeItems = snapshot.routeItems
-                settingsOffline = snapshot.offlineMode
-                settingsAutoSave = snapshot.autoSave
-                settingsCompact = snapshot.compactMode
-                unknownCodes = snapshot.unknownCodes
-                sessionScanCodes = snapshot.scanCodes.toSet()
-                val manifest = snapshot.routeItems.joinToString("\n") { item ->
+                val repository = LogisticsRepository(context)
+                repository.replaceActiveRoute(snapshot.routeItems)
+                repository.restoreUniqueScanCodes(snapshot.scanCodes.toSet())
+                repository.restoreProducts(snapshot.catalog)
+                val authoritativeItems = repository.activeRouteItems()
+                val authoritativeCodes = repository.activeUniqueScanCodes()
+                val manifest = authoritativeItems.joinToString("\n") { item ->
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
@@ -936,15 +936,23 @@ fun DigitDropRoot(onThemeChange: (Boolean) -> Unit) {
                     .putBoolean("auto_save", snapshot.autoSave)
                     .putBoolean("compact_mode", snapshot.compactMode)
                     .putStringSet("unknown_codes", snapshot.unknownCodes.toSet())
-                    .putStringSet("scan_codes", snapshot.scanCodes.toSet())
+                    .putStringSet("scan_codes", authoritativeCodes)
                     .apply()
-                val repository = LogisticsRepository(context)
-                repository.replaceActiveRoute(snapshot.routeItems)
-                repository.restoreUniqueScanCodes(snapshot.scanCodes.toSet())
-                repository.restoreProducts(snapshot.catalog)
+                routeItems = authoritativeItems
+                selectedItem = null
+                selectedPointItems = emptyList()
+                settingsOffline = snapshot.offlineMode
+                settingsAutoSave = snapshot.autoSave
+                settingsCompact = snapshot.compactMode
+                unknownCodes = snapshot.unknownCodes
+                sessionScanCodes = authoritativeCodes
                 Toast.makeText(context, "Резервная копия восстановлена", Toast.LENGTH_LONG).show()
-            }.onFailure { error ->
-                Toast.makeText(context, "Не удалось восстановить копию: ${error.message}", Toast.LENGTH_LONG).show()
+            } catch (error: Exception) {
+                Toast.makeText(
+                    context,
+                    "Не удалось восстановить копию: ${error.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
