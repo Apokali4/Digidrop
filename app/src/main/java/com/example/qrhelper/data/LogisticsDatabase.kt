@@ -22,15 +22,13 @@ class LogisticsConverters{
 @Entity(tableName="delivery_points",foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")])
 data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeId:Long,val storeName:String,val address:String,val phone:String="",val sortOrder:Int=0,val timeSlot:String="",val contactPerson:String="",val contactPhone:String="",val status:DeliveryStatus=DeliveryStatus.PENDING,val signaturePath:String="",val photoDocUri:String="",val latitude:Double?=null,val longitude:Double?=null)
 @Entity(tableName="scan_codes",primaryKeys=["routeId","code"],foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")]) data class ScanCodeEntity(val routeId:Long,val code:String,val scannedAt:Long=System.currentTimeMillis())
-@Entity(tableName="daily_manifest_documents", indices=[Index("batchKey"),Index("importedAt")])
-data class DailyManifestDocumentEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val batchKey:String,val sourceName:String,val supplierName:String="",val importedAt:Long=System.currentTimeMillis(),val rowCount:Int,val rowsPayload:String,val selected:Boolean=true,val driverName:String="",val vehicleName:String="")
 @Entity(tableName="products")
 data class ProductEntity(@PrimaryKey val barcode:String,val productName:String,val updatedAt:Long=System.currentTimeMillis())
 @Entity(tableName="cargo_items",foreignKeys=[ForeignKey(entity=DeliveryPointEntity::class,parentColumns=["id"],childColumns=["pointId"],onDelete=ForeignKey.CASCADE)],indices=[Index("pointId"),Index("barcode")])
 data class CargoItemEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val pointId:Long,val barcode:String,val itemName:String,val expectedQty:Int,val scannedQty:Int=0,val unitType:CargoUnitType=CargoUnitType.PACK,val barcodeType:CargoBarcodeType=CargoBarcodeType.EAN_13,val discrepancyQty:Int=0,val discrepancyReason:DiscrepancyReason?=null,val note:String="",val ownerName:String="",val workingHours:String="",val cashNote:String="",val extraComment:String="")
 data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val itemName:String,val barcode:String,val expectedQty:Int,val scannedQty:Int,val discrepancyQty:Int,val discrepancyReason:String?)
 @Dao interface LogisticsDao{
- @Insert suspend fun insertManifestDocuments(v:List<DailyManifestDocumentEntity>):List<Long>\n @Query("SELECT * FROM daily_manifest_documents ORDER BY importedAt DESC,id DESC") suspend fun dailyManifestDocuments():List<DailyManifestDocumentEntity>\n @Query("UPDATE daily_manifest_documents SET selected=:selected WHERE id=:id") suspend fun setManifestSelected(id:Long,selected:Boolean)\n @Query("UPDATE daily_manifest_documents SET driverName=:driver,vehicleName=:vehicle WHERE id IN (:ids)") suspend fun assignManifestDocuments(ids:List<Long>,driver:String,vehicle:String)\n @Insert suspend fun insertRoute(v:DeliveryRouteEntity):Long
+ @Insert suspend fun insertRoute(v:DeliveryRouteEntity):Long
  @Insert suspend fun insertPoint(v:DeliveryPointEntity):Long
  @Insert suspend fun insertCargo(v:List<CargoItemEntity>)
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun upsertProducts(v:List<ProductEntity>)
@@ -71,7 +69,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Transaction suspend fun closePoint(id:Long):Boolean{if(unresolved(id)>0||invalidDiscrepancies(id)>0)return false;updateStatus(id,DeliveryStatus.COMPLETED);return true}
  @Query("SELECT p.storeName AS pointName,p.address AS pointAddress,c.itemName AS itemName,c.barcode AS barcode,c.expectedQty AS expectedQty,c.scannedQty AS scannedQty,c.discrepancyQty AS discrepancyQty,c.discrepancyReason AS discrepancyReason FROM cargo_items c JOIN delivery_points p ON p.id=c.pointId WHERE p.routeId=:routeId AND (c.discrepancyQty>0 OR c.scannedQty<c.expectedQty) ORDER BY p.sortOrder,p.storeName,c.itemName") suspend fun discrepancyReport(routeId:Long):List<DiscrepancyReportRow>
 }
-@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class,DailyManifestDocumentEntity::class],version=5,exportSchema=true)
+@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=4,exportSchema=true)
 @TypeConverters(LogisticsConverters::class)
 abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
  companion object{
@@ -96,11 +94,6 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("CREATE TABLE IF NOT EXISTS scan_codes (routeId INTEGER NOT NULL, code TEXT NOT NULL, scannedAt INTEGER NOT NULL, PRIMARY KEY(routeId, code), FOREIGN KEY(routeId) REFERENCES delivery_routes(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
     database.execSQL("CREATE INDEX IF NOT EXISTS index_scan_codes_routeId ON scan_codes(routeId)")
    }
-  }
-  private val MIGRATION_4_5=object:Migration(4,5){\n   override fun migrate(database:SupportSQLiteDatabase){\n    database.execSQL("CREATE TABLE IF NOT EXISTS daily_manifest_documents (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, batchKey TEXT NOT NULL, sourceName TEXT NOT NULL, supplierName TEXT NOT NULL, importedAt INTEGER NOT NULL, rowCount INTEGER NOT NULL, rowsPayload TEXT NOT NULL, selected INTEGER NOT NULL, driverName TEXT NOT NULL, vehicleName TEXT NOT NULL)")\n    database.execSQL("CREATE INDEX IF NOT EXISTS index_daily_manifest_documents_batchKey ON daily_manifest_documents(batchKey)")\n    database.execSQL("CREATE INDEX IF NOT EXISTS index_daily_manifest_documents_importedAt ON daily_manifest_documents(importedAt)")\n   }\n  }\n  @Volatile private var db:LogisticsDatabase?=null
-  fun get(c:Context):LogisticsDatabase=db?:synchronized(this){
-   db?:Room.databaseBuilder(c.applicationContext,LogisticsDatabase::class.java,"digidrop.db")
-    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5).build().also{db=it}
   }
  }
 }
