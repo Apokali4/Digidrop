@@ -854,7 +854,7 @@ fun PhotoRoutePlannerScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
-            border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline),
             elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
         ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -955,7 +955,7 @@ fun PhotoRoutePlannerScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline),
                     elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

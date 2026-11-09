@@ -1632,7 +1632,7 @@ private fun HubMetric(value: String, label: String, modifier: Modifier = Modifie
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1649,7 +1649,7 @@ private fun HubQuickAction(symbol: String, label: String, modifier: Modifier = M
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .bounceClick { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Column(
@@ -1892,7 +1892,7 @@ fun LiveCameraScannerScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Row(
@@ -1924,7 +1924,7 @@ fun LiveCameraScannerScreen(
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Text(
@@ -1976,7 +1976,7 @@ fun LiveCameraScannerScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(
@@ -2027,7 +2027,7 @@ fun ScanResultsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().bounceClick { onOpenPoint(pointItems.first()) },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.padding(16.dp)) {
@@ -2063,7 +2063,7 @@ fun StoreGroupCard(
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -2252,7 +2252,7 @@ fun PointDetailsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -2272,7 +2272,7 @@ fun PointDetailsScreen(
                     .fillMaxWidth()
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -2338,7 +2338,7 @@ fun PointDetailsScreen(
                     .fillMaxWidth()
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp)),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -2731,7 +2731,7 @@ fun RouteListScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -2771,7 +2771,7 @@ fun RouteListScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2836,7 +2836,7 @@ fun RouteListScreen(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
                             .clickable { onApplyAlternative(alternative.map { it.id }) },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(14.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                     ) {
                         Row(
@@ -2863,7 +2863,7 @@ fun RouteListScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(20.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
                     ) {
                         Column(
@@ -3058,7 +3058,7 @@ fun RouteItemCard(
             )
             .bounceClick(scaleDown = 0.98f) { onCardClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 2.dp),
     ) {
         Row(
