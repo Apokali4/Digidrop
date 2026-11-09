@@ -1,6 +1,6 @@
 package com.example.qrhelper
 
-internal enum class AppearanceMode {
+enum class AppearanceMode {
     SYSTEM, LIGHT, DARK;
 
     fun resolve(systemDark: Boolean): Boolean = when (this) {
