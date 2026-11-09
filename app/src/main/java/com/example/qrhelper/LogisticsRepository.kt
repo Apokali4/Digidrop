@@ -238,56 +238,79 @@ internal class LogisticsRepository(context: Context) {
 
     suspend fun syncProgress(items: List<RouteItem>) {
         database.withTransaction {
+            syncProgressInTransaction(items)
+        }
+    }
+
+    /**
+     * Registers a unique package scan and applies its cargo progress in one Room
+     * transaction. A failed progress write rolls back the unique-code insert too.
+     */
+    suspend fun registerUniqueScanAndSync(code: String, items: List<RouteItem>): Boolean =
+        database.withTransaction {
+            val normalized = code.trim()
+            require(normalized.isNotEmpty()) { "Пустой код упаковки" }
             val dao = database.dao()
-            val activeRoute = dao.activeRouteOnce() ?: return@withTransaction
-            val storedPoints = dao.pointsOnce(activeRoute.id)
-            val importedGroups = items.groupBy { it.storeName.trim() to it.address.trim() }
+            val route = checkNotNull(dao.activeRouteOnce()) {
+                "Нет активного рейса для регистрации скана"
+            }
+            if (dao.insertScanCode(ScanCodeEntity(routeId = route.id, code = normalized)) == -1L) {
+                return@withTransaction false
+            }
+            syncProgressInTransaction(items)
+            true
+        }
 
-            importedGroups.forEach { (key, group) ->
-                val point = storedPoints.firstOrNull {
-                    it.storeName.trim() == key.first && it.address.trim() == key.second
-                } ?: return@forEach
+    private suspend fun syncProgressInTransaction(items: List<RouteItem>) {
+        val dao = database.dao()
+        val activeRoute = dao.activeRouteOnce() ?: return@withTransaction
+        val storedPoints = dao.pointsOnce(activeRoute.id)
+        val importedGroups = items.groupBy { it.storeName.trim() to it.address.trim() }
 
-                val storedCargo = dao.cargoOnce(point.id)
-                group.groupBy { it.barcode.trim() to it.itemName.trim() }.forEach { (cargoKey, rows) ->
-                    val matchingCargo = storedCargo.filter {
-                        it.barcode.trim() == cargoKey.first && it.itemName.trim() == cargoKey.second
-                    }
-                    rows.forEachIndexed { index, item ->
-                        matchingCargo.getOrNull(index)?.let { cargo ->
-                            dao.setScannedQty(cargo.id, item.scannedBoxes.coerceAtLeast(0))
-                            val reason = item.discrepancyReason?.let {
-                                runCatching { com.example.qrhelper.data.DiscrepancyReason.valueOf(it) }.getOrNull()
-                            }
-                            check(
-                                dao.updateDiscrepancy(cargo.id, item.discrepancyQty.coerceAtLeast(0), reason) == 1
-                            ) {
-                                "Не удалось сохранить расхождение для товара: ${item.itemName}"
-                            }
+        importedGroups.forEach { (key, group) ->
+            val point = storedPoints.firstOrNull {
+                it.storeName.trim() == key.first && it.address.trim() == key.second
+            } ?: return@forEach
+
+            val storedCargo = dao.cargoOnce(point.id)
+            group.groupBy { it.barcode.trim() to it.itemName.trim() }.forEach { (cargoKey, rows) ->
+                val matchingCargo = storedCargo.filter {
+                    it.barcode.trim() == cargoKey.first && it.itemName.trim() == cargoKey.second
+                }
+                rows.forEachIndexed { index, item ->
+                    matchingCargo.getOrNull(index)?.let { cargo ->
+                        dao.setScannedQty(cargo.id, item.scannedBoxes.coerceAtLeast(0))
+                        val reason = item.discrepancyReason?.let {
+                            runCatching { com.example.qrhelper.data.DiscrepancyReason.valueOf(it) }.getOrNull()
+                        }
+                        check(
+                            dao.updateDiscrepancy(cargo.id, item.discrepancyQty.coerceAtLeast(0), reason) == 1
+                        ) {
+                            "Не удалось сохранить расхождение для товара: ${item.itemName}"
                         }
                     }
                 }
-
-                // Status is derived only after the cargo rows have been persisted.
-                // This prevents an optimistic UI flag or a stale aggregate from
-                // completing a point while one of its own rows is still unresolved.
-                val refreshedCargo = dao.cargoOnce(point.id)
-                val hasDiscrepancy = refreshedCargo.any { it.discrepancyQty > 0 }
-                val allRowsAccounted = refreshedCargo.isNotEmpty() && refreshedCargo.all { cargo ->
-                    cargo.expectedQty <= 0 ||
-                        cargo.scannedQty.coerceAtLeast(0) + cargo.discrepancyQty.coerceAtLeast(0) >= cargo.expectedQty
-                }
-                val status = when {
-                    allRowsAccounted && point.status == com.example.qrhelper.data.DeliveryStatus.COMPLETED ->
-                        com.example.qrhelper.data.DeliveryStatus.COMPLETED
-                    hasDiscrepancy -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
-                    allRowsAccounted && refreshedCargo.any { it.expectedQty > 0 } ->
-                        com.example.qrhelper.data.DeliveryStatus.COMPLETED
-                    refreshedCargo.any { it.scannedQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
-                    else -> com.example.qrhelper.data.DeliveryStatus.PENDING
-                }
-                dao.updateStatus(point.id, status)
             }
+
+            // Status is derived only after the cargo rows have been persisted.
+            // This prevents an optimistic UI flag or a stale aggregate from
+            // completing a point while one of its own rows is still unresolved.
+            val refreshedCargo = dao.cargoOnce(point.id)
+            val hasDiscrepancy = refreshedCargo.any { it.discrepancyQty > 0 }
+            val allRowsAccounted = refreshedCargo.isNotEmpty() && refreshedCargo.all { cargo ->
+                cargo.expectedQty <= 0 ||
+                    cargo.scannedQty.coerceAtLeast(0) + cargo.discrepancyQty.coerceAtLeast(0) >= cargo.expectedQty
+            }
+            val status = when {
+                allRowsAccounted && point.status == com.example.qrhelper.data.DeliveryStatus.COMPLETED ->
+                    com.example.qrhelper.data.DeliveryStatus.COMPLETED
+                hasDiscrepancy -> com.example.qrhelper.data.DeliveryStatus.HAS_DISCREPANCY
+                allRowsAccounted && refreshedCargo.any { it.expectedQty > 0 } ->
+                    com.example.qrhelper.data.DeliveryStatus.COMPLETED
+                refreshedCargo.any { it.scannedQty > 0 } -> com.example.qrhelper.data.DeliveryStatus.IN_PROGRESS
+                else -> com.example.qrhelper.data.DeliveryStatus.PENDING
+            }
+            dao.updateStatus(point.id, status)
         }
     }
 
