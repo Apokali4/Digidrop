@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.DigiDrop" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#FFFFFFFF</item>
-        <item name="android:navigationBarColor">#FFFFFFFF</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowBackground">#FFFFFFFF</item>
-        <item name="android:colorAccent">#278747</item>
+        <item name="android:statusBarColor">#FF1D2023</item>
+        <item name="android:navigationBarColor">#FF1D2023</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">#FF1D2023</item>
+        <item name="android:colorAccent">#FFF07824</item>
     </style>
 </resources>
