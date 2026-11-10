@@ -537,22 +537,22 @@ internal object PhotoRouteGeocodingQuery {
         candidateAddressLine: String? = null
     ): Boolean {
         val streetPattern = Regex(
-            """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)(?![А-Яа-яЁёA-Za-z])"""
+            """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
         )
         val housePattern = Regex(
-            """(?iu)(?:[,\\s-]*(?:д\\.?|дом|вх\\.?|в)\\s*№?\\s*[-–—]?)?(\\d{1,4}(?:\\s*[А-Яа-яA-Za-z])?(?:(?:[/\\-]|к)\\d{1,4}[А-Яа-яA-Za-z]?)?)"""
+            """(?iu)(?:[,\s-]*(?:д\.?|дом|вх\.?|в)\s*№?\s*[-–—]?)?(\d{1,4}(?:\s*[А-Яа-яA-Za-z])?(?:(?:[/\-]|к)\d{1,4}[А-Яа-яA-Za-z]?)?)"""
         )
         fun normalized(value: String): String = value.lowercase(Locale("ru", "RU"))
             .replace('ё', 'е')
-            .replace(Regex("""(?iu)^(?:ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)\\s*"""), "")
-            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+            .replace(Regex("""(?iu)^(?:ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)\s*"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
 
         val requestedStreetMatch = streetPattern.find(requestedAddress) ?: return false
         val requestedHouseMatch = housePattern.find(requestedAddress, requestedStreetMatch.range.last + 1)
             ?: return false
         val requestedStreet = normalized(
             requestedAddress.substring(requestedStreetMatch.range.last + 1, requestedHouseMatch.range.first)
-                .replace(Regex("""(?iu)[,\\s]*(?:д\\.?|дом)\\s*$"""), "")
+                .replace(Regex("""(?iu)[,\s]*(?:д\.?|дом)\s*$"""), "")
         )
         val requestedHouse = normalized(requestedHouseMatch.groupValues[1])
         if (requestedStreet.isBlank() || requestedHouse.isBlank()) return false
