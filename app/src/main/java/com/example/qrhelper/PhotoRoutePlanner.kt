@@ -278,7 +278,8 @@ internal object PhotoRouteTextParser {
             .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
             .filter { it.isNotBlank() }
             .toList()
-        val rowStart = Regex("""(?iu)^\s*(?:№\s*)?(\d{1,3})[.)]?\s+(\d{2,8})\s+(.+)$""")
+        // Customer code is optional: delivery route sheets are not necessarily invoices.
+        val rowStart = Regex("""(?iu)^\s*(?:№\s*)?(\d{1,3})[.)]?\s+(?:(\d{2,8})\s+)?(.+)$""")
         val result = mutableListOf<String>()
         lines.forEachIndexed { index, line ->
             val row = rowStart.find(line) ?: return@forEachIndexed
