@@ -121,7 +121,7 @@ internal object PhotoRouteTextParser {
     private val houseAfterStreet = Regex(
         """(?iu)(?:[,\s-]*(?:д\.?|дом|вх\.?|в)\s*№?\s*[-–—]?)?(\d{1,4}(?:\s*[А-Яа-яA-Za-z])?(?:(?:[/\-]|к)\d{1,4}[А-Яа-яA-Za-z]?)?)(?=\s*(?:[,;.]|корп|крп|строен|стр|лит|кв|$))"""
     )
-    private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор)""")
+    private val metadataHint = Regex("""(?iu)(маршрут|накладная|телефон|тел\.?|диспетчер|итого|всего|водитель|экспедитор|задание|отгрузк|документ|рейс)""")
     // Preserve корпус/строение/литера so separate buildings never collapse into one stop.
     private val buildingSuffixPattern = Regex(
         """(?iu)\s*[,;]?\s*(?:корп(?:ус)?\.?|крп\.?|строен(?:ие)?\.?|стр\.?|лит(?:ера)?\.?)\s*№?\s*[0-9а-яёa-z-]+"""
