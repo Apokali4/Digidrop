@@ -572,46 +572,46 @@ internal object PhotoRouteGeocodingQuery {
     ): Boolean {
         fun normalizeStreet(value: String): String = value.lowercase(Locale("ru", "RU"))
             .replace('ё', 'е')
-            .replace(Regex("""(?iu)^\\s*(?:ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)\\s*"""), "")
-            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+            .replace(Regex("""(?iu)^\s*(?:ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)\s*"""), "")
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
 
         fun houseFrom(value: String): String {
             val street = streetPatternForGeocoding.find(value) ?: return ""
             val tail = value.substring(street.range.last + 1)
-            return Regex("""(?iu)(?:д\\.?|дом)?\\s*№?\\s*(\\d{1,4}(?:\\s*[а-яёa-z])?(?:(?:[/\\-]|к)\\d{1,4}[а-яёa-z]?)?)""")
+            return Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*(\d{1,4}(?:\s*[а-яёa-z])?(?:(?:[/\-]|к)\d{1,4}[а-яёa-z]?)?)""")
                 .find(tail)?.groupValues?.getOrNull(1)
                 ?.lowercase(Locale("ru", "RU"))
-                ?.replace(Regex("""[^\\p{L}\\p{N}]"""), "").orEmpty()
+                ?.replace(Regex("""[^\p{L}\p{N}]"""), "").orEmpty()
         }
 
         val requestedStreetMatch = streetPatternForGeocoding.find(requestedAddress) ?: return false
         val requestedTail = requestedAddress.substring(requestedStreetMatch.range.last + 1)
-        val requestedHouse = Regex("""(?iu)(?:д\\.?|дом)?\\s*№?\\s*(\\d{1,4}(?:\\s*[а-яёa-z])?(?:(?:[/\\-]|к)\\d{1,4}[а-яёa-z]?)?)""")
+        val requestedHouse = Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*(\d{1,4}(?:\s*[а-яёa-z])?(?:(?:[/\-]|к)\d{1,4}[а-яёa-z]?)?)""")
             .find(requestedTail)?.groupValues?.getOrNull(1)
             ?.lowercase(Locale("ru", "RU"))
-            ?.replace(Regex("""[^\\p{L}\\p{N}]"""), "").orEmpty()
+            ?.replace(Regex("""[^\p{L}\p{N}]"""), "").orEmpty()
         if (requestedHouse.isBlank()) return false
         val requestedStreet = normalizeStreet(
-            requestedTail.substring(0, Regex("""(?iu)(?:д\\.?|дом)?\\s*№?\\s*\\d""").find(requestedTail)?.range?.first
+            requestedTail.substring(0, Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*\d""").find(requestedTail)?.range?.first
                 ?: return false
         )
         val resolvedStreet = candidateStreet?.takeIf { it.isNotBlank() }?.let(::normalizeStreet)
             ?: candidateAddressLine?.let { line ->
                 val match = streetPatternForGeocoding.find(line) ?: return@let ""
                 val tail = line.substring(match.range.last + 1)
-                val houseStart = Regex("""(?iu)(?:д\\.?|дом)?\\s*№?\\s*\\d""").find(tail)?.range?.first
+                val houseStart = Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*\d""").find(tail)?.range?.first
                     ?: return@let ""
                 normalizeStreet(tail.substring(0, houseStart))
             }.orEmpty()
         val resolvedHouse = candidateHouse?.takeIf { it.isNotBlank() }
-            ?.let { it.lowercase(Locale("ru", "RU")).replace(Regex("""[^\\p{L}\\p{N}]"""), "") }
+            ?.let { it.lowercase(Locale("ru", "RU")).replace(Regex("""[^\p{L}\p{N}]"""), "") }
             ?: candidateAddressLine?.let(::houseFrom).orEmpty()
         return requestedStreet.isNotBlank() && resolvedStreet == requestedStreet &&
             resolvedHouse.isNotBlank() && resolvedHouse == requestedHouse
     }
 
     private val streetPatternForGeocoding = Regex(
-        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)(?![А-Яа-яЁёA-Za-z])"""
+        """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\.?|улица|пр\.?|проспект|пер\.?|переулок|ш\.?|шоссе|наб\.?|набережная|пл\.?|площадь|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
     )
 }
 
