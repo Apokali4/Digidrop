@@ -74,7 +74,8 @@ internal data class PhotoRouteDeliveryRow(
     val cashCollection: String = "",
     val comment: String = "",
     val rawCells: List<String> = emptyList(),
-    val numericReviewFields: List<String> = emptyList()
+    val numericReviewFields: List<String> = emptyList(),
+    val cashReviewFields: List<String> = emptyList()
 )
 
 /**
@@ -151,6 +152,17 @@ internal object PhotoRouteTableParser {
                     if (raw.isNotBlank() && number(column) == 0) add("$label: $raw")
                 }
             }
+            val rawCash = cells.getOrNull(columns[Column.CASH] ?: -1).orEmpty().trim()
+            val cashReviewFields = buildList {
+                // Keep money as source text. Only identify OCR ambiguity; never coerce it to a number.
+                val normalizedCash = rawCash
+                    .replace('\u00A0', ' ')
+                    .replace(Regex("""(?iu)\\s*(?:руб(?:лей|ля|ль)?\\.?|р\\.?)\\s*$"""), "")
+                    .trim()
+                val clearAmount = Regex("""^(?:\\d{1,9}|\\d{1,3}(?:\\s\\d{3})+)(?:[,.]\\d{1,2})?$""")
+                    .matches(normalizedCash)
+                if (rawCash.any(Char::isDigit) && !clearAmount) add("Инкассация: $rawCash")
+            }
             rows += PhotoRouteDeliveryRow(
                 pointNumber = pointNumber,
                 customerCode = customerCode,
@@ -164,7 +176,8 @@ internal object PhotoRouteTableParser {
                 cashCollection = cells.getOrNull(columns[Column.CASH] ?: -1).orEmpty(),
                 comment = comment,
                 rawCells = cells,
-                numericReviewFields = numericReviewFields
+                numericReviewFields = numericReviewFields,
+                cashReviewFields = cashReviewFields
             )
         }
         return rows
