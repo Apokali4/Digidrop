@@ -2,9 +2,12 @@ package com.example.qrhelper
 
 import com.example.qrhelper.domain.RouteStop
 import com.example.qrhelper.domain.RouteOrderOptimizer
+import com.example.qrhelper.domain.RouteDistanceMatrix
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Reorders physical delivery addresses, preserving every delivery row at each stop. */
-internal fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
+internal fun rebuildRemainingRoute(items: List<RouteItem>, roadDistances: RouteDistanceMatrix? = null): List<RouteItem> {
     val groups = items.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
     if (groups.size < 3) return items
 
@@ -17,10 +20,43 @@ internal fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
             completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
         )
     }
-    val optimized = RouteOrderOptimizer.optimize(stops)
+    val optimized = RouteOrderOptimizer.optimize(stops, roadDistances)
     val byId = groups
     return optimized.flatMap { stop -> byId[stop.id].orEmpty() }
 }
+
+
+/**
+ * Uses OSRM road-network distances for the explicit Optimize action.
+ * If the device is offline or the routing service is unavailable, the existing
+ * deterministic geodesic optimizer remains the safe fallback.
+ */
+internal suspend fun rebuildRemainingRouteWithRoadNetwork(items: List<RouteItem>): Pair<List<RouteItem>, Boolean> =
+    withContext(Dispatchers.IO) {
+        val groups = items.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+        if (groups.size < 3) return@withContext items to false
+        val stops = groups.map { (addressKey, group) ->
+            val first = group.first()
+            RouteStop(
+                id = addressKey,
+                latitude = first.latitude,
+                longitude = first.longitude,
+                completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
+            )
+        }
+        val pending = stops.filterNot { it.completed }
+        if (pending.size < 2 || pending.any {
+                it.latitude == null || it.longitude == null ||
+                    !it.latitude.isFinite() || !it.longitude.isFinite() ||
+                    it.latitude !in -90.0..90.0 || it.longitude !in -180.0..180.0
+            }) return@withContext rebuildRemainingRoute(items) to false
+
+        val matrixStops = stops.filter { it.latitude != null && it.longitude != null }
+        val roadDistances = runCatching { RoadDistanceMatrixLoader.fetch(matrixStops) }.getOrNull()
+        val optimized = rebuildRemainingRoute(items, roadDistances)
+        optimized to (roadDistances != null)
+    }
+
 
 /** Returns the first physical address that still has an undelivered row. */
 internal fun nextPendingPoint(items: List<RouteItem>): List<RouteItem>? =
