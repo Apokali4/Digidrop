@@ -5,6 +5,7 @@ name: Android CI
 # Final validated APK build trigger: [build-apk].
 # [build-apk] Build verified route-navigation APK after green unit tests.
 # Release build is intentionally opt-in after import-format verification.
+# Manual APK build requested after route-photo parser verification.
 # Release build is intentionally opt-in after import-format verification.
 # [build-apk] Rebuild after wiring duplicate-safe camera route extraction.
 # [build-apk] Validate Yandex's 20-node cap including the driver's current position.
