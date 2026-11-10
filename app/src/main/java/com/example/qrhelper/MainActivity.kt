@@ -1382,9 +1382,9 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         }
                     }
                     val nextSegments = if (coords.size == pending.size && coords.size >= 2)
-                        PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
+                        coords.map { listOf(it) } else emptyList()
                     val chosen = nextSegments.getOrNull(index) ?: segment
-                    openYandexNavigator(context, chosen, startsFromPreviousStop = index > 0)
+                    openYandexNavigator(context, chosen, startsFromPreviousStop = false)
                 },
                 onRebuildRoute = {
                     val reordered = rebuildRemainingRoute(routeItems)
@@ -3039,7 +3039,7 @@ fun RouteListScreen(
     }
     val missingCoordinates = points.size != pendingGroups.size
     val segments = remember(points, missingCoordinates) {
-        if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
+        if (!missingCoordinates && points.size >= 2) points.map { listOf(it) } else emptyList()
     }
     var navigationSegmentIndex by remember(segments) { mutableStateOf(0) }
     var navigationSegmentCount by remember(segments) { mutableStateOf(segments.size) }
@@ -3164,7 +3164,7 @@ fun RouteListScreen(
                                     Toast.LENGTH_LONG
                                 ).show()
                             } else if (allCoordinates.size >= 2) {
-                                val readySegments = PhotoRouteNavigationUrls.yandexSegments(allCoordinates)
+                                val readySegments = allCoordinates.map { listOf(it) }
                                 navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
                                 onNavigateSegment(chosenIndex, readySegments[chosenIndex])
