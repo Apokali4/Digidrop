@@ -364,4 +364,32 @@ class PhotoRouteTextParserTest {
         assertEquals("", PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Ленина, д. 10").storeName)
     }
 
+    @Test fun rejectsNearbyButDifferentGeocoderAddressInsteadOfInventingRouteStop() {
+        assertTrue(
+            !PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                requestedAddress = "г. Калуга, ул. Никитина, д. 21",
+                candidateStreet = "улица Ленина",
+                candidateHouse = "13"
+            )
+        )
+    }
+
+    @Test fun acceptsGeocoderOnlyWhenStreetAndHouseBothMatch() {
+        assertTrue(
+            PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                requestedAddress = "г. Калуга, ул. Никитина, д. 21",
+                candidateStreet = "улица Никитина",
+                candidateHouse = "21"
+            )
+        )
+        assertTrue(
+            PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                requestedAddress = "Калуга, ул. Тарутинская, д. 72",
+                candidateStreet = null,
+                candidateHouse = null,
+                candidateAddressLine = "Россия, Калужская область, Калуга, улица Тарутинская, 72"
+            )
+        )
+    }
+
 }
