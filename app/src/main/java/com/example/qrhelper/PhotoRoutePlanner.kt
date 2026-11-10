@@ -1260,7 +1260,8 @@ fun PhotoRoutePlannerScreen(
                 check(rawText.isNotBlank()) { "OCR не распознал текст. Попробуйте снимок крупнее и без бликов." }
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
                 val tableRows = PhotoRouteTableParser.parse(rawText, routeCity)
-                addresses = if (tableRows.isNotEmpty()) tableRows.map { it.address }
+                val rowsWithoutAddress = tableRows.count { it.address.isBlank() }
+                addresses = if (tableRows.isNotEmpty()) tableRows.mapNotNull { it.address.takeIf(String::isNotBlank) }
                     else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
@@ -1297,10 +1298,13 @@ fun PhotoRoutePlannerScreen(
                             additionalDeliveries = deliveries.drop(1)
                         )
                     }
+                    val addressReview = if (rowsWithoutAddress > 0) {
+                        " Не распознаны адреса в строках: $rowsWithoutAddress. Они сохранены в исходном тексте для проверки."
+                    } else ""
                     status = when {
-                        located.isEmpty() -> "Адресов: ${addresses.size}, но координаты не определились. Проверьте интернет и адреса."
-                        failed.isNotEmpty() -> "Подготовлено ${located.size} остановок из ${addresses.size} записей. Не найдены координаты: ${failed.joinToString("; ")}."
-                        else -> "Готово: ${located.size} уникальных остановок из ${addresses.size} записей доставки."
+                        located.isEmpty() -> "Адресов: ${addresses.size}, но координаты не определились. Проверьте интернет и адреса.$addressReview"
+                        failed.isNotEmpty() -> "Подготовлено ${located.size} остановок из ${addresses.size} записей. Не найдены координаты: ${failed.joinToString("; ")}.$addressReview"
+                        else -> "Готово: ${located.size} уникальных остановок из ${addresses.size} записей доставки.$addressReview"
                     }
                 }
             } catch (error: Exception) {
