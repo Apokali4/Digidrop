@@ -73,7 +73,7 @@ class PhotoRouteNavigationUrlsTest {
     }
 
     @Test fun geocodingQueryAddsSelectedCityToAmbiguousStreetAddress() {
-        assertEquals("Советская, 2, Калуга, Россия", PhotoRouteGeocodingQuery.build("Советская, 2", "Калуга"))
+        assertEquals("Советская, 2, г. Калуга, Калужская область, Россия", PhotoRouteGeocodingQuery.build("Советская, 2", "Калуга"))
     }
 
     @Test fun geocodingQueryLeavesCityOptional() {
@@ -98,6 +98,16 @@ class PhotoRouteNavigationUrlsTest {
             PhotoRouteCoordinate(54.55, 36.30)
         )
         assertEquals(listOf(0, 2, 3, 1), PhotoRouteOrdering.nearestNeighborOrder(points))
+    }
+
+    @Test fun kalugaGeocodingRejectsYukhnovAndKeepsKalugaAddresses() {
+        assertTrue(PhotoRouteGeocodingQuery.isWithinSelectedCity(54.5138, 36.2612, "Калуга"))
+        assertTrue(!PhotoRouteGeocodingQuery.isWithinSelectedCity(54.744, 35.229, "Калуга"))
+    }
+
+    @Test fun kalugaGeocodingRejectsInvalidCoordinates() {
+        assertTrue(!PhotoRouteGeocodingQuery.isWithinSelectedCity(Double.NaN, 36.26, "Калуга"))
+        assertTrue(!PhotoRouteGeocodingQuery.isWithinSelectedCity(54.51, 200.0, "Калуга"))
     }
 
 }
