@@ -1151,6 +1151,9 @@ fun PhotoRoutePlannerScreen(
     var routeCity by remember { mutableStateOf(plannerPrefs.getString("route_city", "Калуга").orEmpty()) }
     var addresses by remember { mutableStateOf(readStringList("addresses")) }
     var located by remember { mutableStateOf(readLocatedStops()) }
+    val rowsNeedingAddressReview = remember(rawText, routeCity) {
+        PhotoRouteTableParser.parse(rawText, routeCity).filter { it.address.isBlank() }
+    }
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве.") }
     var busy by remember { mutableStateOf(false) }
@@ -1476,6 +1479,32 @@ fun PhotoRoutePlannerScreen(
         }
         OutlinedTextField(routeCity, { routeCity = it }, label = { Text("Город маршрута") },
             modifier = Modifier.fillMaxWidth(), singleLine = true)
+
+        if (rowsNeedingAddressReview.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("СТРОКИ БЕЗ РАСПОЗНАННОГО АДРЕСА: ${rowsNeedingAddressReview.size}",
+                        color = palette.error, style = MaterialTheme.typography.titleSmall)
+                    Text("Они не попадут в навигацию, пока адрес не будет исправлен. Исходные данные сохранены.",
+                        color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    rowsNeedingAddressReview.forEachIndexed { index, row ->
+                        Text(
+                            listOf(row.pointNumber, row.customerCode, row.organization, row.rawCells.joinToString(" | "))
+                                .filter(String::isNotBlank).distinct().joinToString(" • "),
+                            color = palette.onSurface,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (index != rowsNeedingAddressReview.lastIndex) {
+                            HorizontalDivider(color = palette.outline.copy(alpha = .5f))
+                        }
+                    }
+                }
+            }
+        }
 
         if (located.isEmpty()) {
             Text("АДРЕСА ДЛЯ МАРШРУТА: ${addresses.size}", color = palette.onSurface, style = MaterialTheme.typography.titleMedium)
