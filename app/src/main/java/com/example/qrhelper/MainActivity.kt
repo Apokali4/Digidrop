@@ -1329,7 +1329,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                                 .putString("active_manifest", authoritativeItems.joinToString("\n") { item ->
                                     listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                                        item.ownerName, item.workingHours, item.cashNote, item.extraComment, item.timeSlot)
                                         .joinToString("\t") { it.replace("\t", " ") }
                                 })
                                 .putBoolean("manual_route_order", false)
@@ -2665,7 +2665,8 @@ fun PointDetailsScreen(
                     Text("ДАННЫЕ ТОЧКИ", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     if (item.ownerName.isNotBlank()) Text("ИП / контакт: ${item.ownerName}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
                     if (item.phone.isNotBlank()) Text("Телефон: ${item.phone}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
-                    if (item.workingHours.isNotBlank()) Text("Время работы: ${item.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                    if (item.workingHours.isNotBlank()) Text("Время работы магазина: ${item.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp)
+                    if (item.timeSlot.isNotBlank()) Text("Окно доставки: ${item.timeSlot}", color = DigiDropPalette.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     if (item.cashNote.isNotBlank()) Text("НАЛИЧНЫЕ: ${item.cashNote}", color = DigiDropPalette.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     if (item.extraComment.isNotBlank()) Text("Дополнительно: ${item.extraComment}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                 }
@@ -3275,6 +3276,9 @@ fun RouteListScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (point.workingHours.isNotBlank()) Text("◷ ${point.workingHours}",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                if (point.timeSlot.isNotBlank()) Text(" • Доставка ${point.timeSlot}",
+                                    color = DigiDropPalette.accent,
                                     style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                 if (point.phone.isNotBlank()) {
                                     Spacer(Modifier.width(9.dp))
