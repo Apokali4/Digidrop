@@ -77,7 +77,9 @@ internal data class PhotoRouteDeliveryRow(
     val rawCells: List<String> = emptyList(),
     val numericReviewFields: List<String> = emptyList(),
     val cashReviewFields: List<String> = emptyList(),
-    val extraColumns: List<String> = emptyList()
+    val extraColumns: List<String> = emptyList(),
+    val workingHours: String = "",
+    val timeSlot: String = ""
 )
 
 /**
@@ -86,7 +88,7 @@ internal data class PhotoRouteDeliveryRow(
  * Rows are records, not stops: duplicate addresses are deliberately retained.
  */
 internal object PhotoRouteTableParser {
-    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT }
+    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT, WORKING_HOURS, TIME_SLOT }
     private val aliases = mapOf(
         Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
         Column.CODE to listOf(Regex("""(?iu)^(?:код|код\s+клиента|код\s+торговой\s+точки)$""")),
@@ -98,7 +100,9 @@ internal object PhotoRouteTableParser {
         Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количество\s+мест|кол-во\s+мест)$""")),
         Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номер\s+накладной|документ|№\s*накладной)$""")),
         Column.CASH to listOf(Regex("""(?iu)^(?:инкассация|сбор\s+денег|забрать\s+деньги|сумма\s+к\s+сбору|оплата)$""")),
-        Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент\.?|примечание|примечания)$"""))
+        Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент\.?|примечание|примечания)$""")),
+        Column.WORKING_HOURS to listOf(Regex("""(?iu)^(?:время\s+работы|часы\s+работы|режим\s+работы|график\s+работы)$""")),
+        Column.TIME_SLOT to listOf(Regex("""(?iu)^(?:время\s+доставки|интервал\s+доставки|окно\s+доставки|временное\s+окно|тайм\s*слот)$"""))
     )
 
     fun parse(text: String, city: String = ""): List<PhotoRouteDeliveryRow> {
@@ -188,7 +192,9 @@ internal object PhotoRouteTableParser {
                 rawCells = cells,
                 numericReviewFields = numericReviewFields,
                 cashReviewFields = cashReviewFields,
-                extraColumns = extraColumns
+                extraColumns = extraColumns,
+                workingHours = cells.getOrNull(columns[Column.WORKING_HOURS] ?: -1).orEmpty(),
+                timeSlot = cells.getOrNull(columns[Column.TIME_SLOT] ?: -1).orEmpty()
             )
         }
         return rows
@@ -1347,6 +1353,7 @@ fun PhotoRoutePlannerScreen(
                                 storeName = tableDelivery.organization,
                                 ownerName = tableDelivery.organization,
                                 phone = tableDelivery.phone,
+                                workingHours = tableDelivery.workingHours.ifBlank { tableDelivery.timeSlot },
                                 comment = tableDelivery.comment,
                                 customerCode = tableDelivery.customerCode,
                                 pointNumber = tableDelivery.pointNumber,
