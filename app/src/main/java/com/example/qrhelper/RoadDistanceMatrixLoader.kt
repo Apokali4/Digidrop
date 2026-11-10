@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /** [build-apk] Fetches a directed OSRM distance table for a small route.
- * This is called only after the driver explicitly taps Optimize.
+ * This is called only after the driver explicitly taps Optimize, and never in offline mode.
  */
 internal object RoadDistanceMatrixLoader {
     fun fetch(stops: List<RouteStop>): RouteDistanceMatrix? {
