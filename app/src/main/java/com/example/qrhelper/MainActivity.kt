@@ -1187,20 +1187,27 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         val normalized = normalizeOcrTableText(recognized)
                         val photoTableRows = PhotoRouteTableParser.parse(normalized, "Калуга")
                             .mapIndexed { rowIndex, row -> row.toRouteItem(rowIndex + 1) }
-                        val structuredRows = RouteSheetParser.parse(normalized)
-                        val addressRows = RouteSheetParser.parseOcrText(recognized)
-                        val routeCandidates = listOf(photoTableRows, structuredRows, addressRows)
-                        val routeRows = RouteOcrCandidateSelector.select(routeCandidates)
-                        val discardedRows = RouteOcrCandidateSelector.unresolvedRowsFromLargerCandidate(
-                            routeCandidates,
-                            routeRows
-                        )
-                        check(discardedRows.isEmpty()) {
-                            "Фотографии: другой разбор нашёл ещё " + discardedRows.size +
-                                " строк, но адреса в них не подтверждены. Импорт остановлен, чтобы не потерять часть маршрута."
+                        // One photo gets one column-aware parser. Use the numbered-line
+                        // parser only when OCR did not recover a table header at all.
+                        // Do not compare several competing guesses and silently select
+                        // a different supplier/customer field as the shop name.
+                        val routeRows = photoTableRows.ifEmpty {
+                            RouteSheetParser.parseOcrText(recognized).map { item ->
+                                item.copy(
+                                    itemName = "",
+                                    totalBoxes = 0,
+                                    phone = "",
+                                    note = "",
+                                    ownerName = "",
+                                    workingHours = "",
+                                    timeSlot = "",
+                                    cashNote = "",
+                                    extraComment = ""
+                                )
+                            }
                         }
                         check(routeRows.isNotEmpty()) {
-                            "Фотографии: OCR не нашёл строки доставки с адресами"
+                            "Фотографии: OCR не нашёл названия и адреса точек"
                         }
                         val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(routeRows)
                         check(uncertainRows.isEmpty()) {
@@ -1210,7 +1217,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                                     it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
                                 }
                         }
-                        importedRows += RouteOcrCandidateSelector.sanitizeStoreNames(routeRows)
+                        importedRows += routeRows
                     }
 
                     importedRows
