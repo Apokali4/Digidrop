@@ -195,4 +195,30 @@ class RouteOcrCandidateSelectorTest {
         )
     }
 
+
+    @Test
+    fun photoAddressSelectionUsesFreeTextWhenTableParserMissesMostStops() {
+        val tableRows = listOf(
+            PhotoRouteDeliveryRow(
+                pointNumber = "1",
+                organization = "Магазин Север",
+                address = "г. Калуга, ул. Кирова, д. 8"
+            )
+        )
+        val recognizedText = """
+            1 Магазин Север г. Калуга, ул. Кирова, д. 8
+            2 Пятёрочка г. Калуга, ул. Ленина, д. 14
+            3 Магазин Юг г. Калуга, ул. Победы, д. 2
+        """.trimIndent()
+
+        val selected = RouteOcrCandidateSelector.selectPhotoRouteAddresses(
+            tableRows,
+            recognizedText,
+            "Калуга"
+        )
+
+        assertEquals(3, selected.size)
+        assertEquals("г. Калуга, ул. Победы, д. 2", selected.last())
+    }
+
 }
