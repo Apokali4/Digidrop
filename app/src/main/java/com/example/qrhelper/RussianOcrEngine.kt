@@ -3,6 +3,8 @@ package com.example.qrhelper
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.graphics.Color
 import android.net.Uri
 import com.googlecode.tesseract.android.TessBaseAPI
 import kotlinx.coroutines.Dispatchers
@@ -108,7 +110,7 @@ internal object RussianOcrEngine {
         onProgress: suspend (String) -> Unit = {}
     ): String = withContext(Dispatchers.IO) {
         ensureRussianModel(context, onProgress)
-        withContext(Dispatchers.Main) { onProgress("Распознаю русский текст на устройстве…") }
+        withContext(Dispatchers.Main) { onProgress("Выравниваю фото и проверяю четыре ориентации…") }
         val tessDirectory = File(context.filesDir, "tesseract")
         val api = TessBaseAPI()
         try {
@@ -116,11 +118,83 @@ internal object RussianOcrEngine {
                 "Tesseract не смог загрузить русскую модель"
             }
             api.setVariable("preserve_interword_spaces", "1")
-            api.setImage(bitmap)
-            api.getUTF8Text().orEmpty().trim()
+            api.setVariable("user_defined_dpi", "300")
+            var bestText = ""
+            var bestScore = Int.MIN_VALUE
+            val rotations = intArrayOf(0, 90, 180, 270)
+            rotations.forEachIndexed { index, degrees ->
+                withContext(Dispatchers.Main) {
+                    onProgress("Распознаю страницу: поворот ${degrees}° (${index + 1}/4)…")
+                }
+                val oriented = rotate(bitmap, degrees)
+                val prepared = enhanceForDocument(oriented)
+                try {
+                    api.setImage(prepared)
+                    val text = api.getUTF8Text().orEmpty().trim()
+                    val score = scoreRouteText(text)
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestText = text
+                    }
+                } finally {
+                    if (prepared !== oriented) prepared.recycle()
+                    if (oriented !== bitmap) oriented.recycle()
+                }
+            }
+            check(bestText.isNotBlank()) { "Не удалось распознать текст ни в одной ориентации" }
+            bestText
         } finally {
             api.recycle()
         }
+    }
+
+    private fun rotate(source: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return source
+        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
+    }
+
+    /** Grayscale + local contrast stretch for photographed paper and faint table print. */
+    private fun enhanceForDocument(source: Bitmap): Bitmap {
+        val width = source.width
+        val height = source.height
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+        var min = 255
+        var max = 0
+        val gray = IntArray(pixels.size)
+        for (i in pixels.indices) {
+            val color = pixels[i]
+            val value = (Color.red(color) * 0.299 + Color.green(color) * 0.587 + Color.blue(color) * 0.114).toInt()
+            gray[i] = value
+            if (value < min) min = value
+            if (value > max) max = value
+        }
+        val range = (max - min).coerceAtLeast(1)
+        for (i in pixels.indices) {
+            val value = (((gray[i] - min) * 255) / range).coerceIn(0, 255)
+            // Keep faint gray grid lines while making black print easier to separate.
+            val contrasted = when {
+                value < 105 -> 0
+                value > 235 -> 255
+                else -> value
+            }
+            pixels[i] = Color.rgb(contrasted, contrasted, contrasted)
+        }
+        output.setPixels(pixels, 0, width, 0, 0, width, height)
+        return output
+    }
+
+    private fun scoreRouteText(text: String): Int {
+        if (text.isBlank()) return Int.MIN_VALUE
+        val lower = text.lowercase(java.util.Locale("ru", "RU")).replace('ё', 'е')
+        val addresses = Regex("""(?iu)(?:ул\\.?|улица|проспект|пр\\.?|переулок|пер\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь)""")
+            .findAll(lower).count()
+        val numberedRows = Regex("""(?m)^\\s*\\d{1,3}\\s+""").findAll(text).count()
+        val cyrillic = text.count { it in 'А'..'я' || it == 'Ё' || it == 'ё' }
+        val digits = text.count(Char::isDigit)
+        return addresses * 120 + numberedRows * 35 + cyrillic + digits / 2 + text.length / 20
     }
 
     private suspend fun ensureRussianModel(
