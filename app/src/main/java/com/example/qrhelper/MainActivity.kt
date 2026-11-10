@@ -444,7 +444,7 @@ private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List
             else try {
                 val query = PhotoRouteGeocodingQuery.build(item.address, "Калуга")
                 val point = geocoder.getFromLocationName(query, 8)
-                    ?.firstOrNull { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") }
+                    ?.firstOrNull { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") && PhotoRouteGeocodingQuery.isInSelectedRegion(it.adminArea, "Калуга") }
                 if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude)
                 else item.copy(latitude = null, longitude = null)
             } catch (_: Exception) { item.copy(latitude = null, longitude = null) }
@@ -3136,7 +3136,7 @@ fun RouteListScreen(
                                             val geocoder = Geocoder(context, Locale("ru", "RU"))
                                             val query = PhotoRouteGeocodingQuery.build(point.address, "Калуга")
                                             geocoder.getFromLocationName(query, 8)
-                                                ?.filter { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") }
+                                                ?.filter { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") && PhotoRouteGeocodingQuery.isInSelectedRegion(it.adminArea, "Калуга") }
                                                 ?.firstOrNull()?.let {
                                                     PhotoRouteCoordinate(it.latitude, it.longitude)
                                                 }
