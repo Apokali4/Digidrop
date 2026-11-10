@@ -151,4 +151,23 @@ class RouteOcrCandidateSelectorTest {
         assertEquals("Проверить название", cleaned.single().storeName)
     }
 
+    @Test
+    fun routePhotoUsesStoreBrandFromAddressInsteadOfSupplierCompanyName() {
+        val text = listOf(
+            "№\\tКод\\tКлиент\\tАдрес доставки",
+            "1\\t1708\\tБалтика ПК ООО\\tг. Калуга, ул. Врубовая, д. 2, Бристоль",
+            "2\\t1646\\tАльфа Рязань ООО\\tг. Калуга, ул. Болдина, д. 9, Красное и Белое"
+        ).joinToString("\\n")
+
+        val items = PhotoRouteTableParser.parse(text, "Калуга").mapIndexed { index, row ->
+            row.toRouteItem(index + 1)
+        }
+
+        assertEquals(listOf("Бристоль", "Красное и Белое"), items.map { it.storeName })
+        assertEquals(
+            listOf("г. Калуга, ул. Врубовая, д. 2", "г. Калуга, ул. Болдина, д. 9"),
+            items.map { it.address }
+        )
+    }
+
 }
