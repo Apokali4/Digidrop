@@ -1388,12 +1388,32 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     openYandexNavigator(context, chosen, startsFromPreviousStop = false)
                 },
                 onRebuildRoute = {
-                    val reordered = rebuildRemainingRoute(routeItems)
-                    prefs.edit().putBoolean("manual_route_order", false).apply()
-                    if (reordered.map(::routeItemKey) == routeItems.map(::routeItemKey)) {
-                        Toast.makeText(context, "Маршрут уже оптимален или не хватает координат точек", Toast.LENGTH_LONG).show()
-                    } else {
-                        persistRouteOrder(reordered, manualOrder = false, successMessage = "Оставшийся маршрут перестроен")
+                    importScope.launch {
+                        val original = routeItems
+                        val (reordered, usedRoadNetwork) = if (settingsOffline) {
+                            rebuildRemainingRoute(original) to false
+                        } else {
+                            rebuildRemainingRouteWithRoadNetwork(original)
+                        }
+                        prefs.edit().putBoolean("manual_route_order", false).apply()
+                        if (reordered.map(::routeItemKey) == original.map(::routeItemKey)) {
+                            val reason = if (settingsOffline) {
+                                "Офлайн-режим: нужны координаты минимум двух оставшихся точек"
+                            } else {
+                                "Маршрут уже оптимален или не хватает координат точек"
+                            }
+                            Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
+                        } else {
+                            persistRouteOrder(
+                                reordered,
+                                manualOrder = false,
+                                successMessage = if (usedRoadNetwork) {
+                                    "Маршрут перестроен по дорожной сети"
+                                } else {
+                                    "Маршрут перестроен по координатам (без дорожной сети)"
+                                }
+                            )
+                        }
                     }
                 },
                 onOpenPointMap = { address ->
