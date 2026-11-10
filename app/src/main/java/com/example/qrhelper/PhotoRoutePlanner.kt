@@ -124,13 +124,14 @@ internal object PhotoRouteTableParser {
             }
             val columns = schema ?: return@forEach
             val addressCell = cells.getOrNull(columns[Column.ADDRESS] ?: -1).orEmpty()
-            val address = PhotoRouteTextParser.extractCandidates(addressCell, city)
-                .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
-                ?: if (addressCell.isBlank()) {
-                    PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city)
-                        .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
-                } else null
-                ?: ""
+            val address = (
+                PhotoRouteTextParser.extractCandidates(addressCell, city)
+                    .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
+                    ?: if (addressCell.isBlank()) {
+                        PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city)
+                            .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
+                    } else null
+                ).orEmpty()
             val organization = cells.getOrNull(columns[Column.ORGANIZATION] ?: -1).orEmpty()
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
             val pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty()
