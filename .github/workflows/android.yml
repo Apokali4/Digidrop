@@ -10,6 +10,7 @@ name: Android CI
 # [build-apk] Re-run unit tests with package-count completion logic.
 # [build-apk] Reject incorrect geocoding outside Kaluga and Yukhnov.
 # [build-apk] Reject OCR garbage labels and neighboring stop name leakage.
+# [build-apk] Allow delivery points throughout Kaluga Oblast, including Yukhnov.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
