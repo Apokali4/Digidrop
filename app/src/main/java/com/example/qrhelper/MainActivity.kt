@@ -1383,7 +1383,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         }
                     }
                     val nextSegments = if (coords.size == pending.size && coords.size >= 2)
-                        coords.map { listOf(it) } else emptyList()
+                        PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
                     val chosen = nextSegments.getOrNull(index) ?: segment
                     openYandexNavigator(context, chosen, startsFromPreviousStop = false)
                 },
@@ -3156,7 +3156,10 @@ fun RouteListScreen(
                                 }
                             }
                             val missingCount = pendingGroups.size - allCoordinates.size
-                            val readySegments = allCoordinates.map { listOf(it) }
+                            // Яндекс принимает до 20 остановок за участок; следующий участок
+                            // продолжает маршрут с последней точки предыдущего.
+                            val readySegments = if (missingCount == 0 && allCoordinates.size >= 2)
+                                PhotoRouteNavigationUrls.yandexSegments(allCoordinates) else emptyList()
                             if (readySegments.isNotEmpty()) {
                                 navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
