@@ -211,8 +211,13 @@ internal object PhotoRouteTextParser {
         while (words.size > 1 && words.last().length <= 2 && words.last().any { it.isLetter() } &&
             words.last().none { it.isUpperCase() }
         ) words.removeAt(words.lastIndex)
-        cleaned = words.joinToString(" ")
-        return cleaned.takeIf { it.any(Char::isLetter) && it.length <= 48 }.orEmpty()
+        cleaned = words.joinToString(" ").trim()
+        if (cleaned.isBlank() || cleaned.length > 48) return ""
+        if (Regex("""(?iu)^(?:точка|магазин|объект)\s*#?\s*\d+$""").matches(cleaned)) return ""
+        if (Regex("""(?iu)^[а-яёa-z]{3,}\s*[:№-]\s*\d{1,4}$""").matches(cleaned)) return ""
+        if (Regex("""(?iu)^(?:букпр|бупкр|крп|кри|корп|корпус|стр|строение|лит)\b""").containsMatchIn(cleaned)) return ""
+        if (cleaned.count { it.isLetter() } < 3) return ""
+        return cleaned
     }
 
     private fun cleanAddressFragment(line: String, city: String): String? {
@@ -317,7 +322,11 @@ internal object PhotoRouteTextParser {
 
         val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
         val companyLine = block.withIndex()
-            .filter { (_, line) -> legalPattern.containsMatchIn(line) && !line.startsWith("ИП", ignoreCase = true) }
+            .filter { (lineIndex, line) ->
+                blockStart + lineIndex <= index &&
+                    legalPattern.containsMatchIn(line) &&
+                    !line.startsWith("ИП", ignoreCase = true)
+            }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
         val owner = block.withIndex()
             .filter { (_, line) -> line.startsWith("ИП", ignoreCase = true) && legalPattern.containsMatchIn(line) }
@@ -350,9 +359,11 @@ internal object PhotoRouteTextParser {
                 if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
             } else cleanStoreName(suffix)
         }
-        val brandNearby = block.withIndex().mapNotNull { (lineIndex, line) ->
-            brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
-        }.minByOrNull { it.first }?.second
+        val brandNearby = block.withIndex()
+            .filter { (lineIndex, _) -> blockStart + lineIndex < index }
+            .mapNotNull { (lineIndex, line) ->
+                brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
+            }.minByOrNull { it.first }?.second
         val store = brandInSuffix ?: cleanStoreName(brandNearby ?: companyLine)
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
