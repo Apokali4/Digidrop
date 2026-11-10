@@ -194,6 +194,21 @@ class RouteOcrCandidateSelectorTest {
 
 
     @Test
+    fun supplierOrganizationIsNeverUsedAsShopNameWhenAddressHasNoStoreLabel() {
+        val row = PhotoRouteDeliveryRow(
+            pointNumber = "1",
+            organization = "Балтика ПК ООО",
+            address = "г. Калуга, ул. Врубовая, д. 2",
+            rawCells = listOf("1", "1708", "Балтика ПК ООО", "г. Калуга, ул. Врубовая, д. 2")
+        )
+
+        assertEquals("", row.detectStoreName())
+        assertEquals("Проверить название", RouteOcrCandidateSelector.sanitizeStoreNames(
+            listOf(row.toRouteItem(1))
+        ).single().storeName)
+    }
+
+    @Test
     fun unstructuredOcrCandidateRecoversStopsMissingFromPartialTableParse() {
         val partialTable = listOf(
             routeItem(1, "г. Калуга, ул. Кирова, д. 8")
