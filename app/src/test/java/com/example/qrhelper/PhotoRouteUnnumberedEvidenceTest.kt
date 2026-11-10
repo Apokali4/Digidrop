@@ -11,7 +11,7 @@ class PhotoRouteUnnumberedEvidenceTest {
             \t\tКалуга, ул. Ленина, д. 14
         """.trimIndent().replace("\\t", "\t")
         val rows = PhotoRouteTableParser.parse(text, "Калуга")
-        val evidence = PhotoRouteUnnumberedEvidence.collect(rows)
+        val evidence = rows.flatMap { it.extraColumns }.filter { it.startsWith("Строка без номера точки/клиента пропущена:") }.distinct()
         assertEquals(1, rows.size)
         assertEquals(listOf("Строка без номера точки/клиента пропущена: Калуга, ул. Ленина, д. 14"), evidence)
     }
