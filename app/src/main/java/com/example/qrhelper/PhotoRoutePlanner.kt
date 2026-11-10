@@ -118,6 +118,9 @@ internal object PhotoRouteTableParser {
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
             val pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty()
             val customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty()
+            if (cells.any { Regex("""(?iu)^\s*(?:итого|всего|общ(?:ее|ий)\s+итого)\b""").containsMatchIn(it) }) {
+                return@forEach
+            }
             // Never discard an identifiable delivery just because OCR failed on its address.
             // Keep its raw cells so the driver can correct the address during review.
             if (address.isBlank() && pointNumber.isBlank() && customerCode.isBlank() && organization.isBlank()) {
