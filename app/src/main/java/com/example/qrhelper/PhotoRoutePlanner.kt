@@ -118,7 +118,14 @@ internal object PhotoRouteTableParser {
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
             val pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty()
             val customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty()
-            if (cells.any { Regex("""(?iu)^\s*(?:итого|всего|общ(?:ее|ий)\s+итого)\b""").containsMatchIn(it) }) {
+            val firstCell = cells.firstOrNull().orEmpty()
+                .lowercase(Locale("ru", "RU"))
+                .replace('ё', 'е')
+                .trim()
+                .trim(':', '.', '#', '-', ' ')
+            if (firstCell == "итого" || firstCell == "всего" ||
+                firstCell.startsWith("итого ") || firstCell.startsWith("всего ") ||
+                firstCell.startsWith("общее итого") || firstCell.startsWith("общий итог")) {
                 return@forEach
             }
             // Never discard an identifiable delivery just because OCR failed on its address.
