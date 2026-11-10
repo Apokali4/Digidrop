@@ -174,4 +174,25 @@ class RouteOcrCandidateSelectorTest {
         })
     }
 
+
+    @Test
+    fun unstructuredOcrCandidateRecoversStopsMissingFromPartialTableParse() {
+        val partialTable = listOf(
+            routeItem(1, "г. Калуга, ул. Кирова, д. 8")
+        )
+        val unstructured = listOf(
+            routeItem(1, "г. Калуга, ул. Кирова, д. 8"),
+            routeItem(2, "г. Калуга, ул. Ленина, д. 14"),
+            routeItem(3, "г. Калуга, ул. Победы, д. 2")
+        )
+
+        val selected = RouteOcrCandidateSelector.select(listOf(partialTable, unstructured))
+
+        assertEquals(3, selected.size)
+        assertEquals(
+            listOf("г. Калуга, ул. Кирова, д. 8", "г. Калуга, ул. Ленина, д. 14", "г. Калуга, ул. Победы, д. 2"),
+            selected.map { it.address }
+        )
+    }
+
 }
