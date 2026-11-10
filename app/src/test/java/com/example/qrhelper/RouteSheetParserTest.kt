@@ -17,6 +17,30 @@ class RouteSheetParserTest {
         assertEquals("09:00-11:00", item.timeSlot)
     }
 
+    @Test fun parsesDeliveryWindowFromCsvManifestWithoutMixingItIntoStoreHours() {
+        val manifest = listOf(
+            "barcode\tstore\taddress\titem\tboxes\tphone\tnote\tlat\tlon\towner\thours\tcash\textra\tОкно доставки",
+            "4601234567890\tМагазин Север\tКалуга, ул. Победы, 2\tМолоко\t2\t\t\t\t\tИП Иванов\t08:00-22:00\t\t\t09:00-11:00"
+        ).joinToString("\n")
+
+        val item = parseManifest(manifest).single()
+
+        assertEquals("08:00-22:00", item.workingHours)
+        assertEquals("09:00-11:00", item.timeSlot)
+    }
+
+    @Test fun oldManifestWithoutDeliveryWindowColumnStillImports() {
+        val manifest = listOf(
+            "barcode\tstore\taddress\titem\tboxes\tphone\tnote\tlat\tlon\towner\thours\tcash\textra",
+            "4601234567890\tМагазин Север\tКалуга, ул. Победы, 2\tМолоко\t2\t\t\t\t\tИП Иванов\t08:00-22:00\t\t"
+        ).joinToString("\n")
+
+        val item = parseManifest(manifest).single()
+
+        assertEquals("08:00-22:00", item.workingHours)
+        assertEquals("", item.timeSlot)
+    }
+
     @Test fun parsesDispatchRouteRowsWithoutCargoBarcodeOrQuantity() {
         val text = """
             Задание на отгрузку №Л00000006924
