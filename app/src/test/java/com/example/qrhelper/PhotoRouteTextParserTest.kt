@@ -461,6 +461,22 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    @Test fun photoRouteImportKeepsFirstRowWhenItsNumberIsLostButStoreNameRemains() {
+        val text = """
+            Задание на отгрузку
+            ООО Север г. Калуга, ул. Кирова, д. 8
+            2 Пятёрочка Калуга, проспект Ленина, 14
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Кирова, д. 8",
+                "Калуга, проспект Ленина, 14"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
     @Test fun photoRouteImportRecoversUnnumberedRowsBetweenNumberedRowsButSkipsHeaderAddress() {
         val text = """
             Задание на отгрузку
