@@ -113,17 +113,24 @@ internal object PhotoRouteTableParser {
             val addressCell = cells.getOrNull(columns[Column.ADDRESS] ?: -1).orEmpty()
             val address = PhotoRouteTextParser.extractCandidates(addressCell, city).firstOrNull()
                 ?: PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city).firstOrNull()
-                ?: return@forEach
+                ?: ""
             val organization = cells.getOrNull(columns[Column.ORGANIZATION] ?: -1).orEmpty()
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
+            val pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty()
+            val customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty()
+            // Never discard an identifiable delivery just because OCR failed on its address.
+            // Keep its raw cells so the driver can correct the address during review.
+            if (address.isBlank() && pointNumber.isBlank() && customerCode.isBlank() && organization.isBlank()) {
+                return@forEach
+            }
             val comment = cells.getOrNull(columns[Column.COMMENT] ?: -1).orEmpty()
             val phone = cells.getOrNull(columns[Column.PHONE] ?: -1).orEmpty()
                 .takeIf { Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""").containsMatchIn(it) }.orEmpty()
             fun number(column: Column): Int = cells.getOrNull(columns[column] ?: -1)
                 ?.replace(Regex("""[^\d]"""), "")?.toIntOrNull() ?: 0
             rows += PhotoRouteDeliveryRow(
-                pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty(),
-                customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty(),
+                pointNumber = pointNumber,
+                customerCode = customerCode,
                 organization = organization,
                 address = address,
                 phone = phone,
