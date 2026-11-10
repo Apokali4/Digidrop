@@ -458,6 +458,36 @@ internal object PhotoRouteTextParser {
             .takeIf { it.length >= 8 }
     }
 
+    /** Reject OCR strings that merely resemble an address but have no reliable street/house pair. */
+    internal fun isPlausibleRouteAddress(address: String): Boolean {
+        val street = streetHint.find(address) ?: return false
+        val house = houseAfterStreet.find(address, street.range.last + 1) ?: return false
+        val streetName = address.substring(street.range.last + 1, house.range.first)
+            .trim(' ', ',', ';', '|', '.', ':', '-', '—')
+            .replace(Regex("""(?iu)^(?:д\.?|дом|вх\.?)\s*"""), "")
+            .trim()
+        if (streetName.count(Char::isLetter) < 3) return false
+        val firstWord = streetName.split(Regex("""\s+""")).firstOrNull().orEmpty()
+        // A short unpunctuated token at the start is usually a column/OCR fragment
+        // ("ло Щедрина"), while an initial ("В. Никитиной") is legitimate.
+        if (firstWord.length == 2 && firstWord.all(Char::isLetter) &&
+            !firstWord.equals("им", ignoreCase = true)
+        ) return false
+        val houseDigits = house.groupValues.getOrNull(1).orEmpty().filter(Char::isDigit)
+        return houseDigits.length in 1..4
+    }
+
+    /** Keep readable names, but don't present OCR punctuation/barcode debris as a shop. */
+    internal fun cleanDetectedStoreName(candidate: String): String {
+        val cleaned = cleanStoreName(candidate)
+        if (cleaned.isBlank() || cleaned.count(Char::isLetter) < 3) return ""
+        if (cleaned.count { it == '(' } != cleaned.count { it == ')' }) return ""
+        if (cleaned.count { it == '"' } % 2 != 0 || cleaned.count { it == '«' } != cleaned.count { it == '»' }) return ""
+        if (Regex("""(?iu)\b\d{4,}\b""").containsMatchIn(cleaned)) return ""
+        if (Regex("""[^\p{L}\p{N}\s.&()/-]""").containsMatchIn(cleaned)) return ""
+        return cleaned
+    }
+
     internal fun canonicalAddressKey(address: String): String {
         val street = streetHint.find(address) ?: return address.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
@@ -648,7 +678,7 @@ internal object PhotoRouteTextParser {
             .mapNotNull { (lineIndex, line) ->
                 brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
             }.minByOrNull { it.first }?.second
-        val store = brandInSuffix ?: cleanStoreName(brandNearby ?: companyLine)
+        val store = brandInSuffix ?: cleanDetectedStoreName(brandNearby ?: companyLine)
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex
@@ -800,9 +830,39 @@ internal object PhotoRouteGeocodingQuery {
         val cleanCity = city.trim()
         if (cleanCity.isEmpty()) return address.trim()
         return if (cleanCity.equals("Калуга", ignoreCase = true))
-            "${address.trim()}, Калужская область, Россия"
-        else "${address.trim()}, $cleanCity, Россия"
+            address.trim() + ", Калужская область, Россия"
+        else address.trim() + ", " + cleanCity + ", Россия"
     }
+
+    /**
+     * OCR occasionally inserts a short fragment at the beginning of a street name
+     * ("ул. ло Щедрина"). Keep the original query first, then try a conservative
+     * correction. A returned coordinate is still accepted only after an exact
+     * street + house match.
+     */
+    fun addressVariants(address: String): List<String> {
+        val original = address.trim()
+        if (original.isBlank()) return emptyList()
+        val street = streetPatternForGeocoding.find(original) ?: return listOf(original)
+        val tail = original.substring(street.range.last + 1)
+        val houseStart = houseNumberPattern.find(tail)?.range?.first ?: return listOf(original)
+        val streetName = tail.substring(0, houseStart)
+        val words = streetName.trim().split(Regex("""\s+""")).filter(String::isNotBlank)
+        val first = words.firstOrNull().orEmpty()
+        if (first.length != 2 || !first.all(Char::isLetter) ||
+            first.equals("им", ignoreCase = true) || words.getOrNull(1).orEmpty().length < 4
+        ) return listOf(original)
+        val correctedName = streetName.takeWhile(Char::isWhitespace) + words.drop(1).joinToString(" ")
+        val corrected = original.replaceRange(
+            street.range.last + 1,
+            street.range.last + 1 + streetName.length,
+            correctedName
+        ).replace(Regex("""\s+"""), " ").trim()
+        return listOf(original, corrected).distinct()
+    }
+
+    fun candidateQueries(address: String, city: String): List<String> =
+        addressVariants(address).map { build(it, city) }.distinct()
 
     // Калуга в настройке маршрута означает всю Калужскую область, а не радиус вокруг города.
     fun isWithinSelectedCity(latitude: Double, longitude: Double, city: String): Boolean =
@@ -812,16 +872,14 @@ internal object PhotoRouteGeocodingQuery {
     fun isInSelectedRegion(adminArea: String?, city: String): Boolean {
         if (!city.trim().equals("Калуга", ignoreCase = true)) return true
         val region = adminArea.orEmpty().lowercase(Locale("ru", "RU")).replace('ё', 'е')
-        // Если геокодер не вернул административный регион, запрос уже ограничен областью.
         return region.isBlank() || region.contains("калуж")
     }
 
     /**
-     * A geocoder result is usable only when it confirms BOTH the requested street
-     * and house. Geocoder.getFromLocationName is fuzzy and may otherwise return
-     * a nearby, unrelated address (which used to create phantom route stops).
+     * Geocoder results are accepted only if they confirm BOTH the street and house.
+     * Conservative OCR variants may repair a stray two-letter prefix, but the
+     * geocoder result itself must still match the complete street/house pair.
      */
-    // [build-apk] Rebuild after strict route/geocoder test correction.
     fun matchesRequestedAddress(
         requestedAddress: String,
         candidateStreet: String?,
@@ -833,47 +891,44 @@ internal object PhotoRouteGeocodingQuery {
             .replace(Regex("""(?iu)^\s*(?:улица|ул\.?|проспект|пр\.?|переулок|пер\.?|шоссе|ш\.?|набережная|наб\.?|площадь|пл\.?|б-р|бул\.?)\s*"""), "")
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
 
-        fun houseFrom(value: String): String {
-            val street = streetPatternForGeocoding.find(value) ?: return ""
+        fun normalizeHouse(value: String): String = value.lowercase(Locale("ru", "RU"))
+            .replace(Regex("""[^\p{L}\p{N}]"""), "")
+
+        fun parts(value: String): Pair<String, String>? {
+            val street = streetPatternForGeocoding.find(value) ?: return null
             val tail = value.substring(street.range.last + 1)
-            return Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*(\d{1,4}(?:\s*[а-яёa-z])?(?:(?:[/\-]|к)\d{1,4}[а-яёa-z]?)?)""")
-                .find(tail)?.groupValues?.getOrNull(1)
-                ?.lowercase(Locale("ru", "RU"))
-                ?.replace(Regex("""[^\p{L}\p{N}]"""), "").orEmpty()
+            val house = houseNumberPattern.find(tail) ?: return null
+            val streetName = tail.substring(0, house.range.first)
+            val normalizedStreet = normalizeStreet(streetName)
+            val normalizedHouse = normalizeHouse(house.groupValues.getOrNull(1).orEmpty())
+            return (normalizedStreet to normalizedHouse).takeIf {
+                it.first.isNotBlank() && it.second.isNotBlank()
+            }
         }
 
-        val requestedStreetMatch = streetPatternForGeocoding.find(requestedAddress) ?: return false
-        val requestedTail = requestedAddress.substring(requestedStreetMatch.range.last + 1)
-        val requestedHouse = Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*(\d{1,4}(?:\s*[а-яёa-z])?(?:(?:[/\-]|к)\d{1,4}[а-яёa-z]?)?)""")
-            .find(requestedTail)?.groupValues?.getOrNull(1)
-            ?.lowercase(Locale("ru", "RU"))
-            ?.replace(Regex("""[^\p{L}\p{N}]"""), "").orEmpty()
-        if (requestedHouse.isBlank()) return false
-        val requestedStreet = normalizeStreet(
-            requestedTail.substring(0, Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*\d""").find(requestedTail)?.range?.first
-                ?: return false
-            )
-        )
-        val resolvedStreet = candidateStreet?.takeIf { it.isNotBlank() }?.let(::normalizeStreet)
-            ?: candidateAddressLine?.let { line ->
-                val match = streetPatternForGeocoding.find(line) ?: return@let ""
-                val tail = line.substring(match.range.last + 1)
-                val houseStart = Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*\d""").find(tail)?.range?.first
-                    ?: return@let ""
-                normalizeStreet(tail.substring(0, houseStart))
-            }.orEmpty()
-        val resolvedHouse = candidateHouse?.takeIf { it.isNotBlank() }
-            ?.let { it.lowercase(Locale("ru", "RU")).replace(Regex("""[^\p{L}\p{N}]"""), "") }
-            ?: candidateAddressLine?.let(::houseFrom).orEmpty()
-        return requestedStreet.isNotBlank() && resolvedStreet == requestedStreet &&
-            resolvedHouse.isNotBlank() && resolvedHouse == requestedHouse
+        val requested = addressVariants(requestedAddress).mapNotNull(::parts)
+        if (requested.isEmpty()) return false
+
+        val resolvedStreets = mutableListOf<String>()
+        val resolvedHouses = mutableListOf<String>()
+        candidateStreet?.takeIf(String::isNotBlank)?.let { resolvedStreets += normalizeStreet(it) }
+        candidateHouse?.takeIf(String::isNotBlank)?.let { resolvedHouses += normalizeHouse(it) }
+        candidateAddressLine?.let(::parts)?.let { (street, house) ->
+            resolvedStreets += street
+            resolvedHouses += house
+        }
+        return requested.any { (street, house) ->
+            resolvedStreets.any { it == street } && resolvedHouses.any { it == house }
+        }
     }
 
+    private val houseNumberPattern = Regex(
+        """(?iu)(?:д\.?|дом)?\s*№?\s*(\d{1,4}(?:\s*[а-яёa-z])?(?:(?:[/\-]|к)\d{1,4}[а-яёa-z]?)?)"""
+    )
     private val streetPatternForGeocoding = Regex(
         """(?iu)(?<![А-Яа-яЁёA-Za-z])(улица|ул\.?|проспект|пр\.?|переулок|пер\.?|шоссе|ш\.?|набережная|наб\.?|площадь|пл\.?|б-р|бул\.?)(?![А-Яа-яЁёA-Za-z])"""
     )
 }
-
 private suspend fun geocodePhotoStops(
     context: android.content.Context,
     addresses: List<String>,
@@ -884,9 +939,10 @@ private suspend fun geocodePhotoStops(
     val failed = mutableListOf<String>()
     for (address in addresses) {
         try {
-            val query = PhotoRouteGeocodingQuery.build(address, city)
-            val result = geocoder.getFromLocationName(query, 8)
-                ?.filter { candidate ->
+            val result = PhotoRouteGeocodingQuery.candidateQueries(address, city)
+                .asSequence()
+                .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
+                .filter { candidate ->
                     PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, city) &&
                         PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, city) &&
                         PhotoRouteGeocodingQuery.matchesRequestedAddress(
@@ -896,7 +952,7 @@ private suspend fun geocodePhotoStops(
                             candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
                         )
                 }
-                ?.minByOrNull { candidate ->
+                .minByOrNull { candidate ->
                     val locality = listOfNotNull(candidate.locality, candidate.subAdminArea)
                         .joinToString(" ").lowercase(Locale("ru", "RU"))
                     if (city.isNotBlank() && locality.contains(city.trim().lowercase(Locale("ru", "RU")))) 0 else 1
