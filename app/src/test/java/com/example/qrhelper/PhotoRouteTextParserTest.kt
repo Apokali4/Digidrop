@@ -480,6 +480,25 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    @Test fun thirtySixUnnumberedDeliveryRowsRemainThirtySixRowsAcrossTwentySevenStops() {
+        val rows = buildList {
+            repeat(9) { index ->
+                add("ООО Магазин $index, г. Калуга, ул. Тестовая, д. ${index + 1}")
+                add("ИП Получатель $index, Калуга, ул. Тестовая, д. ${index + 1}")
+            }
+            repeat(18) { index ->
+                add("ООО Получатель $index, Калуга, ул. Новая, д. ${index + 1}")
+            }
+        }
+        val text = rows.joinToString("\\n")
+        val extracted = PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        val grouped = groupPhotoRouteAddresses(extracted)
+
+        assertEquals(36, extracted.size)
+        assertEquals(27, grouped.size)
+        assertEquals(36, grouped.sumOf { it.size })
+    }
+
     @Test fun photoRouteImportAcceptsNumberedRowsWithoutCustomerCodes() {
         val text = """
             Маршрут на день
