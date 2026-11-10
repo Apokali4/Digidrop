@@ -2517,11 +2517,21 @@ fun PointGroupScreen(
         items.firstOrNull()?.let { point ->
             if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            if (point.workingHours.isNotBlank()) Text("Время работы магазина: ${point.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            if (point.timeSlot.isNotBlank()) Text("Окно доставки: ${point.timeSlot}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            items.map { it.workingHours }.filter(String::isNotBlank).distinct().forEach {
+                Text("Время работы магазина: $it", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            }
+            items.map { it.timeSlot }.filter(String::isNotBlank).distinct().forEach {
+                Text("Окно доставки: $it", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            items.map { it.cashNote }.filter(String::isNotBlank).distinct().forEach {
+                Text("Наличные: $it", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            items.map { it.extraComment }.filter(String::isNotBlank).distinct().forEach {
+                Text("Дополнительно: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
+            items.map { it.note }.filter(String::isNotBlank).distinct().forEach {
+                Text("Комментарий: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
