@@ -3122,17 +3122,19 @@ fun RouteListScreen(
                             val index = navigationSegmentIndex.coerceAtLeast(0)
                             val allCoordinates = pendingGroups.mapNotNull { group ->
                                 val point = group.firstOrNull() ?: return@mapNotNull null
-                                val existing = if (point.latitude != null && point.longitude != null)
+                                val existing = if (point.latitude != null && point.longitude != null &&
+                                    PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга"))
                                     PhotoRouteCoordinate(point.latitude, point.longitude) else null
                                 if (existing != null) existing else withContext(Dispatchers.IO) {
                                     runCatching {
                                         if (!Geocoder.isPresent()) null else {
                                             val geocoder = Geocoder(context, Locale("ru", "RU"))
-                                            val query = if (point.address.contains("Калуж", ignoreCase = true))
-                                                point.address else "${point.address}, Калужская область, Россия"
-                                            geocoder.getFromLocationName(query, 1)?.firstOrNull()?.let {
-                                                PhotoRouteCoordinate(it.latitude, it.longitude)
-                                            }
+                                            val query = PhotoRouteGeocodingQuery.build(point.address, "Калуга")
+                                            geocoder.getFromLocationName(query, 8)
+                                                ?.filter { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") }
+                                                ?.firstOrNull()?.let {
+                                                    PhotoRouteCoordinate(it.latitude, it.longitude)
+                                                }
                                         }
                                     }.getOrNull()
                                 }
@@ -3140,7 +3142,7 @@ fun RouteListScreen(
                             val missingCount = pendingGroups.size - allCoordinates.size
                             if (missingCount > 0) {
                                 val missingAddresses = pendingGroups.mapNotNull { group ->
-                                    group.firstOrNull()?.takeIf { it.latitude == null || it.longitude == null }?.address
+                                    group.firstOrNull()?.takeIf { point -> point.latitude == null || point.longitude == null || !PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга") }?.address
                                 }
                                 Toast.makeText(
                                     context,
