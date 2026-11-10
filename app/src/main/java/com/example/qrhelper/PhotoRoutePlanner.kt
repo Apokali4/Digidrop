@@ -566,8 +566,8 @@ internal object PhotoRouteTextParser {
         val hoursLabelPattern = Regex("""(?iu)(время\s+работы|часы\s+работы|режим\s+работы|график\s+работы|работает|открыт)""")
         val deliveryWindow = block.withIndex().mapNotNull { (lineIndex, line) ->
             if (!deliveryLinePattern.containsMatchIn(line)) return@mapNotNull null
-            val value = line.substringAfter(Regex("""(?iu)(?:достав\w*|доставк\w*|привез\w*|окно\s+доставки|интервал\s+доставки|при[её]м\s+товара)\s*[:：-]?""").find(line)?.value.orEmpty())
-                .trim().ifBlank { line }
+            val actionPrefix = Regex("""(?iu)^\s*(?:доставить|доставка|привезти|окно\s+доставки|интервал\s+доставки|при[её]м\s+товара)\s*[:：-]?\s*""")
+            val value = actionPrefix.replaceFirst(line, "").trim().ifBlank { line }
             timePatterns.firstNotNullOfOrNull { it.find(value)?.value }?.let {
                 kotlin.math.abs(blockStart + lineIndex - index) to it
             }
