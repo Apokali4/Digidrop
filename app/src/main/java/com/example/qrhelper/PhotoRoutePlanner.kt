@@ -288,9 +288,18 @@ internal object PhotoRouteTextParser {
         val result = mutableListOf<Pair<Int, String>>()
         lines.forEachIndexed { index, line ->
             val numbered = rowStart.find(line)
-            val isRecoverableUnnumberedRow = numbered == null &&
-                (firstNumbered == null || index > firstNumbered) &&
-                streetHint.containsMatchIn(line)
+            val lineStreet = streetHint.find(line)
+            val prefix = lineStreet?.let { line.substring(0, it.range.first) }.orEmpty()
+            val citylessPrefix = prefix
+                .replace(Regex("""(?iu)\bг\.?\s*${Regex.escape(city)}\b"""), "")
+                .replace(Regex("""(?iu)\b${Regex.escape(city)}\b"""), "")
+            val hasStoreNameOnRow = citylessPrefix.count(Char::isLetter) >= 3
+            val previousLine = lines.getOrNull(index - 1).orEmpty()
+            val previousLineLooksLikeStore = previousLine.count(Char::isLetter) >= 3 &&
+                !metadataHint.containsMatchIn(previousLine) &&
+                !streetHint.containsMatchIn(previousLine)
+            val isRecoverableUnnumberedRow = numbered == null && lineStreet != null &&
+                (firstNumbered == null || index > firstNumbered || hasStoreNameOnRow || previousLineLooksLikeStore)
             if (numbered == null && !isRecoverableUnnumberedRow) return@forEachIndexed
 
             var candidate = numbered?.groupValues?.get(3) ?: line
