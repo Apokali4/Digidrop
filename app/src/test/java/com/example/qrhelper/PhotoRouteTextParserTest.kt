@@ -659,4 +659,19 @@ class PhotoRouteTextParserTest {
         assertEquals("Адрес", text)
     }
 
+
+    @Test fun geometryOcrUsesHeaderColumnAnchorsWhenBodyCellsHaveSmallGaps() {
+        val text = RussianOcrGeometryText.reconstruct(
+            listOf(
+                RussianOcrWord("№", 10, 10, 12, 20, 96f),
+                RussianOcrWord("Адрес", 140, 10, 45, 20, 94f),
+                RussianOcrWord("Коробки", 270, 10, 60, 20, 91f),
+                RussianOcrWord("1", 10, 50, 70, 18, 99f),
+                RussianOcrWord("Калуга", 110, 50, 100, 18, 93f),
+                RussianOcrWord("12", 240, 50, 30, 18, 88f)
+            )
+        )
+        assertEquals("№\tАдрес\tКоробки\n1\tКалуга\t12", text)
+    }
+
 }
