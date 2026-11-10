@@ -593,4 +593,32 @@ class PhotoRouteTextParserTest {
         assertEquals("Пятёрочка", rows.single().organization)
     }
 
+
+    @Test fun tableParserCapturesContactCashInvoiceAndPreservesUnknownColumns() {
+        val text = listOf(
+            "№\tКод клиента\tОрганизация\tАдрес доставки\tТелефон\tКонтактное лицо\tКоробки\tМеста\tНомер накладной\tИнкассация\tПримечание",
+            "7\tA-1708\tБалтика ООО\tКалуга, ул. Кирова, д. 8\t+7 900 111 22 33\tИван Петров\t3\t5\tНК-0091\t12500 руб.\tПозвонить"
+        ).joinToString("\n")
+
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertEquals("Иван Петров", row.contactPerson)
+        assertEquals("НК-0091", row.invoiceNumber)
+        assertEquals("12500 руб.", row.cashCollection)
+        assertEquals("Позвонить", row.comment)
+        assertEquals(3, row.packageCount)
+        assertEquals(5, row.placeCount)
+        assertEquals(11, row.rawCells.size)
+        assertEquals("A-1708", row.customerCode)
+    }
+
+    @Test fun tableParserKeepsUnmappedColumnValuesInsteadOfDiscardingThem() {
+        val text = listOf(
+            "№\tКлиент\tАдрес\tСумма долга\tТовар",
+            "1\tМагазин Север\tКалуга, ул. Победы, д. 2\t3400\tМолоко 2.5%"
+        ).joinToString("\n")
+
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertEquals(listOf("1", "Магазин Север", "Калуга, ул. Победы, д. 2", "3400", "Молоко 2.5%"), row.rawCells)
+    }
+
 }
