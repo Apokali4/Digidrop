@@ -178,6 +178,51 @@ internal object PhotoRouteTableParser {
                     .matches(normalizedCash)
                 if (rawCash.any(Char::isDigit) && !clearAmount) add("Инкассация: $rawCash")
             }
+            // OCR often splits a long address or delivery instruction across
+            // physical table rows. If the numbered row is blank and no customer,
+            // code or complete address identifies a new delivery, attach the cells
+            // to the previous record instead of dropping them or creating a fake stop.
+            if (Column.POINT in columns && pointNumber.isBlank() &&
+                customerCode.isBlank() && organization.isBlank() &&
+                address.isBlank() && rows.isNotEmpty()
+            ) {
+                val previous = rows.last()
+                fun appendDistinct(base: String, addition: String): String {
+                    val value = addition.trim()
+                    if (value.isBlank() || base.contains(value, ignoreCase = true)) return base
+                    return listOf(base, value).filter(String::isNotBlank).joinToString(" ")
+                }
+                val mergedRawCells = (0 until maxOf(previous.rawCells.size, cells.size)).map { index ->
+                    listOf(previous.rawCells.getOrNull(index).orEmpty(), cells.getOrNull(index).orEmpty())
+                        .map(String::trim).filter(String::isNotBlank).distinct().joinToString(" / ")
+                }
+                val continuationFields = cells.mapIndexedNotNull { index, value ->
+                    value.trim().takeIf(String::isNotBlank)?.let { raw ->
+                        "${headerCells.getOrNull(index)?.takeIf(String::isNotBlank) ?: "Поле ${index + 1}"}: $raw"
+                    }
+                }
+                rows[rows.lastIndex] = previous.copy(
+                    address = appendDistinct(previous.address, addressCell),
+                    phone = appendDistinct(previous.phone, phone),
+                    contactPerson = appendDistinct(previous.contactPerson,
+                        cells.getOrNull(columns[Column.CONTACT] ?: -1).orEmpty()),
+                    packageCount = previous.packageCount.takeIf { it > 0 } ?: number(Column.PACKAGES),
+                    placeCount = previous.placeCount.takeIf { it > 0 } ?: number(Column.PLACES),
+                    invoiceNumber = appendDistinct(previous.invoiceNumber,
+                        cells.getOrNull(columns[Column.INVOICE] ?: -1).orEmpty()),
+                    cashCollection = appendDistinct(previous.cashCollection, rawCash),
+                    comment = appendDistinct(previous.comment, comment),
+                    rawCells = mergedRawCells,
+                    numericReviewFields = (previous.numericReviewFields + numericReviewFields).distinct(),
+                    cashReviewFields = (previous.cashReviewFields + cashReviewFields).distinct(),
+                    extraColumns = (previous.extraColumns + continuationFields).distinct(),
+                    workingHours = appendDistinct(previous.workingHours,
+                        cells.getOrNull(columns[Column.WORKING_HOURS] ?: -1).orEmpty()),
+                    timeSlot = appendDistinct(previous.timeSlot,
+                        cells.getOrNull(columns[Column.TIME_SLOT] ?: -1).orEmpty())
+                )
+                return@forEach
+            }
             rows += PhotoRouteDeliveryRow(
                 pointNumber = pointNumber,
                 customerCode = customerCode,
