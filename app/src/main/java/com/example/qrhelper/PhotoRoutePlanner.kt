@@ -1438,8 +1438,11 @@ fun PhotoRoutePlannerScreen(
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
                 val tableRows = PhotoRouteTableParser.parse(rawText, routeCity)
                 val rowsWithoutAddress = tableRows.count { it.address.isBlank() }
-                addresses = if (tableRows.isNotEmpty()) tableRows.mapNotNull { it.address.takeIf(String::isNotBlank) }
-                    else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
+                addresses = RouteOcrCandidateSelector.selectPhotoRouteAddresses(
+                    tableRows,
+                    rawText,
+                    routeCity
+                )
                 val nameOccurrences = mutableMapOf<String, Int>()
                 val namesByAddress = linkedMapOf<String, MutableList<String>>()
                 addresses.forEach { address ->
@@ -1650,8 +1653,11 @@ fun PhotoRoutePlannerScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp), minLines = 4)
             PhotoPlannerTile("Повторно выделить адреса", "Перестроить список по исправленному тексту") {
                 val rows = PhotoRouteTableParser.parse(rawText, routeCity)
-                addresses = if (rows.isNotEmpty()) rows.map { it.address }
-                    else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
+                addresses = RouteOcrCandidateSelector.selectPhotoRouteAddresses(
+                    rows,
+                    rawText,
+                    routeCity
+                )
                 located = emptyList()
                 routeOrigin = null
                 status = "Найдено адресов: ${addresses.size}."
