@@ -1179,6 +1179,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
         }
     }
 
+    // [build-apk] Build the verified single-destination Yandex handoff.
     fun launchNavigation(address: String, latitude: Double? = null, longitude: Double? = null) {
         if (address.isBlank() && (latitude == null || longitude == null)) {
             Toast.makeText(context, "У точки нет адреса или координат", Toast.LENGTH_SHORT).show()
