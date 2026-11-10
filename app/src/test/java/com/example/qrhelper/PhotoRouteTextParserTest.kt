@@ -856,4 +856,26 @@ class PhotoRouteTextParserTest {
         assertTrue(rows.single().extraColumns.any { it.contains("ул. Победы, д. 99") })
     }
 
+
+    @Test
+    fun extractsRouteAddressesFromDifferentRussianAddressTypes() {
+        val text = """
+            1. Магазин Север
+            г. Калуга, проезд Малинники, д. 8
+            2. Магазин Юг
+            г. Калуга, аллея Смелых, 12
+            3. Магазин Центр
+            г. Калуга, мкр. Терепец, д. 4
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, проезд Малинники, д. 8",
+                "г. Калуга, аллея Смелых, 12",
+                "г. Калуга, мкр. Терепец, д. 4"
+            ),
+            PhotoRouteTextParser.extractRouteAddressRows(text, "Калуга")
+        )
+    }
+
 }
