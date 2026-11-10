@@ -3136,7 +3136,16 @@ fun RouteListScreen(
                                             val geocoder = Geocoder(context, Locale("ru", "RU"))
                                             val query = PhotoRouteGeocodingQuery.build(point.address, "Калуга")
                                             geocoder.getFromLocationName(query, 8)
-                                                ?.filter { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") && PhotoRouteGeocodingQuery.isInSelectedRegion(it.adminArea, "Калуга") }
+                                                ?.filter { candidate ->
+                                                    PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, "Калуга") &&
+                                                        PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, "Калуга") &&
+                                                        PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                                                            requestedAddress = point.address,
+                                                            candidateStreet = candidate.thoroughfare,
+                                                            candidateHouse = candidate.subThoroughfare,
+                                                            candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
+                                                        )
+                                                }
                                                 ?.firstOrNull()?.let {
                                                     PhotoRouteCoordinate(it.latitude, it.longitude)
                                                 }
