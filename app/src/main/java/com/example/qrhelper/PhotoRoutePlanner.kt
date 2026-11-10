@@ -157,9 +157,9 @@ internal object PhotoRouteTableParser {
                 // Keep money as source text. Only identify OCR ambiguity; never coerce it to a number.
                 val normalizedCash = rawCash
                     .replace('\u00A0', ' ')
-                    .replace(Regex("""(?iu)\\s*(?:руб(?:лей|ля|ль)?\\.?|р\\.?)\\s*$"""), "")
+                    .replace(Regex("""(?iu)\s*(?:руб(?:лей|ля|ль)?\.?|р\.?)\s*$"""), "")
                     .trim()
-                val clearAmount = Regex("""^(?:\\d{1,9}|\\d{1,3}(?:\\s\\d{3})+)(?:[,.]\\d{1,2})?$""")
+                val clearAmount = Regex("""^(?:\d{1,9}|\d{1,3}(?:\s\d{3})+)(?:[,.]\d{1,2})?$""")
                     .matches(normalizedCash)
                 if (rawCash.any(Char::isDigit) && !clearAmount) add("Инкассация: $rawCash")
             }
