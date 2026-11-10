@@ -54,6 +54,7 @@ internal data class PhotoStopMetadata(
     val comment: String = "",
     val customerCode: String = "",
     val pointNumber: String = "",
+    val contactPerson: String = "",
     val packageCount: Int = 0,
     val placeCount: Int = 0,
     val invoiceNumber: String = ""
@@ -68,6 +69,8 @@ internal data class PhotoRouteDeliveryRow(
     val packageCount: Int = 0,
     val placeCount: Int = 0,
     val invoiceNumber: String = "",
+    val contactPerson: String = "",
+    val cashCollection: String = "",
     val comment: String = "",
     val rawCells: List<String> = emptyList()
 )
@@ -78,7 +81,7 @@ internal data class PhotoRouteDeliveryRow(
  * Rows are records, not stops: duplicate addresses are deliberately retained.
  */
 internal object PhotoRouteTableParser {
-    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, PACKAGES, PLACES, INVOICE, COMMENT }
+    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT }
     private val aliases = mapOf(
         Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
         Column.CODE to listOf(Regex("""(?iu)^(?:код|код\\s+клиента|код\\s+торговой\\s+точки)$""")),
@@ -124,6 +127,8 @@ internal object PhotoRouteTableParser {
                 packageCount = number(Column.PACKAGES),
                 placeCount = number(Column.PLACES),
                 invoiceNumber = cells.getOrNull(columns[Column.INVOICE] ?: -1).orEmpty(),
+                contactPerson = cells.getOrNull(columns[Column.CONTACT] ?: -1).orEmpty(),
+                cashCollection = cells.getOrNull(columns[Column.CASH] ?: -1).orEmpty(),
                 comment = comment,
                 rawCells = cells
             )
@@ -1088,6 +1093,7 @@ fun PhotoRoutePlannerScreen(
                     comment = metadata.optString("comment"),
                     customerCode = metadata.optString("customerCode"),
                     pointNumber = metadata.optString("pointNumber"),
+                    contactPerson = metadata.optString("contactPerson"),
                     packageCount = metadata.optInt("packageCount"),
                     placeCount = metadata.optInt("placeCount"),
                     invoiceNumber = metadata.optString("invoiceNumber")
@@ -1104,6 +1110,7 @@ fun PhotoRoutePlannerScreen(
                                 comment = delivery.optString("comment"),
                                 customerCode = delivery.optString("customerCode"),
                                 pointNumber = delivery.optString("pointNumber"),
+                                contactPerson = delivery.optString("contactPerson"),
                                 packageCount = delivery.optInt("packageCount"),
                                 placeCount = delivery.optInt("placeCount"),
                                 invoiceNumber = delivery.optString("invoiceNumber")
@@ -1154,6 +1161,7 @@ fun PhotoRoutePlannerScreen(
                         put("comment", stop.metadata.comment)
                         put("customerCode", stop.metadata.customerCode)
                         put("pointNumber", stop.metadata.pointNumber)
+                        put("contactPerson", stop.metadata.contactPerson)
                         put("packageCount", stop.metadata.packageCount)
                         put("placeCount", stop.metadata.placeCount)
                         put("invoiceNumber", stop.metadata.invoiceNumber)
@@ -1169,6 +1177,7 @@ fun PhotoRoutePlannerScreen(
                                 put("comment", delivery.comment)
                                 put("customerCode", delivery.customerCode)
                                 put("pointNumber", delivery.pointNumber)
+                                put("contactPerson", delivery.contactPerson)
                                 put("packageCount", delivery.packageCount)
                                 put("placeCount", delivery.placeCount)
                                 put("invoiceNumber", delivery.invoiceNumber)
@@ -1257,10 +1266,12 @@ fun PhotoRoutePlannerScreen(
                                 comment = tableDelivery.comment,
                                 customerCode = tableDelivery.customerCode,
                                 pointNumber = tableDelivery.pointNumber,
+                                contactPerson = tableDelivery.contactPerson,
+                                cashNote = tableDelivery.cashCollection,
                                 packageCount = tableDelivery.packageCount,
                                 placeCount = tableDelivery.placeCount,
                                 invoiceNumber = tableDelivery.invoiceNumber
-                            ) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                            ).copy(cashNote = tableDelivery.cashCollection.ifBlank { tableDelivery.rawCells.joinToString(" | ") }) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
                         }
                         stop.copy(
                             metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
@@ -1509,12 +1520,14 @@ fun PhotoRoutePlannerScreen(
                             itemName = buildString {
                                 append(delivery.ownerName.ifBlank { "Доставка по маршрутному листу" })
                                 if (delivery.customerCode.isNotBlank()) append(" • код ${delivery.customerCode}")
+                                if (delivery.contactPerson.isNotBlank()) append(" • контакт: ${delivery.contactPerson}")
                                 if (delivery.invoiceNumber.isNotBlank()) append(" • накладная ${delivery.invoiceNumber}")
                                 if (delivery.placeCount > 0) append(" • мест: ${delivery.placeCount}")
                             },
                             totalBoxes = delivery.packageCount,
                             phone = delivery.phone,
-                            note = delivery.comment.ifBlank { "Импортировано из маршрутного листа" },
+                            note = listOf(delivery.comment, delivery.cashNote).filter(String::isNotBlank).joinToString(" • ")
+                                .ifBlank { "Импортировано из маршрутного листа" },
                             latitude = stop.latitude,
                             longitude = stop.longitude,
                             ownerName = delivery.ownerName,
