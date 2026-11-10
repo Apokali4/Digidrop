@@ -3138,17 +3138,21 @@ fun RouteListScreen(
                                 }
                             }
                             val missingCount = pendingGroups.size - allCoordinates.size
-                            if (allCoordinates.size >= 2) {
+                            if (missingCount > 0) {
+                                val missingAddresses = pendingGroups.mapNotNull { group ->
+                                    group.firstOrNull()?.takeIf { it.latitude == null || it.longitude == null }?.address
+                                }
+                                Toast.makeText(
+                                    context,
+                                    "Не удалось определить координаты для $missingCount точек. Маршрут не отправлен: ${missingAddresses.take(2).joinToString("; ")}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else if (allCoordinates.size >= 2) {
                                 val readySegments = PhotoRouteNavigationUrls.yandexSegments(allCoordinates)
                                 navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
                                 onNavigateSegment(chosenIndex, readySegments[chosenIndex])
                                 navigationSegmentIndex = nextNavigationSegmentIndex(chosenIndex, readySegments.size)
-                                if (missingCount > 0) Toast.makeText(
-                                    context,
-                                    "Не удалось определить координаты для $missingCount точек. Остальные точки отправлены в Навигатор.",
-                                    Toast.LENGTH_LONG
-                                ).show()
                             } else {
                                 val nextAddress = pendingGroups.firstOrNull()?.firstOrNull()?.address.orEmpty()
                                 Toast.makeText(context,
