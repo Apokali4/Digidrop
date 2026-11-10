@@ -267,6 +267,7 @@ internal object PhotoRouteTextParser {
     internal fun extractRouteAddressRows(text: String, city: String = ""): List<String> =
         extractAddressRows(text, city)
 
+    // [build-apk] Validate strict route-row extraction and geocoder matching.
     /**
      * Photo route import is intentionally stricter than generic address extraction:
      * a delivery address must belong to a numbered table row with a customer code.
