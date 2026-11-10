@@ -1178,6 +1178,9 @@ fun PhotoRoutePlannerScreen(
     val rowsNeedingAddressReview = remember(rawText, routeCity) {
         PhotoRouteTableParser.parse(rawText, routeCity).filter { it.address.isBlank() }
     }
+    val rowsNeedingNumericReview = remember(rawText, routeCity) {
+        PhotoRouteTableParser.parse(rawText, routeCity).filter { it.numericReviewFields.isNotEmpty() }
+    }
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве.") }
     var busy by remember { mutableStateOf(false) }
@@ -1503,6 +1506,29 @@ fun PhotoRoutePlannerScreen(
         }
         OutlinedTextField(routeCity, { routeCity = it }, label = { Text("Город маршрута") },
             modifier = Modifier.fillMaxWidth(), singleLine = true)
+
+        if (rowsNeedingNumericReview.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ПРОВЕРИТЬ КОЛИЧЕСТВА: ${rowsNeedingNumericReview.size}",
+                        color = palette.error, style = MaterialTheme.typography.titleSmall)
+                    Text("Неоднозначные значения не преобразованы в числа. Сверьте их с фотографией.",
+                        color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    rowsNeedingNumericReview.forEach { row ->
+                        Text(
+                            listOf(row.pointNumber, row.organization).filter(String::isNotBlank).joinToString(" • ") +
+                                ": " + row.numericReviewFields.joinToString(", "),
+                            color = palette.onSurface,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
 
         if (rowsNeedingAddressReview.isNotEmpty()) {
             Card(
