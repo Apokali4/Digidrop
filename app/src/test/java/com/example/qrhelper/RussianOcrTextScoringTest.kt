@@ -46,13 +46,24 @@ class RussianOcrTextScoringTest {
     }
 
     @Test fun lowConfidenceDocumentsTryAllQuarterTurnOrientations() {
-        assertTrue(RussianOcrPassPlanner.candidateRotations(0) == listOf(90, 180, 270))
-        assertTrue(RussianOcrPassPlanner.candidateRotations(319) == listOf(90, 180, 270))
+        assertTrue(RussianOcrPassPlanner.candidateRotations(0, 0) == listOf(90, 180, 270))
+        assertTrue(RussianOcrPassPlanner.candidateRotations(319, 36) == listOf(90, 180, 270))
     }
 
-    @Test fun strongFirstPassSkipsExpensiveRotationAttempts() {
-        assertTrue(RussianOcrPassPlanner.candidateRotations(320).isEmpty())
-        assertTrue(RussianOcrPassPlanner.candidateRotations(900).isEmpty())
+    @Test fun partialRouteRecognitionForcesRecoveryEvenWhenTextScoreIsHigh() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(1700, 8) == listOf(90, 180, 270))
+    }
+
+    @Test fun completeRouteRecognitionSkipsExpensiveRotationAttempts() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(2500, 24).isEmpty())
+        assertTrue(RussianOcrPassPlanner.candidateRotations(5000, 36).isEmpty())
+    }
+
+    @Test fun countsRouteRowsFromNumberedLinesAndAddressEvidence() {
+        val rows = (1..8).joinToString("\\n") { index ->
+            "$index 1708 Магазин $index г. Калуга, ул. Болдина, д. $index"
+        }
+        assertTrue(RussianOcrTextScoring.routeRowCount(rows) >= 8)
     }
 
 }
