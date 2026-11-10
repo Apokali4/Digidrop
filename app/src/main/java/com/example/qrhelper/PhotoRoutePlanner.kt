@@ -558,7 +558,7 @@ internal object PhotoRouteTextParser {
             .minByOrNull { it.first }?.second.orEmpty().trim()
 
         val timePatterns = listOf(
-            Regex("""(?iu)\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}"""),
+            Regex("""(?iu)(?:(?:с|после)\s*)?\d{1,2}[:.]\d{2}\s*(?:[-–—]|до)\s*\d{1,2}[:.]\d{2}"""),
             Regex("""(?iu)до\s*\d{1,2}[:.]\d{2}"""),
             Regex("""(?iu)(?:с|после)\s*\d{1,2}[:.]\d{2}""")
         )
