@@ -674,4 +674,22 @@ class PhotoRouteTextParserTest {
         assertEquals("№\tАдрес\tКоробки\n1\tКалуга\t12", text)
     }
 
+
+    @Test fun tableParserPreservesIdentifiableRowsWhenAddressWasNotRecognized() {
+        val rows = PhotoRouteTableParser.parse(
+            """
+                №  Клиент  Адрес доставки  Коробки  Примечание
+                17  Магазин Центральный  [неразборчиво]  8  проверить адрес
+            """.trimIndent(),
+            "Калуга"
+        )
+        assertEquals(1, rows.size)
+        assertEquals("17", rows.single().pointNumber)
+        assertEquals("Магазин Центральный", rows.single().organization)
+        assertEquals("", rows.single().address)
+        assertEquals(8, rows.single().packageCount)
+        assertEquals("проверить адрес", rows.single().comment)
+        assertEquals(5, rows.single().rawCells.size)
+    }
+
 }
