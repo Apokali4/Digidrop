@@ -44,4 +44,15 @@ class RussianOcrTextScoringTest {
         val numbered = RussianOcrTextScoring.score("1 Магазин Север г. Калуга, ул. Кирова, д. 8")
         assertTrue(numbered > plain)
     }
+
+    @Test fun lowConfidenceDocumentsTryAllQuarterTurnOrientations() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(0) == listOf(90, 180, 270))
+        assertTrue(RussianOcrPassPlanner.candidateRotations(319) == listOf(90, 180, 270))
+    }
+
+    @Test fun strongFirstPassSkipsExpensiveRotationAttempts() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(320).isEmpty())
+        assertTrue(RussianOcrPassPlanner.candidateRotations(900).isEmpty())
+    }
+
 }
