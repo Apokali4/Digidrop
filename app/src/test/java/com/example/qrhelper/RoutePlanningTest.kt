@@ -109,9 +109,6 @@ class NavigationSegmentProgressTest {
         val start = RouteItem("a", "Старт", "A", "Товар", 1, "", latitude = 0.0, longitude = 0.0)
         val nearByAir = RouteItem("b", "Близко по прямой", "B", "Товар", 1, "", latitude = 0.0, longitude = 0.1)
         val roadFast = RouteItem("c", "Быстрее по дороге", "C", "Товар", 1, "", latitude = 1.0, longitude = 1.0)
-        val ids = listOf(start, nearByAir, roadFast).associateBy {
-            PhotoRouteTextParser.canonicalAddressKey(it.address)
-        }
         val roads = com.example.qrhelper.domain.RouteDistanceMatrix(
             mapOf(
                 (PhotoRouteTextParser.canonicalAddressKey("A") to PhotoRouteTextParser.canonicalAddressKey("B")) to 9000.0,
