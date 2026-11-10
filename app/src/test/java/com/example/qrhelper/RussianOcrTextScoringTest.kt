@@ -26,6 +26,19 @@ class RussianOcrTextScoringTest {
         assertTrue(RussianOcrTextScoring.score(two) > RussianOcrTextScoring.score(one))
     }
 
+    @Test fun mergesComplementaryOcrPassesInsteadOfDiscardingRowsMissingFromTheBestPass() {
+        val merged = RussianOcrCandidateMerger.merge(
+            listOf(
+                "1 ООО Север г. Калуга, ул. Кирова, д. 8\n3 ИП Иванов г. Калуга, ул. Победы, д. 2",
+                "1 ООО Север г. Калуга, ул. Кирова, д. 8\n2 Пятёрочка г. Калуга, ул. Ленина, д. 14\n3 ИП Иванов г. Калуга, ул. Победы, д. 2"
+            )
+        )
+
+        assertTrue(merged.contains("2 Пятёрочка"))
+        assertTrue(merged.contains("1 ООО Север"))
+        assertTrue(merged.contains("3 ИП Иванов"))
+    }
+
     @Test fun numberedRouteRowsWithoutCustomerCodesStillCountAsRouteEvidence() {
         val plain = RussianOcrTextScoring.score("Магазин Север г. Калуга, ул. Кирова, д. 8")
         val numbered = RussianOcrTextScoring.score("1 Магазин Север г. Калуга, ул. Кирова, д. 8")
