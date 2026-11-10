@@ -33,4 +33,40 @@ class RussianOcrEngineTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun mergesRecoveredRouteRowsInOriginalNumberOrder() {
+        val firstPass = """
+            1 Магазин Север, Калуга, ул. Кирова, д. 8
+            3 Магазин Юг, Калуга, ул. Победы, д. 2
+        """.trimIndent()
+        val stripPass = """
+            1 Магазин Север, Калуга, ул. Кирова, д. 8
+            2 Пятёрочка, Калуга, ул. Ленина, д. 14
+            3 Магазин Юг, Калуга, ул. Победы, д. 2
+        """.trimIndent()
+
+        val merged = RussianOcrCandidateMerger.merge(listOf(firstPass, stripPass))
+        val numbers = merged.lineSequence().mapNotNull {
+            Regex("""^\\s*(\\d{1,3})[.)]?\\s+""").find(it)?.groupValues?.get(1)?.toIntOrNull()
+        }.toList()
+
+        assertEquals(listOf(1, 2, 3), numbers)
+    }
+
+    @Test fun mergingComplementaryPassesDoesNotDuplicateAlreadyRecognizedRows() {
+        val firstPass = """
+            1 Магазин Север, Калуга, ул. Кирова, д. 8
+            2 Пятёрочка, Калуга, ул. Ленина, д. 14
+        """.trimIndent()
+        val stripPass = """
+            1 Магазин Север, Калуга, ул. Кирова, д. 8
+            2 Пятёрочка, Калуга, ул. Ленина, д. 14
+        """.trimIndent()
+
+        val merged = RussianOcrCandidateMerger.merge(listOf(firstPass, stripPass))
+
+        assertEquals(2, merged.lineSequence().count {
+            PhotoRouteTextParser.extractRouteAddressRows(it).isNotEmpty()
+        })
+    }
+
 }
