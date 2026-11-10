@@ -543,4 +543,54 @@ class PhotoRouteTextParserTest {
         assertEquals(true, RussianOcrPassPlanner.shouldTryAdaptive(200))
     }
 
+
+    @Test fun parsesRouteTableColumnsWithoutRequiringNumberedRows() {
+        val text = listOf(
+            "№\tКод\tКлиент\tАдрес доставки\tТелефон\tМест\tКомментарий",
+            "1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Врубовая, д. 2\t8 900 111 22 33\t4\tПозвонить перед приездом",
+            "2\t1646\tАльфа Рязань ООО\tг. Калуга, ул. Никитиной, д. 21Б\t8 900 222 33 44\t2\tЗабрать документы"
+        ).joinToString("\n")
+
+        val rows = PhotoRouteTableParser.parse(text, "Калуга")
+        assertEquals(2, rows.size)
+        assertEquals("1708", rows[0].customerCode)
+        assertEquals("Балтика ПК ООО", rows[0].organization)
+        assertEquals("г. Калуга, ул. Врубовая, д. 2", rows[0].address)
+        assertEquals("8 900 111 22 33", rows[0].phone)
+        assertEquals(4, rows[0].packageCount)
+        assertEquals("Позвонить перед приездом", rows[0].comment)
+    }
+
+    @Test fun tableParserInheritsColumnSchemaAcrossHeaderlessPagesAndKeepsDuplicateDeliveries() {
+        val pageOne = listOf(
+            "№\tКод\tОрганизация\tАдрес\tКоробки\tМеста",
+            "1\t1708\tБалтика ООО\tКалуга, ул. Кирова, д. 8\t3\t5"
+        ).joinToString("\n")
+        val pageTwo = listOf(
+            "2\t1646\tАльфа ООО\tКалуга, ул. Кирова, д. 8\t2\t4",
+            "3\t1900\tСевер ООО\tКалуга, ул. Победы, д. 2\t1\t1"
+        ).joinToString("\n")
+
+        val rows = PhotoRouteTableParser.parse("$pageOne\n--- Следующая фотография ---\n$pageTwo", "Калуга")
+        assertEquals(3, rows.size)
+        assertEquals(2, rows.count { it.address.contains("Кирова") })
+        assertEquals(2, rows[1].packageCount)
+        assertEquals(4, rows[1].placeCount)
+        assertEquals(3, groupPhotoRouteAddresses(rows.map { it.address }).sumOf { it.size })
+        assertEquals(2, groupPhotoRouteAddresses(rows.map { it.address }).size)
+    }
+
+    @Test fun tableParserDoesNotPromoteTotalsOrHeaderAddressesIntoDeliveryRows() {
+        val text = """
+            Маршрут: Калуга, ул. Ленина, д. 13
+            № | Клиент | Адрес доставки | Мест
+            1 | Пятёрочка | Калуга, ул. Кирова, д. 8 | 3
+            Итого | 1 точка | 3 места
+        """.trimIndent()
+
+        val rows = PhotoRouteTableParser.parse(text, "Калуга")
+        assertEquals(1, rows.size)
+        assertEquals("Пятёрочка", rows.single().organization)
+    }
+
 }
