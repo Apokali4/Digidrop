@@ -595,6 +595,7 @@ internal object PhotoRouteGeocodingQuery {
         val requestedStreet = normalizeStreet(
             requestedTail.substring(0, Regex("""(?iu)(?:д\.?|дом)?\s*№?\s*\d""").find(requestedTail)?.range?.first
                 ?: return false
+            )
         )
         val resolvedStreet = candidateStreet?.takeIf { it.isNotBlank() }?.let(::normalizeStreet)
             ?: candidateAddressLine?.let { line ->
