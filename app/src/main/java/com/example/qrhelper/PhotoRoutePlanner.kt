@@ -669,9 +669,9 @@ internal object PhotoRouteTextParser {
                 (instructionPattern.containsMatchIn(line) ||
                     line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
         }.map { it.value }.distinct().joinToString("; ")
-        val displayName = store.ifBlank {
-            owner.takeIf { it.startsWith("ИП", ignoreCase = true) }.orEmpty()
-        }
+        // Owner/legal entity is not the retail shop name. Keep the field empty
+        // unless a store label is actually printed next to the delivery address.
+        val displayName = store
         return PhotoStopMetadata(
             storeName = displayName,
             ownerName = owner,
