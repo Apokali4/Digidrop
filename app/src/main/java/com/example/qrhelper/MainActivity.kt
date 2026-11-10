@@ -3037,6 +3037,7 @@ fun RouteListScreen(
         if (!missingCoordinates && points.size >= 2) PhotoRouteNavigationUrls.yandexSegments(points) else emptyList()
     }
     var navigationSegmentIndex by remember(segments) { mutableStateOf(0) }
+    var navigationSegmentCount by remember(segments) { mutableStateOf(segments.size) }
     val photoPrefs = remember { context.getSharedPreferences("digitdrop_photo_route_session", Context.MODE_PRIVATE) }
     val photos = remember {
         runCatching {
@@ -3139,6 +3140,7 @@ fun RouteListScreen(
                             val missingCount = pendingGroups.size - allCoordinates.size
                             if (allCoordinates.size >= 2) {
                                 val readySegments = PhotoRouteNavigationUrls.yandexSegments(allCoordinates)
+                                navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
                                 onNavigateSegment(chosenIndex, readySegments[chosenIndex])
                                 navigationSegmentIndex = nextNavigationSegmentIndex(chosenIndex, readySegments.size)
@@ -3161,8 +3163,8 @@ fun RouteListScreen(
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
                         Text(
                             when {
-                                segments.size > 1 && navigationSegmentIndex > 0 ->
-                                    "Следующий участок ${navigationSegmentIndex + 1} из ${segments.size}"
+                                navigationSegmentCount > 1 && navigationSegmentIndex > 0 ->
+                                    "Следующий участок ${navigationSegmentIndex + 1} из ${navigationSegmentCount}"
                                 deliveredCount > 0 -> "Обновить маршрут в Яндексе"
                                 else -> "В Яндекс Навигатор"
                             },
