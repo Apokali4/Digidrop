@@ -3263,7 +3263,7 @@ fun RouteListScreen(
                                     }
                                     Toast.makeText(
                                         context,
-                                        "Открыта подтверждённая часть маршрута. Не определены ещё $missingCount из \${pendingGroups.size}: \${missingAddresses.take(2).joinToString("; ")}",
+                                        "Открыта подтверждённая часть маршрута. Не определены ещё " + missingCount + " из " + pendingGroups.size + ": " + missingAddresses.take(2).joinToString("; "),
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
