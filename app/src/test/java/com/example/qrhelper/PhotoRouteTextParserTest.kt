@@ -815,4 +815,26 @@ class PhotoRouteTextParserTest {
         assertEquals("Альфа Рязань ООО", rows[1].organization)
     }
 
+
+    @Test fun tableParserRetainsAllThirtySixDeliveriesAcrossTwentySevenPhysicalStops() {
+        val lines = mutableListOf("№\tКод\tКлиент\tАдрес доставки\tКоробки\tМеста")
+        repeat(9) { index ->
+            val address = "Калуга, ул. Болдина, д. ${index + 1}"
+            lines += "${index * 2 + 1}\t17${index}1\tМагазин Север ${index + 1}\t$address\t3\t5"
+            lines += "${index * 2 + 2}\t17${index}2\tМагазин Юг ${index + 1}\t$address\t2\t4"
+        }
+        repeat(18) { index ->
+            lines += "${19 + index}\t18${index}0\tМагазин Тест ${index + 1}\tКалуга, ул. Тестовая, д. ${index + 1}\t1\t1"
+        }
+
+        val deliveries = PhotoRouteTableParser.parse(lines.joinToString("\n"), "Калуга")
+        val stops = groupPhotoRouteAddresses(deliveries.map { it.address })
+
+        assertEquals(36, deliveries.size)
+        assertEquals(27, stops.size)
+        assertEquals(36, stops.sumOf { it.size })
+        assertEquals(63, deliveries.sumOf { it.packageCount })
+        assertEquals(99, deliveries.sumOf { it.placeCount })
+    }
+
 }
