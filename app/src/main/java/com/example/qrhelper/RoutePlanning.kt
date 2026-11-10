@@ -51,7 +51,13 @@ internal suspend fun rebuildRemainingRouteWithRoadNetwork(items: List<RouteItem>
                     it.latitude !in -90.0..90.0 || it.longitude !in -180.0..180.0
             }) return@withContext rebuildRemainingRoute(items) to false
 
-        val matrixStops = stops.filter { it.latitude != null && it.longitude != null }
+        val matrixStops = stops.filter { stop ->
+            val latitude = stop.latitude
+            val longitude = stop.longitude
+            latitude != null && longitude != null &&
+                latitude.isFinite() && longitude.isFinite() &&
+                latitude in -90.0..90.0 && longitude in -180.0..180.0
+        }
         val roadDistances = runCatching { RoadDistanceMatrixLoader.fetch(matrixStops) }.getOrNull()
         val optimized = rebuildRemainingRoute(items, roadDistances)
         optimized to (roadDistances != null)
