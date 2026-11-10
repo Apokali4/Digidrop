@@ -445,9 +445,19 @@ private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List
                 PhotoRouteGeocodingQuery.isWithinSelectedCity(item.latitude, item.longitude, "Калуга")
             if (existingIsLocal || item.address.isBlank()) item
             else try {
-                val query = PhotoRouteGeocodingQuery.build(item.address, "Калуга")
-                val point = geocoder.getFromLocationName(query, 8)
-                    ?.firstOrNull { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") && PhotoRouteGeocodingQuery.isInSelectedRegion(it.adminArea, "Калуга") }
+                val point = PhotoRouteGeocodingQuery.candidateQueries(item.address, "Калуга")
+                    .asSequence()
+                    .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
+                    .firstOrNull { candidate ->
+                        PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, "Калуга") &&
+                            PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, "Калуга") &&
+                            PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                                requestedAddress = item.address,
+                                candidateStreet = candidate.thoroughfare,
+                                candidateHouse = candidate.subThoroughfare,
+                                candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
+                            )
+                    }
                 if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude)
                 else item.copy(latitude = null, longitude = null)
             } catch (_: Exception) { item.copy(latitude = null, longitude = null) }
@@ -1086,12 +1096,28 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                             InvoiceDocumentFormat.IMAGE -> {
                                 val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Файл ${index + 1}: $message", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Файл №" + (index + 1) + ": " + message, Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                                val tableRows = RouteSheetParser.parse(normalizeOcrTableText(recognized))
-                                val ocrAddressRows = RouteSheetParser.parseOcrText(recognized)
-                                val routeRows = listOf(tableRows, ocrAddressRows).maxByOrNull { it.size }.orEmpty()
+                                val normalized = normalizeOcrTableText(recognized)
+                                val photoTableRows = PhotoRouteTableParser.parse(normalized, "Калуга")
+                                    .mapIndexed { rowIndex, row -> row.toRouteItem(rowIndex + 1) }
+                                val structuredRows = RouteSheetParser.parse(normalized)
+                                val addressRows = RouteSheetParser.parseOcrText(recognized)
+                                val routeRows = RouteOcrCandidateSelector.select(
+                                    listOf(photoTableRows, structuredRows, addressRows)
+                                )
+                                check(routeRows.isNotEmpty()) {
+                                    "Файл №" + (index + 1) + ": OCR не нашёл строк доставки с адресами"
+                                }
+                                val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(routeRows)
+                                check(uncertainRows.isEmpty()) {
+                                    "Файл №" + (index + 1) + ": не удалось уверенно распознать адреса в " +
+                                        uncertainRows.size + " строках. Проверьте фокус/поворот фото; примеры: " +
+                                        uncertainRows.take(3).joinToString("; ") {
+                                            it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
+                                        }
+                                }
                                 routeRows
                             }
                             InvoiceDocumentFormat.PDF -> {
