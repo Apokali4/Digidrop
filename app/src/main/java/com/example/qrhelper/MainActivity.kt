@@ -1117,7 +1117,10 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     }
                 }
                 val imported = withContext(Dispatchers.IO) {
-                    uris.flatMapIndexed { index, uri ->
+                    val importedRows = mutableListOf<RouteItem>()
+                    val photoPages = mutableListOf<String>()
+
+                    uris.forEachIndexed { index, uri ->
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
@@ -1130,68 +1133,87 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         require(format != InvoiceDocumentFormat.UNKNOWN) {
                             "Файл №${index + 1}: формат не распознан. Поддерживаются фото, PDF, Excel, CSV, DOC/DOCX, RTF, ODS/ODT, XML, JSON и HTML."
                         }
-                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
-                            ?: error("Не удалось открыть файл №${index + 1}")
-                        val rows = when (format) {
-                            InvoiceDocumentFormat.IMAGE -> {
-                                val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Файл №" + (index + 1) + ": " + message, Toast.LENGTH_SHORT).show()
+
+                        if (format == InvoiceDocumentFormat.IMAGE) {
+                            // Do not load the full photo into a second byte array.
+                            // Keep each OCR page and parse the selected pages together
+                            // so a header on page one also applies to continuation pages.
+                            val recognized = RussianOcrEngine.recognizeUri(context, uri) { message ->
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        "Страница ${index + 1}: " + message,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                            check(recognized.isNotBlank()) {
+                                "Файл №${index + 1}: на фотографии не удалось распознать текст"
+                            }
+                            photoPages += recognized
+                        } else {
+                            val bytes = if (format == InvoiceDocumentFormat.PDF) {
+                                ByteArray(0)
+                            } else {
+                                context.contentResolver.openInputStream(uri)?.use { it.readInvoiceBytes() }
+                                    ?: error("Не удалось открыть файл №${index + 1}")
+                            }
+                            val rows = when (format) {
+                                InvoiceDocumentFormat.PDF ->
+                                    RouteSheetParser.parse(PdfInvoiceImporter.extractText(context, uri))
+                                InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
+                                else -> ExtendedInvoiceParser.parse(format, bytes)
+                            }
+                            check(rows.isNotEmpty()) {
+                                "Файл №${index + 1}: маршрутные строки не найдены. Проверьте, что в документе есть получатели и адреса."
+                            }
+                            val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(rows)
+                            check(uncertainRows.isEmpty()) {
+                                "Файл №" + (index + 1) + ": найдено " + uncertainRows.size +
+                                    " строк с сомнительными адресами. Примеры: " +
+                                    uncertainRows.take(3).joinToString("; ") {
+                                        it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
                                     }
-                                }
-                                val normalized = normalizeOcrTableText(recognized)
-                                val photoTableRows = PhotoRouteTableParser.parse(normalized, "Калуга")
-                                    .mapIndexed { rowIndex, row -> row.toRouteItem(rowIndex + 1) }
-                                val structuredRows = RouteSheetParser.parse(normalized)
-                                val addressRows = RouteSheetParser.parseOcrText(recognized)
-                                val routeCandidates = listOf(photoTableRows, structuredRows, addressRows)
-                                val routeRows = RouteOcrCandidateSelector.select(routeCandidates)
-                                val discardedRows = RouteOcrCandidateSelector.unresolvedRowsFromLargerCandidate(
-                                    routeCandidates,
-                                    routeRows
-                                )
-                                check(discardedRows.isEmpty()) {
-                                    "Файл №" + (index + 1) + ": распознано несколько вариантов таблицы, но " +
-                                        discardedRows.size + " дополнительных строк имеют неуверенный адрес. " +
-                                        "Импорт остановлен, чтобы не сократить маршрут до меньшего числа точек."
-                                }
-                                check(routeRows.isNotEmpty()) {
-                                    "Файл №" + (index + 1) + ": OCR не нашёл строк доставки с адресами"
-                                }
-                                val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(routeRows)
-                                check(uncertainRows.isEmpty()) {
-                                    "Файл №" + (index + 1) + ": не удалось уверенно распознать адреса в " +
-                                        uncertainRows.size + " строках. Проверьте фокус/поворот фото; примеры: " +
-                                        uncertainRows.take(3).joinToString("; ") {
-                                            it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
-                                        }
-                                }
-                                routeRows
                             }
-                            InvoiceDocumentFormat.PDF -> {
-                                val extracted = PdfInvoiceImporter.extractText(context, uri)
-                                val routeRows = RouteSheetParser.parse(extracted)
-                                routeRows
-                            }
-                            InvoiceDocumentFormat.XLSX -> parseXlsx(bytes.inputStream())
-                            else -> ExtendedInvoiceParser.parse(format, bytes)
-                                .let { parsed -> parsed }
+                            importedRows += RouteOcrCandidateSelector.sanitizeStoreNames(rows)
                         }
-                        check(rows.isNotEmpty()) {
-                            "Файл №${index + 1}: маршрутные строки не найдены. Проверьте, что в документе есть клиенты и адреса доставки."
+                    }
+
+                    if (photoPages.isNotEmpty()) {
+                        // Parse all selected photos as one multi-page route sheet.
+                        // Column positions survive page breaks even when later pages
+                        // do not repeat the table header.
+                        val recognized = photoPages.joinToString("\n\n")
+                        val normalized = normalizeOcrTableText(recognized)
+                        val photoTableRows = PhotoRouteTableParser.parse(normalized, "Калуга")
+                            .mapIndexed { rowIndex, row -> row.toRouteItem(rowIndex + 1) }
+                        val structuredRows = RouteSheetParser.parse(normalized)
+                        val addressRows = RouteSheetParser.parseOcrText(recognized)
+                        val routeCandidates = listOf(photoTableRows, structuredRows, addressRows)
+                        val routeRows = RouteOcrCandidateSelector.select(routeCandidates)
+                        val discardedRows = RouteOcrCandidateSelector.unresolvedRowsFromLargerCandidate(
+                            routeCandidates,
+                            routeRows
+                        )
+                        check(discardedRows.isEmpty()) {
+                            "Фотографии: другой разбор нашёл ещё " + discardedRows.size +
+                                " строк, но адреса в них не подтверждены. Импорт остановлен, чтобы не потерять часть маршрута."
                         }
-                        // Use one safety gate for photo, PDF, Excel and text imports.
-                        // Never save a guessed route stop with a malformed street/house pair.
-                        val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(rows)
+                        check(routeRows.isNotEmpty()) {
+                            "Фотографии: OCR не нашёл строки доставки с адресами"
+                        }
+                        val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(routeRows)
                         check(uncertainRows.isEmpty()) {
-                            "Файл №" + (index + 1) + ": найдено " + uncertainRows.size +
-                                " строк с сомнительными адресами. Проверьте распознавание; примеры: " +
+                            "Фотографии: не удалось уверенно распознать адреса в " +
+                                uncertainRows.size + " строках. Проверьте фокус/поворот; примеры: " +
                                 uncertainRows.take(3).joinToString("; ") {
                                     it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
                                 }
                         }
-                        RouteOcrCandidateSelector.sanitizeStoreNames(rows)
+                        importedRows += RouteOcrCandidateSelector.sanitizeStoreNames(routeRows)
                     }
+
+                    importedRows
                 }
                 check(imported.isNotEmpty()) { "В выбранных файлах не найдено ни одной точки маршрута" }
                 val ordered = geocodeRoute(context, imported)
