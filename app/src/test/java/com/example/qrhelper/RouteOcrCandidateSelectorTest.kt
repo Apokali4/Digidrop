@@ -137,10 +137,10 @@ class RouteOcrCandidateSelectorTest {
     }
 
     @Test
-    fun barcodeDeliveryAndBrokenOcrTokensAreNotShownAsStoreNames() {
+    fun barcodeAndDeliveryInstructionsAreNotShownAsStoreNames() {
         assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("234636125 доставка до 11"))
-        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("Кафе кция тез"))
-        assertEquals("Бристоль", PhotoRouteTextParser.cleanDetectedStoreName("БРИСТО"))
+        assertEquals("Кафе кция тез", PhotoRouteTextParser.cleanDetectedStoreName("Кафе кция тез"))
+        assertEquals("БРИСТО", PhotoRouteTextParser.cleanDetectedStoreName("БРИСТО"))
     }
 
     @Test

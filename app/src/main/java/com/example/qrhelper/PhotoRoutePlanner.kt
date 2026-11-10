@@ -365,72 +365,6 @@ internal object PhotoRouteTextParser {
     private val buildingSuffixPattern = Regex(
         """(?iu)\s*[,;]?\s*(?:корп(?:ус)?\.?|крп\.?|строен(?:ие)?\.?|стр\.?|лит(?:ера)?\.?)\s*№?\s*[0-9а-яёa-z-]+"""
     )
-    private val brandPatterns = listOf(
-        Regex("""(?iu)красное\s+и(?:\s+бел(?:ое|\w*))?""") to "Красное и Белое",
-        Regex("""(?iu)бристоль""") to "Бристоль",
-        Regex("""(?iu)пят[её]рочк""") to "Пятёрочка",
-        Regex("""(?iu)магнит""") to "Магнит",
-        Regex("""(?iu)дикси""") to "Дикси",
-        Regex("""(?iu)лента""") to "Лента",
-        Regex("""(?iu)перекр[её]сток""") to "Перекрёсток",
-        Regex("""(?iu)чижик""") to "Чижик",
-        Regex("""(?iu)светофор""") to "Светофор",
-        Regex("""(?iu)вкусвилл""") to "ВкусВилл",
-        Regex("""(?iu)балтика""") to "Балтика"
-    )
-
-    private fun normalizedBrandText(value: String): String =
-        value.lowercase(Locale("ru", "RU"))
-            .replace('ё', 'е')
-            .filter { it.isLetterOrDigit() }
-
-    private fun editDistance(left: String, right: String): Int {
-        if (left == right) return 0
-        if (left.isEmpty()) return right.length
-        if (right.isEmpty()) return left.length
-        var previous = IntArray(right.length + 1) { it }
-        for (i in left.indices) {
-            val current = IntArray(right.length + 1)
-            current[0] = i + 1
-            for (j in right.indices) {
-                val substitution = previous[j] + if (left[i] == right[j]) 0 else 1
-                current[j + 1] = minOf(
-                    current[j] + 1,
-                    previous[j + 1] + 1,
-                    substitution
-                )
-            }
-            previous = current
-        }
-        return previous[right.length]
-    }
-
-    private fun brandFromLine(line: String): String? {
-        brandPatterns.firstOrNull { (pattern, _) -> pattern.containsMatchIn(line) }?.let { return it.second }
-        val words = line.lowercase(Locale("ru", "RU"))
-            .replace('ё', 'е')
-            .split(Regex("""[^а-яa-z0-9]+"""))
-            .filter { it.isNotBlank() }
-        for ((_, brand) in brandPatterns) {
-            val targetWords = brand.lowercase(Locale("ru", "RU"))
-                .replace('ё', 'е')
-                .split(Regex("""[^а-яa-z0-9]+"""))
-                .filter { it.isNotBlank() }
-            val target = targetWords.joinToString("")
-            val maxDistance = if (target.length >= 8) 2 else 1
-            for (start in words.indices) {
-                for (count in 1..minOf(targetWords.size + 1, words.size - start)) {
-                    val candidate = words.subList(start, start + count).joinToString("")
-                    if (candidate.length >= target.length - maxDistance &&
-                        candidate.length <= target.length + maxDistance &&
-                        editDistance(candidate, target) <= maxDistance
-                    ) return brand
-                }
-            }
-        }
-        return null
-    }
-
     private fun isPlausibleStoreSuffix(value: String): Boolean {
         val candidate = value.trim(' ', ',', ';', '|', '.', ':', '-', '—')
         if (candidate.isBlank() || candidate.length > 48) return false
@@ -507,22 +441,22 @@ internal object PhotoRouteTextParser {
 
     /** Keep readable names, but don't present OCR punctuation/barcode debris as a shop. */
     internal fun cleanDetectedStoreName(candidate: String): String {
-        val cleaned = cleanStoreName(candidate)
+        // This is a field extractor, not a business-name normalizer.
+        // Preserve the text as OCR produced it; reject only obvious non-name cells.
+        val cleaned = candidate.trim()
+            .replace(Regex("""\s+"""), " ")
+            .trim(' ', ',', ';', '|')
         if (cleaned.isBlank() || cleaned.count(Char::isLetter) < 3) return ""
         val compact = cleaned.lowercase(Locale("ru", "RU"))
             .replace('ё', 'е')
             .filter(Char::isLetterOrDigit)
         if (compact in setOf("точкабезназвания", "точка", "магазин", "объект", "пом", "помещение")) return ""
-        if (Regex("""(?iu)^(?:пом\.?|помещение)\s*№?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
+        if (Regex("""(?iu)^(?:пом\.?|помещение|подъезд|офис|кв\.?|квартира)\s*№?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
         if (Regex("""(?iu)^(?:точка|магазин|объект)\s*#?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
         if (cleaned.all(Char::isDigit) || streetHint.containsMatchIn(cleaned)) return ""
-        if (cleaned.count { it == '(' } != cleaned.count { it == ')' }) return ""
-        if (cleaned.count { it == '"' } % 2 != 0 || cleaned.count { it == '«' } != cleaned.count { it == '»' }) return ""
-        if (Regex("""(?iu)\b\d{4,}\b""").containsMatchIn(cleaned)) return ""
+        if (Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){8,}(?!\d)""").containsMatchIn(cleaned)) return ""
         if (Regex("""(?iu)\b(?:достав\w*|доставиа|забрать|инкассац\w*|оплат\w*)\b""").containsMatchIn(cleaned)) return ""
-        if (Regex("""(?iu)\b(?:кция|тез)\b""").containsMatchIn(cleaned)) return ""
-        if (Regex("""[^\p{L}\p{N}\s.&()/-]""").containsMatchIn(cleaned)) return ""
-        return brandFromLine(cleaned) ?: cleaned
+        return cleaned
     }
 
     internal fun canonicalAddressKey(address: String): String {
@@ -702,24 +636,11 @@ internal object PhotoRouteTextParser {
         val cash = block.withIndex()
             .filter { (_, line) -> Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(line) }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
-        val cleanedSuffix = cleanStoreName(afterHouse)
-        val suffixBrand = cleanedSuffix.takeIf {
-            isPlausibleStoreSuffix(it) && !legalPattern.containsMatchIn(it) &&
-                !Regex("""[^А-Яа-яЁёA-Za-z0-9 .&()/-]""").containsMatchIn(it)
-        }
-        val brandInSuffix = suffixBrand?.let { suffix ->
-            val recognizedBrand = brandFromLine(suffix)
-            if (recognizedBrand != null) {
-                val trailingNumber = Regex("""\b\d{1,3}\s*$""").find(suffix)?.value?.trim().orEmpty()
-                if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
-            } else cleanStoreName(suffix)
-        }
-        val brandNearby = block.withIndex()
-            .filter { (lineIndex, _) -> blockStart + lineIndex < index }
-            .mapNotNull { (lineIndex, line) ->
-                brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
-            }.minByOrNull { it.first }?.second
-        val store = cleanDetectedStoreName(brandInSuffix ?: brandNearby ?: companyLine)
+        val suffixName = afterHouse
+            .takeIf { isPlausibleStoreSuffix(it) && !legalPattern.containsMatchIn(it) }
+        // Keep the printed recipient exactly as OCR read it. IP/sole proprietor
+        // lines are valid recipient names, not metadata to be discarded.
+        val store = cleanDetectedStoreName(suffixName ?: owner.ifBlank { companyLine })
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex
@@ -936,31 +857,6 @@ internal object PhotoRouteGeocodingQuery {
         fun normalizeHouse(value: String): String = value.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
 
-        fun editDistance(left: String, right: String): Int {
-            if (left == right) return 0
-            if (left.isEmpty()) return right.length
-            if (right.isEmpty()) return left.length
-            var previous = IntArray(right.length + 1) { it }
-            for (i in left.indices) {
-                val current = IntArray(right.length + 1)
-                current[0] = i + 1
-                for (j in right.indices) {
-                    val substitution = previous[j] + if (left[i] == right[j]) 0 else 1
-                    current[j + 1] = minOf(current[j] + 1, previous[j + 1] + 1, substitution)
-                }
-                previous = current
-            }
-            return previous[right.length]
-        }
-
-        fun streetMatches(requested: String, resolved: String): Boolean {
-            if (requested == resolved) return true
-            val shortest = minOf(requested.length, resolved.length)
-            if (shortest < 6 || kotlin.math.abs(requested.length - resolved.length) > 2) return false
-            val allowedErrors = if (shortest >= 10) 2 else 1
-            return editDistance(requested, resolved) <= allowedErrors
-        }
-
         fun parts(value: String): Pair<String, String>? {
             val street = streetPatternForGeocoding.find(value) ?: return null
             val tail = value.substring(street.range.last + 1)
@@ -985,9 +881,7 @@ internal object PhotoRouteGeocodingQuery {
             resolvedHouses += house
         }
         return requested.any { (street, house) ->
-            // Street may contain a tiny OCR typo; the house/building number must remain exact.
-            resolvedStreets.any { resolved -> streetMatches(street, resolved) } &&
-                resolvedHouses.any { it == house }
+            resolvedStreets.any { it == street } && resolvedHouses.any { it == house }
         }
     }
 

@@ -264,18 +264,18 @@ class PhotoRouteTextParserTest {
 
     @Test fun preservesLegitimateDigitsInStoreName() {
         val metadata = PhotoRouteTextParser.extractMetadata(
-            "Калуга, ул. Ленина, д. 10, Магнит 24",
+            "Калуга, ул. Ленина, д. 10, ООО Ромашка 24",
             "Калуга, ул. Ленина, д. 10"
         )
-        assertEquals("Магнит 24", metadata.storeName)
+        assertEquals("ООО Ромашка 24", metadata.storeName)
     }
 
-    @Test fun recognizesStoreBrandWhenOcrDropsTheLastLetters() {
+    @Test fun preservesRecipientExactlyAsReadWithoutGuessingMissingLetters() {
         val metadata = PhotoRouteTextParser.extractMetadata(
             "Калуга, ул. Тарутинская, д. 168, БРИСТО",
             "Калуга, ул. Тарутинская, д. 168"
         )
-        assertEquals("Бристоль", metadata.storeName)
+        assertEquals("БРИСТО", metadata.storeName)
     }
 
     @Test fun doesNotUseBuildingAbbreviationAsStoreName() {
