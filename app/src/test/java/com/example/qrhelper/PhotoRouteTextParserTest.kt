@@ -619,6 +619,7 @@ class PhotoRouteTextParserTest {
 
         val row = PhotoRouteTableParser.parse(text, "Калуга").single()
         assertEquals(listOf("1", "Магазин Север", "Калуга, ул. Победы, д. 2", "3400", "Молоко 2.5%"), row.rawCells)
+        assertEquals(listOf("Сумма долга: 3400", "Товар: Молоко 2.5%"), row.extraColumns)
     }
 
 
