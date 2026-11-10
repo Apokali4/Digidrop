@@ -166,6 +166,10 @@ internal object RussianOcrPassPlanner {
 
     fun shouldTryAdaptive(score: Int, detectedRows: Int): Boolean =
         shouldTryAdaptive(score) || detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY
+
+    /** Recover delivery rows found by complementary orientation and threshold passes. */
+    fun mergeCandidates(candidates: List<String>): String =
+        RussianOcrCandidateMerger.merge(candidates)
 }
 
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
@@ -253,6 +257,7 @@ internal object RussianOcrEngine {
             var bestText = recognize(bitmap, adaptive = false)
             var bestScore = RussianOcrTextScoring.score(bestText)
             var bestRowCount = RussianOcrTextScoring.routeRowCount(bestText)
+            val candidateTexts = mutableListOf(bestText)
             var bestRotation = 0
 
             for (degrees in RussianOcrPassPlanner.candidateRotations(bestScore, bestRowCount)) {
@@ -262,6 +267,7 @@ internal object RussianOcrEngine {
                 val rotated = rotate(bitmap, degrees)
                 try {
                     val rotatedText = recognize(rotated, adaptive = false)
+                    candidateTexts += rotatedText
                     val rotatedScore = RussianOcrTextScoring.score(rotatedText)
                     val rotatedRows = RussianOcrTextScoring.routeRowCount(rotatedText)
                     if (rotatedScore > bestScore ||
@@ -286,6 +292,7 @@ internal object RussianOcrEngine {
                 val oriented = rotate(bitmap, bestRotation)
                 try {
                     val adaptiveText = recognize(oriented, adaptive = true)
+                    candidateTexts += adaptiveText
                     val adaptiveScore = RussianOcrTextScoring.score(adaptiveText)
                     val adaptiveRows = RussianOcrTextScoring.routeRowCount(adaptiveText)
                     if (adaptiveScore > bestScore ||
@@ -298,6 +305,15 @@ internal object RussianOcrEngine {
                 } finally {
                     if (oriented !== bitmap) oriented.recycle()
                 }
+            }
+            // Merge complementary delivery rows from different OCR passes. A
+            // single weak false-positive address is not enough to contaminate a
+            // stronger candidate, but real multi-row recovery passes are retained.
+            val mergedText = RussianOcrPassPlanner.mergeCandidates(candidateTexts)
+            val mergedRows = RussianOcrTextScoring.routeRowCount(mergedText)
+            if (mergedText.isNotBlank() && mergedRows >= bestRowCount) {
+                bestText = mergedText
+                bestRowCount = mergedRows
             }
             check(bestText.isNotBlank()) { "Не удалось распознать текст. Проверьте фокус и освещение фотографии." }
             bestText
