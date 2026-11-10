@@ -63,7 +63,7 @@ internal object RussianOcrTextScoring {
     private val addressPattern = Regex(
         """(?iu)(?<![А-ЯЁA-Z])(?:ул\.?|улица|проспект|пр\.?|переулок|пер\.?|шоссе|наб\.?|набережная|пл\.?|площадь)(?![А-ЯЁA-Z])"""
     )
-    private val numberedRowPattern = Regex("""(?m)^\s*(?:№\s*)?\d{1,3}[.)]?\s+\d{2,8}\s+""")
+    private val numberedRowPattern = Regex("""(?m)^\s*(?:№\s*)?\d{1,3}[.)]?\s+(?:\d{2,8}\s+)?\S+""")
 
     fun score(text: String): Int {
         if (text.isBlank()) return Int.MIN_VALUE
