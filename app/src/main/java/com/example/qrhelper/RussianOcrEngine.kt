@@ -197,8 +197,7 @@ internal object RussianOcrEngine {
             }
             api.setVariable("preserve_interword_spaces", "1")
             api.setVariable("user_defined_dpi", "300")
-            var bestText = ""
-            var bestScore = Int.MIN_VALUE
+            val candidates = mutableListOf<String>()
             val rotations = intArrayOf(0, 90, 180, 270)
             rotations.forEachIndexed { index, degrees ->
                 withContext(Dispatchers.Main) {
