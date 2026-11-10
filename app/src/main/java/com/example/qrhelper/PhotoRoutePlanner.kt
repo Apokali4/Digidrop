@@ -73,7 +73,8 @@ internal data class PhotoRouteDeliveryRow(
     val contactPerson: String = "",
     val cashCollection: String = "",
     val comment: String = "",
-    val rawCells: List<String> = emptyList()
+    val rawCells: List<String> = emptyList(),
+    val numericReviewFields: List<String> = emptyList()
 )
 
 /**
@@ -136,8 +137,20 @@ internal object PhotoRouteTableParser {
             val comment = cells.getOrNull(columns[Column.COMMENT] ?: -1).orEmpty()
             val phone = cells.getOrNull(columns[Column.PHONE] ?: -1).orEmpty()
                 .takeIf { Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""").containsMatchIn(it) }.orEmpty()
-            fun number(column: Column): Int = cells.getOrNull(columns[column] ?: -1)
-                ?.replace(Regex("""[^\d]"""), "")?.toIntOrNull() ?: 0
+            fun rawNumber(column: Column): String = cells.getOrNull(columns[column] ?: -1).orEmpty().trim()
+            fun number(column: Column): Int {
+                val raw = rawNumber(column)
+                if (raw.isBlank()) return 0
+                val normalized = raw.lowercase(Locale("ru", "RU")).replace('ё', 'е')
+                if (!Regex("""^\d{1,4}(?:\s*(?:шт\.?|кор\.?|места?))?$""").matches(normalized)) return 0
+                return Regex("""^\d+""").find(normalized)?.value?.toIntOrNull() ?: 0
+            }
+            val numericReviewFields = buildList {
+                listOf(Column.PACKAGES to "Коробки", Column.PLACES to "Места").forEach { (column, label) ->
+                    val raw = rawNumber(column)
+                    if (raw.isNotBlank() && number(column) == 0) add("$label: $raw")
+                }
+            }
             rows += PhotoRouteDeliveryRow(
                 pointNumber = pointNumber,
                 customerCode = customerCode,
@@ -150,7 +163,8 @@ internal object PhotoRouteTableParser {
                 contactPerson = cells.getOrNull(columns[Column.CONTACT] ?: -1).orEmpty(),
                 cashCollection = cells.getOrNull(columns[Column.CASH] ?: -1).orEmpty(),
                 comment = comment,
-                rawCells = cells
+                rawCells = cells,
+                numericReviewFields = numericReviewFields
             )
         }
         return rows
