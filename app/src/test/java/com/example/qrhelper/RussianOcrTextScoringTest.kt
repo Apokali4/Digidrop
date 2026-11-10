@@ -106,4 +106,15 @@ class RussianOcrTextScoringTest {
         assertTrue(merged.contains("Ленина"))
     }
 
+
+    @Test fun alternativeRussianAddressTypesCountAsRouteEvidence() {
+        val text = """
+            1 Магазин Север г. Калуга, проезд Малинники, д. 8
+            2 Магазин Юг г. Калуга, аллея Смелых, 12
+            3 Магазин Центр г. Калуга, мкр. Терепец, д. 4
+        """.trimIndent()
+
+        assertTrue(RussianOcrTextScoring.routeRowCount(text) >= 3)
+    }
+
 }
