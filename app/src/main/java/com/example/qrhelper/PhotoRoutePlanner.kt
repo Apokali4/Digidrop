@@ -141,7 +141,9 @@ internal object PhotoRouteTableParser {
             }
             // Never discard an identifiable delivery just because OCR failed on its address.
             // Keep its raw cells so the driver can correct the address during review.
-            if (address.isBlank() && pointNumber.isBlank() && customerCode.isBlank() && organization.isBlank()) {
+            if (address.isBlank() && pointNumber.isBlank() && customerCode.isBlank() &&
+                organization.isBlank() && !(Column.POINT in columns && rows.isNotEmpty())
+            ) {
                 return@forEach
             }
             val comment = cells.getOrNull(columns[Column.COMMENT] ?: -1).orEmpty()
