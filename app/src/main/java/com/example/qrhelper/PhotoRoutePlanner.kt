@@ -115,7 +115,7 @@ internal object PhotoRouteTableParser {
             // so wrapped OCR rows stay aligned with the active column schema.
             val line = if ('\t' in source) source.trimEnd('\r') else source.trim()
             if (line.isBlank() || line.startsWith("---") ||
-                Regex("""(?iu)^следующая\s+фотография$""").matches(line.trim('-', ' ', '\\t'))
+                line.trim().trim('-').trim().equals("Следующая фотография", ignoreCase = true)
             ) return@forEach
             val cells = splitCells(line)
             val detected = detectHeader(cells)
