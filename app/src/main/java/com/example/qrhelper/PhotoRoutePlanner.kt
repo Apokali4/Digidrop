@@ -1803,11 +1803,11 @@ fun PhotoRoutePlannerScreen(
                 color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             PhotoPlannerTile("Показать список точек", "Дальше все действия будут на одном экране маршрута",
                 enabled = !busy, primary = true) {
-                val items = located.flatMapIndexed { index, stop ->
-                    stop.deliveries.mapIndexed { deliveryIndex, delivery ->
+                val items = located.flatMap { stop ->
+                    stop.deliveries.map { delivery ->
                         RouteItem(
                             barcode = "",
-                            storeName = delivery.storeName.ifBlank { "Точка ${index + 1}" },
+                            storeName = delivery.storeName,
                             address = stop.address,
                             itemName = "",
                             totalBoxes = 0,
