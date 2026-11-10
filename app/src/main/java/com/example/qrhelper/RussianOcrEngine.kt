@@ -131,7 +131,7 @@ internal object RussianOcrEngine {
         onProgress: suspend (String) -> Unit = {}
     ): String = withContext(Dispatchers.IO) {
         ensureRussianModel(context, onProgress)
-        withContext(Dispatchers.Main) { onProgress("Выравниваю фото и проверяю четыре ориентации…") }
+        withContext(Dispatchers.Main) { onProgress("Улучшаю фото и проверяю четыре поворота в двух режимах распознавания…") }
         val tessDirectory = File(context.filesDir, "tesseract")
         val api = TessBaseAPI()
         try {
