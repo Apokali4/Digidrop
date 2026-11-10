@@ -56,31 +56,32 @@ internal object RouteOcrCandidateSelector {
     }
 }
 
-/** Convert the column-aware photo parser's delivery record without losing cargo fields. */
+/**
+ * Prefer the actual shop name printed after the address (for example, "Бристоль")
+ * over the supplier/legal-company name in the "Клиент" column.
+ */
+internal fun PhotoRouteDeliveryRow.detectStoreName(
+    recognizedText: String = rawCells.joinToString(" "),
+    occurrence: Int = 0
+): String {
+    val fromAddressRow = PhotoRouteTextParser.extractMetadataForOccurrence(
+        recognizedText,
+        address,
+        occurrence
+    ).storeName
+    return PhotoRouteTextParser.cleanDetectedStoreName(fromAddressRow)
+        .ifBlank { PhotoRouteTextParser.cleanDetectedStoreName(organization) }
+}
+
+/** Route-photo import deliberately creates only the two requested fields: name and address. */
 internal fun PhotoRouteDeliveryRow.toRouteItem(index: Int): RouteItem {
-    val sourceText = rawCells.joinToString(" ")
-    val metadataStore = PhotoRouteTextParser.extractMetadata(sourceText, address).storeName
-    val store = PhotoRouteTextParser.cleanDetectedStoreName(organization)
-        .ifBlank { PhotoRouteTextParser.cleanDetectedStoreName(metadataStore) }
-    val quantity = placeCount.takeIf { it > 0 } ?: packageCount.takeIf { it > 0 } ?: 1
-    val codeDescription = customerCode.trim().takeIf(String::isNotBlank)
-        ?.let { " • код $it" }.orEmpty()
-    val extra = buildList {
-        invoiceNumber.trim().takeIf(String::isNotBlank)?.let { add("Накладная: $it") }
-        extraColumns.filter(String::isNotBlank).forEach(::add)
-    }.distinct().joinToString("; ")
     return RouteItem(
         barcode = "",
-        storeName = store,
+        storeName = detectStoreName(),
         address = address,
-        itemName = "Доставка по маршрутному списку$codeDescription",
-        totalBoxes = quantity,
-        phone = phone,
-        note = comment.ifBlank { "Доставка по маршрутному списку" },
-        ownerName = contactPerson,
-        workingHours = workingHours,
-        timeSlot = timeSlot,
-        cashNote = cashCollection,
-        extraComment = extra
+        itemName = "",
+        totalBoxes = 0,
+        phone = "",
+        note = ""
     )
 }
