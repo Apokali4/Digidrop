@@ -505,33 +505,24 @@ internal fun openYandexNavigator(
 }
 
 internal object PhotoRouteGeocodingQuery {
-    private const val KALUGA_LATITUDE = 54.5138
-    private const val KALUGA_LONGITUDE = 36.2612
-    private const val KALUGA_MAX_RADIUS_KM = 45.0
-
     fun build(address: String, city: String): String {
         val cleanCity = city.trim()
         if (cleanCity.isEmpty()) return address.trim()
         return if (cleanCity.equals("Калуга", ignoreCase = true))
-            "${address.trim()}, г. Калуга, Калужская область, Россия"
+            "${address.trim()}, Калужская область, Россия"
         else "${address.trim()}, $cleanCity, Россия"
     }
 
-    fun isWithinSelectedCity(latitude: Double, longitude: Double, city: String): Boolean {
-        if (!latitude.isFinite() || !longitude.isFinite() ||
-            latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
-        if (city.trim().equals("Калуга", ignoreCase = true)) {
-            val lat1 = Math.toRadians(KALUGA_LATITUDE)
-            val lat2 = Math.toRadians(latitude)
-            val dLat = lat2 - lat1
-            val dLon = Math.toRadians(longitude - KALUGA_LONGITUDE)
-            val a = kotlin.math.sin(dLat / 2).let { it * it } +
-                kotlin.math.cos(lat1) * kotlin.math.cos(lat2) *
-                kotlin.math.sin(dLon / 2).let { it * it }
-            val distanceKm = 6371.0 * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
-            return distanceKm <= KALUGA_MAX_RADIUS_KM
-        }
-        return true
+    // Калуга в настройке маршрута означает всю Калужскую область, а не радиус вокруг города.
+    fun isWithinSelectedCity(latitude: Double, longitude: Double, city: String): Boolean =
+        latitude.isFinite() && longitude.isFinite() &&
+            latitude in -90.0..90.0 && longitude in -180.0..180.0
+
+    fun isInSelectedRegion(adminArea: String?, city: String): Boolean {
+        if (!city.trim().equals("Калуга", ignoreCase = true)) return true
+        val region = adminArea.orEmpty().lowercase(Locale("ru", "RU")).replace('ё', 'е')
+        // Если геокодер не вернул административный регион, запрос уже ограничен областью.
+        return region.isBlank() || region.contains("калуж")
     }
 }
 
@@ -548,7 +539,8 @@ private suspend fun geocodePhotoStops(
             val query = PhotoRouteGeocodingQuery.build(address, city)
             val result = geocoder.getFromLocationName(query, 8)
                 ?.filter { candidate ->
-                    PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, city)
+                    PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, city) &&
+                        PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, city)
                 }
                 ?.minByOrNull { candidate ->
                     val locality = listOfNotNull(candidate.locality, candidate.subAdminArea)
