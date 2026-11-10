@@ -114,7 +114,9 @@ internal object PhotoRouteTableParser {
             // Leading tabs are empty table cells, not indentation. Preserve them
             // so wrapped OCR rows stay aligned with the active column schema.
             val line = if ('\t' in source) source.trimEnd('\r') else source.trim()
-            if (line.isBlank() || line.startsWith("---")) return@forEach
+            if (line.isBlank() || line.startsWith("---") ||
+                Regex("""(?iu)^следующая\s+фотография$""").matches(line.trim('-', ' ', '\\t'))
+            ) return@forEach
             val cells = splitCells(line)
             val detected = detectHeader(cells)
             if (detected != null) {
