@@ -29,7 +29,7 @@ class RussianOcrTextScoringTest {
     @Test fun mergesComplementaryOcrPassesInsteadOfDiscardingRowsMissingFromTheBestPass() {
         val merged = RussianOcrCandidateMerger.merge(
             listOf(
-                "1 ООО Север г. Калуга, ул. Кирова, д. 8\n3 ИП Иванов г. Калуга, ул. Победы, д. 2",
+                "1 ООО Север г. Калуга, ул. Кирова, д. 8\n3 ИП Иванов г. Калуга, ул. Победы, д. 2\n" + "Дополнительные реквизиты ".repeat(80),
                 "1 ООО Север г. Калуга, ул. Кирова, д. 8\n2 Пятёрочка г. Калуга, ул. Ленина, д. 14\n3 ИП Иванов г. Калуга, ул. Победы, д. 2"
             )
         )
