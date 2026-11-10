@@ -438,11 +438,16 @@ private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List
         if (!Geocoder.isPresent()) return@withContext items
         val geocoder = Geocoder(context, Locale("ru", "RU"))
         val resolved = items.map { item ->
-            if (item.latitude != null && item.longitude != null || item.address.isBlank()) item
+            val existingIsLocal = item.latitude != null && item.longitude != null &&
+                PhotoRouteGeocodingQuery.isWithinSelectedCity(item.latitude, item.longitude, "Калуга")
+            if (existingIsLocal || item.address.isBlank()) item
             else try {
-                val point = geocoder.getFromLocationName(item.address, 1)?.firstOrNull()
-                if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude) else item
-            } catch (_: Exception) { item }
+                val query = PhotoRouteGeocodingQuery.build(item.address, "Калуга")
+                val point = geocoder.getFromLocationName(query, 8)
+                    ?.firstOrNull { PhotoRouteGeocodingQuery.isWithinSelectedCity(it.latitude, it.longitude, "Калуга") }
+                if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude)
+                else item.copy(latitude = null, longitude = null)
+            } catch (_: Exception) { item.copy(latitude = null, longitude = null) }
         }
         // На этапе проверки сохраняем исходную последовательность из маршрутного листа.
         resolved
