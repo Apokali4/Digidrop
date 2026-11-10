@@ -9,6 +9,7 @@ name: Android CI
 # [build-apk] Build fixed-start physical-stop route optimization.
 # [build-apk] Re-run unit tests with package-count completion logic.
 # [build-apk] Reject incorrect geocoding outside Kaluga and Yukhnov.
+# [build-apk] Reject OCR garbage labels and neighboring stop name leakage.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
