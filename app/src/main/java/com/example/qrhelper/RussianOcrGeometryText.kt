@@ -43,20 +43,62 @@ internal object RussianOcrGeometryText {
 
         val typicalWidth = valid.map { it.width }.sorted()[valid.size / 2].coerceAtLeast(1)
         val columnGap = maxOf(typicalHeight * 1.8f, typicalWidth * 1.35f)
-        return rows.sortedBy { row -> row.minOf { it.top + it.height / 2 } }
-            .joinToString("\n") { row ->
-                val ordered = row.sortedBy { it.left }
-                buildString {
-                    ordered.forEachIndexed { index, word ->
-                        if (index > 0) {
-                            val previous = ordered[index - 1]
-                            val gap = word.left - (previous.left + previous.width)
-                            append(if (gap >= columnGap) '\t' else ' ')
-                        }
-                        append(word.text.trim())
-                    }
-                }
+        val orderedRows = rows.sortedBy { row -> row.minOf { it.top + it.height / 2 } }
+        val headerIndex = orderedRows.indexOfFirst { row ->
+            val headerText = row.joinToString(" ") { it.text.lowercase(java.util.Locale("ru", "RU")) }
+                .replace('ё', 'е')
+            Regex("""(?iu)(?:адрес|телефон|короб|мест|наклад|инкассац|клиент|организац|контакт|примеч|коммент|код|номер|№)""")
+                .findAll(headerText).count() >= 2
+        }
+
+        if (headerIndex >= 0) {
+            val headerWords = orderedRows[headerIndex].sortedBy { it.left }
+            val headerGroups = mutableListOf<MutableList<RussianOcrWord>>()
+            for (word in headerWords) {
+                val previousGroup = headerGroups.lastOrNull()
+                val previousWord = previousGroup?.lastOrNull()
+                val gap = if (previousWord == null) Int.MAX_VALUE
+                    else word.left - (previousWord.left + previousWord.width)
+                if (previousGroup != null && gap < columnGap) previousGroup += word
+                else headerGroups += mutableListOf(word)
             }
-            .trim()
+            val anchors = headerGroups.map { group -> group.minOf { it.left } }
+            if (anchors.size >= 2) {
+                return orderedRows.mapIndexed { index, row ->
+                    if (index == headerIndex) {
+                        headerGroups.joinToString("\\t") { group ->
+                            group.sortedBy { it.left }.joinToString(" ") { it.text.trim() }
+                        }
+                    } else if (index < headerIndex) {
+                        renderByGaps(row, columnGap)
+                    } else {
+                        val cells = MutableList(anchors.size) { mutableListOf<String>() }
+                        row.forEach { word ->
+                            val column = anchors.indices.minByOrNull { column ->
+                                kotlin.math.abs(word.left - anchors[column])
+                            } ?: 0
+                            cells[column] += word.text.trim()
+                        }
+                        cells.joinToString("\\t") { it.joinToString(" ") }
+                    }
+                }.filter(String::isNotBlank).joinToString("\\n").trim()
+            }
+        }
+
+        return orderedRows.joinToString("\\n") { renderByGaps(it, columnGap) }.trim()
+    }
+
+    private fun renderByGaps(row: List<RussianOcrWord>, columnGap: Float): String {
+        val ordered = row.sortedBy { it.left }
+        return buildString {
+            ordered.forEachIndexed { index, word ->
+                if (index > 0) {
+                    val previous = ordered[index - 1]
+                    val gap = word.left - (previous.left + previous.width)
+                    append(if (gap >= columnGap) '\\t' else ' ')
+                }
+                append(word.text.trim())
+            }
+        }
     }
 }
