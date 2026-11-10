@@ -1327,6 +1327,9 @@ fun PhotoRoutePlannerScreen(
     val rowsNeedingAddressReview = remember(rawText, routeCity) {
         PhotoRouteTableParser.parse(rawText, routeCity).filter { it.address.isBlank() }
     }
+    val missingPointNumbers = remember(rawText, routeCity) {
+        RouteNumberingAudit.missingPointNumbers(PhotoRouteTableParser.parse(rawText, routeCity))
+    }
     val rowsNeedingNumericReview = remember(rawText, routeCity) {
         PhotoRouteTableParser.parse(rawText, routeCity).filter { it.numericReviewFields.isNotEmpty() }
     }
@@ -1718,6 +1721,25 @@ fun PhotoRoutePlannerScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+                }
+            }
+        }
+
+        if (missingPointNumbers.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.error.copy(alpha = .7f))
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("ВОЗМОЖНО, ПРОПУЩЕНЫ СТРОКИ", color = palette.error,
+                        style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "В нумерации маршрутника отсутствуют номера: ${missingPointNumbers.joinToString(", ")}. " +
+                            "Я не добавляю выдуманные точки автоматически. Сверьте их с фотографией.",
+                        color = palette.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
