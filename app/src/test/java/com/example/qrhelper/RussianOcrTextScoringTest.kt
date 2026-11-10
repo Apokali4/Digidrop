@@ -81,4 +81,17 @@ class RussianOcrTextScoringTest {
         assertTrue(RussianOcrTextScoring.routeRowCount(text) >= 3)
     }
 
+
+    @Test fun ignoresSingleAddressNoiseWhenARealMultiRowPassExists() {
+        val merged = RussianOcrPassPlanner.mergeCandidates(
+            listOf(
+                "1 Магазин Север г. Калуга, ул. Кирова, д. 8\n2 Пятёрочка г. Калуга, ул. Ленина, д. 14",
+                "случайный текст г. Калуга, ул. Фальшивая, д. 999"
+            )
+        )
+        assertTrue(!merged.contains("Фальшивая"))
+        assertTrue(merged.contains("Кирова"))
+        assertTrue(merged.contains("Ленина"))
+    }
+
 }
