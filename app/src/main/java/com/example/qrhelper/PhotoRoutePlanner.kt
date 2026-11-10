@@ -278,14 +278,23 @@ internal object PhotoRouteTextParser {
             .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
             .filter { it.isNotBlank() }
             .toList()
-        // Customer code is optional: delivery route sheets are not necessarily invoices.
+        // Row numbers and customer codes are optional in real delivery sheets.
         val rowStart = Regex("""(?iu)^\s*(?:№\s*)?(\d{1,3})[.)]?\s+(?:(\d{2,8})\s+)?(.+)$""")
-        val result = mutableListOf<String>()
+        val numberedIndexes = lines.indices.filter { rowStart.containsMatchIn(lines[it]) }
+        // If some rows have numbers, treat address lines after the first numbered
+        // row as continuation rows whose number was lost by OCR. A lone address
+        // above the table is commonly the dispatch/header address, not a stop.
+        val firstNumbered = numberedIndexes.firstOrNull()
+        val result = mutableListOf<Pair<Int, String>>()
         lines.forEachIndexed { index, line ->
-            val row = rowStart.find(line) ?: return@forEachIndexed
-            val tail = row.groupValues[3]
-            val street = streetHint.find(tail) ?: return@forEachIndexed
-            var candidate = tail
+            val numbered = rowStart.find(line)
+            val isRecoverableUnnumberedRow = numbered == null &&
+                (firstNumbered == null || index > firstNumbered) &&
+                streetHint.containsMatchIn(line)
+            if (numbered == null && !isRecoverableUnnumberedRow) return@forEachIndexed
+
+            var candidate = numbered?.groupValues?.get(3) ?: line
+            val street = streetHint.find(candidate) ?: return@forEachIndexed
             if (houseAfterStreet.find(candidate, street.range.last + 1) == null) {
                 val next = lines.getOrNull(index + 1).orEmpty()
                 if (next.isNotBlank() && !rowStart.containsMatchIn(next) &&
@@ -294,12 +303,11 @@ internal object PhotoRouteTextParser {
                 ) candidate = "$candidate $next"
             }
             val address = cleanAddressFragment(candidate, city) ?: return@forEachIndexed
-            // Do not accept a bare city/street fragment or a row with no valid house.
             val addressStreet = streetHint.find(address) ?: return@forEachIndexed
             if (houseAfterStreet.find(address, addressStreet.range.last + 1) == null) return@forEachIndexed
-            result += address
+            result += index to address
         }
-        return result
+        return result.sortedBy { it.first }.map { it.second }
     }
 
     private fun extractAddressRows(text: String, city: String): List<String> {
