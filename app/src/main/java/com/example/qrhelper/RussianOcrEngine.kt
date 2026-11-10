@@ -180,6 +180,27 @@ internal object RussianOcrPassPlanner {
         RussianOcrCandidateMerger.merge(candidates)
 }
 
+/**
+ * Splits tall route-sheet photos into overlapping horizontal OCR regions.
+ * The overlap protects rows that cross a crop boundary or sit close to a page fold.
+ */
+internal object RussianOcrStripPlanner {
+    fun ranges(height: Int, stripCount: Int = 3, overlapFraction: Float = 0.12f): List<IntRange> {
+        require(height > 0) { "Высота фотографии должна быть больше нуля" }
+        require(stripCount >= 1) { "Количество OCR-полос должно быть положительным" }
+        require(overlapFraction in 0f..0.4f) { "Некорректное перекрытие OCR-полос" }
+        if (height <= 900 || stripCount == 1) return listOf(0 until height)
+        val segmentHeight = kotlin.math.ceil(height.toDouble() / stripCount).toInt()
+        val overlap = (segmentHeight * overlapFraction).toInt()
+        return (0 until stripCount).map { index ->
+            val start = (index * segmentHeight - if (index == 0) 0 else overlap).coerceAtLeast(0)
+            val endExclusive = ((index + 1) * segmentHeight + if (index == stripCount - 1) 0 else overlap)
+                .coerceAtMost(height)
+            start until endExclusive
+        }.filter { !it.isEmpty() }
+    }
+}
+
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
 internal object RussianOcrEngine {
     suspend fun recognizeUri(
@@ -317,9 +338,43 @@ internal object RussianOcrEngine {
                     if (oriented !== bitmap) oriented.recycle()
                 }
             }
-            // Merge complementary delivery rows from different OCR passes. A
-            // single weak false-positive address is not enough to contaminate a
-            // stronger candidate, but real multi-row recovery passes are retained.
+            // A full-page OCR pass can flatten narrow table columns into gibberish.
+            // When the read is weak, re-read three overlapping horizontal regions.
+            // This stays fully on-device and uses the same installed Russian model.
+            if (bestRowCount < RussianOcrPassPlanner.MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY &&
+                bitmap.height > 900
+            ) {
+                withContext(Dispatchers.Main) {
+                    onProgress("Проверяю маршрут частями, чтобы не потерять строки таблицы…")
+                }
+                val stripSource = rotate(bitmap, bestRotation)
+                try {
+                    val strips = RussianOcrStripPlanner.ranges(stripSource.height)
+                    strips.forEachIndexed { index, range ->
+                        withContext(Dispatchers.Main) {
+                            onProgress("Повторно читаю часть страницы ${index + 1} из ${strips.size}…")
+                        }
+                        val strip = Bitmap.createBitmap(
+                            stripSource,
+                            0,
+                            range.first,
+                            stripSource.width,
+                            range.last - range.first + 1
+                        )
+                        try {
+                            val stripText = recognize(strip, adaptive = false)
+                            if (stripText.isNotBlank()) candidateTexts += stripText
+                        } finally {
+                            strip.recycle()
+                        }
+                    }
+                } finally {
+                    if (stripSource !== bitmap) stripSource.recycle()
+                }
+            }
+
+            // Merge complementary delivery rows from the full-page, orientation,
+            // adaptive and strip passes. Weak reads can contribute missing rows.
             val mergedText = RussianOcrPassPlanner.mergeCandidates(candidateTexts)
             val mergedRows = RussianOcrTextScoring.routeRowCount(mergedText)
             if (mergedText.isNotBlank() && mergedRows >= bestRowCount) {
