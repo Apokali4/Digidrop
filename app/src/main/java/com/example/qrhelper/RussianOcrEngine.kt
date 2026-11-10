@@ -142,6 +142,11 @@ internal object RussianOcrPassPlanner {
     const val ADAPTIVE_SCORE_THRESHOLD = 520
 
     fun shouldTryQuarterTurn(score: Int): Boolean = score < QUARTER_TURN_SCORE_THRESHOLD
+
+    /** Try every non-zero orthogonal orientation only when the first pass is weak. */
+    fun candidateRotations(score: Int): List<Int> =
+        if (shouldTryQuarterTurn(score)) listOf(90, 180, 270) else emptyList()
+
     fun shouldTryAdaptive(score: Int): Boolean = score < ADAPTIVE_SCORE_THRESHOLD
 }
 
@@ -231,17 +236,21 @@ internal object RussianOcrEngine {
             var bestScore = RussianOcrTextScoring.score(bestText)
             var bestRotation = 0
 
-            if (RussianOcrPassPlanner.shouldTryQuarterTurn(bestScore)) {
-                withContext(Dispatchers.Main) { onProgress("Похоже, таблица снята боком. Проверяю поворот на 90°…") }
-                val rotated = rotate(bitmap, 90)
+            for (degrees in RussianOcrPassPlanner.candidateRotations(bestScore)) {
+                withContext(Dispatchers.Main) {
+                    onProgress("Проверяю ориентацию страницы: $degrees°…")
+                }
+                val rotated = rotate(bitmap, degrees)
                 try {
                     val rotatedText = recognize(rotated, adaptive = false)
                     val rotatedScore = RussianOcrTextScoring.score(rotatedText)
                     if (rotatedScore > bestScore) {
                         bestText = rotatedText
                         bestScore = rotatedScore
-                        bestRotation = 90
+                        bestRotation = degrees
                     }
+                    // A clearly structured table no longer needs more rotations.
+                    if (bestScore >= RussianOcrPassPlanner.QUARTER_TURN_SCORE_THRESHOLD) break
                 } finally {
                     rotated.recycle()
                 }
