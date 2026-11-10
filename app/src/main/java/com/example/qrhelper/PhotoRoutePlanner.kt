@@ -646,7 +646,18 @@ private fun RouteCameraCaptureScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    var message by remember { mutableStateOf("Сфотографируйте лист целиком, затем добавьте следующий кадр при необходимости.") }
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var captureInProgress by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("Наведите камеру на лист целиком. Для длинного маршрутника сделайте несколько кадров.") }
+
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            cameraProvider?.unbindAll()
+            cameraProvider = null
+            imageCapture = null
+        }
+    }
+
     Column(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
         AndroidView(
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -656,7 +667,8 @@ private fun RouteCameraCaptureScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    scaleType = PreviewView.ScaleType.FIT_CENTER
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                 }
                 val providerFuture = ProcessCameraProvider.getInstance(ctx)
                 providerFuture.addListener({
@@ -666,7 +678,8 @@ private fun RouteCameraCaptureScreen(
                             it.setSurfaceProvider(previewView.surfaceProvider)
                         }
                         val capture = ImageCapture.Builder()
-                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                            .setTargetRotation(previewView.display?.rotation ?: android.view.Surface.ROTATION_0)
                             .build()
                         provider.unbindAll()
                         provider.bindToLifecycle(
@@ -675,40 +688,74 @@ private fun RouteCameraCaptureScreen(
                             preview,
                             capture
                         )
+                        cameraProvider = provider
                         imageCapture = capture
+                        message = "Камера готова. Нажмите «Снять фото»."
                     } catch (error: Exception) {
-                        message = "Камера недоступна: ${error.message}"
+                        imageCapture = null
+                        message = "Камера недоступна: ${error.localizedMessage ?: error.javaClass.simpleName}"
                     }
                 }, ContextCompat.getMainExecutor(ctx))
                 previewView
             }
         )
-        Text(message, color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.padding(12.dp))
+        Text(
+            message,
+            color = androidx.compose.ui.graphics.Color.White,
+            modifier = Modifier.fillMaxWidth().padding(12.dp)
+        )
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(onClick = onClose, modifier = Modifier.weight(1f)) { Text("Готово") }
+            OutlinedButton(
+                onClick = onClose,
+                enabled = !captureInProgress,
+                modifier = Modifier.weight(1f)
+            ) { Text("Готово") }
             Button(
                 onClick = {
                     val capture = imageCapture
                     if (capture == null) {
-                        message = "Камера ещё запускается"
-                    } else {
-                        val photoDirectory = File(context.filesDir, "route-manifest-photos").apply { mkdirs() }
-                        val file = File(photoDirectory, "route_photo_${System.currentTimeMillis()}.jpg")
-                        val options = ImageCapture.OutputFileOptions.Builder(file).build()
-                        capture.takePicture(options, ContextCompat.getMainExecutor(context),
-                            object : ImageCapture.OnImageSavedCallback {
-                                override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                                    onPhotoCaptured(Uri.fromFile(file))
-                                    message = "Фото сохранено. Можно сделать следующий снимок."
+                        message = "Камера ещё запускается. Подождите появления сообщения «Камера готова»."
+                    } else if (!captureInProgress) {
+                        captureInProgress = true
+                        message = "Снимаю фотографию…"
+                        try {
+                            val photoDirectory = File(context.filesDir, "route-manifest-photos")
+                            if (!photoDirectory.exists() && !photoDirectory.mkdirs()) {
+                                error("Не удалось создать папку для фотографий")
+                            }
+                            val file = File(photoDirectory, "route_photo_${System.currentTimeMillis()}.jpg")
+                            val options = ImageCapture.OutputFileOptions.Builder(file).build()
+                            capture.takePicture(
+                                options,
+                                ContextCompat.getMainExecutor(context),
+                                object : ImageCapture.OnImageSavedCallback {
+                                    override fun onImageSaved(result: ImageCapture.OutputFileResults) {
+                                        captureInProgress = false
+                                        if (file.isFile && file.length() > 0L) {
+                                            message = "Фото сохранено. Можно снять следующую страницу."
+                                            onPhotoCaptured(Uri.fromFile(file))
+                                        } else {
+                                            message = "Камера завершила съёмку, но файл пустой. Повторите снимок."
+                                        }
+                                    }
+
+                                    override fun onError(exception: ImageCaptureException) {
+                                        captureInProgress = false
+                                        message = "Не удалось снять фото: ${exception.localizedMessage ?: exception.imageCaptureError}"
+                                    }
                                 }
-                                override fun onError(exception: ImageCaptureException) {
-                                    message = "Не удалось сохранить фото: ${exception.message}"
-                                }
-                            })
+                            )
+                        } catch (error: Exception) {
+                            captureInProgress = false
+                            message = "Ошибка камеры: ${error.localizedMessage ?: error.javaClass.simpleName}"
+                        }
                     }
                 },
+                enabled = imageCapture != null && !captureInProgress,
                 modifier = Modifier.weight(1f)
-            ) { Text("Снять фото") }
+            ) {
+                Text(if (captureInProgress) "Снимаю…" else if (imageCapture == null) "Запуск камеры…" else "Снять фото")
+            }
         }
     }
 }
