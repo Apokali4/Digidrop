@@ -1453,23 +1453,11 @@ fun PhotoRoutePlannerScreen(
                                 PhotoRouteTextParser.canonicalAddressKey(it.address) ==
                                     PhotoRouteTextParser.canonicalAddressKey(address)
                             }.getOrNull(occurrence)
-                            if (tableDelivery != null) PhotoStopMetadata(
-                                storeName = tableDelivery.organization,
-                                ownerName = tableDelivery.organization,
-                                phone = tableDelivery.phone,
-                                workingHours = tableDelivery.workingHours,
-                                timeSlot = tableDelivery.timeSlot,
-                                comment = tableDelivery.comment,
-                                customerCode = tableDelivery.customerCode,
-                                pointNumber = tableDelivery.pointNumber,
-                                contactPerson = tableDelivery.contactPerson,
-                                cashNote = tableDelivery.cashCollection,
-                                packageCount = tableDelivery.packageCount,
-                                placeCount = tableDelivery.placeCount,
-                                invoiceNumber = tableDelivery.invoiceNumber,
-                                rawColumns = tableDelivery.rawCells,
-                                extraColumns = tableDelivery.extraColumns
-                            ) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                            val detectedName = tableDelivery?.detectStoreName(rawText, occurrence)
+                                ?: PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence).storeName
+                            PhotoStopMetadata(
+                                storeName = PhotoRouteTextParser.cleanDetectedStoreName(detectedName)
+                            )
                         }
                         stop.copy(
                             metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
@@ -1739,6 +1727,13 @@ fun PhotoRoutePlannerScreen(
                 ) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.labelLarge)
+                        val recognizedNames = located.firstOrNull {
+                            PhotoRouteTextParser.canonicalAddressKey(it.address) == PhotoRouteTextParser.canonicalAddressKey(address)
+                        }?.deliveries.orEmpty().map { it.storeName }.filter(String::isNotBlank).distinct()
+                        if (recognizedNames.isNotEmpty()) {
+                            Text(recognizedNames.joinToString(" • "), color = palette.onSurface,
+                                style = MaterialTheme.typography.titleSmall)
+                        }
                         OutlinedTextField(address, { value -> addresses = addresses.toMutableList().also { it[index] = value } },
                             label = { Text("Адрес") }, modifier = Modifier.fillMaxWidth())
                         PhotoPlannerTile("Удалить адрес", "Убрать эту строку из распознавания") {
@@ -1760,7 +1755,11 @@ fun PhotoRoutePlannerScreen(
                                     PhotoRouteTextParser.canonicalAddressKey(it.first()) == PhotoRouteTextParser.canonicalAddressKey(stop.address)
                                 }.orEmpty()
                                 val deliveries = group.mapIndexed { occurrence, address ->
-                                    PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                                    PhotoStopMetadata(
+                                        storeName = PhotoRouteTextParser.cleanDetectedStoreName(
+                                            PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence).storeName
+                                        )
+                                    )
                                 }
                                 stop.copy(
                                     metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
@@ -1790,23 +1789,12 @@ fun PhotoRoutePlannerScreen(
                             barcode = "",
                             storeName = delivery.storeName.ifBlank { "Точка ${index + 1}" },
                             address = stop.address,
-                            itemName = buildString {
-                                append(delivery.ownerName.ifBlank { "Доставка по маршрутному листу" })
-                                if (delivery.customerCode.isNotBlank()) append(" • код ${delivery.customerCode}")
-                                if (delivery.contactPerson.isNotBlank()) append(" • контакт: ${delivery.contactPerson}")
-                                if (delivery.invoiceNumber.isNotBlank()) append(" • накладная ${delivery.invoiceNumber}")
-                                if (delivery.placeCount > 0) append(" • мест: ${delivery.placeCount}")
-                            },
-                            totalBoxes = delivery.packageCount,
-                            phone = delivery.phone,
-                            note = delivery.comment.ifBlank { "Импортировано из маршрутного листа" },
+                            itemName = "",
+                            totalBoxes = 0,
+                            phone = "",
+                            note = "",
                             latitude = stop.latitude,
-                            longitude = stop.longitude,
-                            ownerName = delivery.ownerName,
-                            workingHours = delivery.workingHours,
-                            timeSlot = delivery.timeSlot,
-                            cashNote = delivery.cashNote,
-                            extraComment = delivery.extraColumns.joinToString(" • ")
+                            longitude = stop.longitude
                         )
                     }
                 }
