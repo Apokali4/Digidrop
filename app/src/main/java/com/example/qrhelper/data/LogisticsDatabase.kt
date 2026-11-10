@@ -25,7 +25,7 @@ data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val 
 @Entity(tableName="products")
 data class ProductEntity(@PrimaryKey val barcode:String,val productName:String,val updatedAt:Long=System.currentTimeMillis())
 @Entity(tableName="cargo_items",foreignKeys=[ForeignKey(entity=DeliveryPointEntity::class,parentColumns=["id"],childColumns=["pointId"],onDelete=ForeignKey.CASCADE)],indices=[Index("pointId"),Index("barcode")])
-data class CargoItemEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val pointId:Long,val barcode:String,val itemName:String,val expectedQty:Int,val scannedQty:Int=0,val unitType:CargoUnitType=CargoUnitType.PACK,val barcodeType:CargoBarcodeType=CargoBarcodeType.EAN_13,val discrepancyQty:Int=0,val discrepancyReason:DiscrepancyReason?=null,val note:String="",val ownerName:String="",val workingHours:String="",val cashNote:String="",val extraComment:String="")
+data class CargoItemEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val pointId:Long,val barcode:String,val itemName:String,val expectedQty:Int,val scannedQty:Int=0,val unitType:CargoUnitType=CargoUnitType.PACK,val barcodeType:CargoBarcodeType=CargoBarcodeType.EAN_13,val discrepancyQty:Int=0,val discrepancyReason:DiscrepancyReason?=null,val note:String="",val ownerName:String="",val workingHours:String="",val cashNote:String="",val extraComment:String="",val timeSlot:String="")
 data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val itemName:String,val barcode:String,val expectedQty:Int,val scannedQty:Int,val discrepancyQty:Int,val discrepancyReason:String?)
 @Dao interface LogisticsDao{
  @Insert suspend fun insertRoute(v:DeliveryRouteEntity):Long
@@ -69,7 +69,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Transaction suspend fun closePoint(id:Long):Boolean{if(unresolved(id)>0||invalidDiscrepancies(id)>0)return false;updateStatus(id,DeliveryStatus.COMPLETED);return true}
  @Query("SELECT p.storeName AS pointName,p.address AS pointAddress,c.itemName AS itemName,c.barcode AS barcode,c.expectedQty AS expectedQty,c.scannedQty AS scannedQty,c.discrepancyQty AS discrepancyQty,c.discrepancyReason AS discrepancyReason FROM cargo_items c JOIN delivery_points p ON p.id=c.pointId WHERE p.routeId=:routeId AND (c.discrepancyQty>0 OR c.scannedQty<c.expectedQty) ORDER BY p.sortOrder,p.storeName,c.itemName") suspend fun discrepancyReport(routeId:Long):List<DiscrepancyReportRow>
 }
-@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=4,exportSchema=true)
+@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=5,exportSchema=true)
 @TypeConverters(LogisticsConverters::class)
 abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
  companion object{
@@ -95,10 +95,15 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("CREATE INDEX IF NOT EXISTS index_scan_codes_routeId ON scan_codes(routeId)")
    }
   }
+  private val MIGRATION_4_5=object:Migration(4,5){
+   override fun migrate(database:SupportSQLiteDatabase){
+    database.execSQL("ALTER TABLE cargo_items ADD COLUMN timeSlot TEXT NOT NULL DEFAULT ''")
+   }
+  }
   @Volatile private var db:LogisticsDatabase?=null
   fun get(c:Context):LogisticsDatabase=db?:synchronized(this){
    db?:Room.databaseBuilder(c.applicationContext,LogisticsDatabase::class.java,"digidrop.db")
-    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4).build().also{db=it}
+    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5).build().also{db=it}
   }
 
  }
