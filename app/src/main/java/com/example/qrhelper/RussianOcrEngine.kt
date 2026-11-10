@@ -83,7 +83,7 @@ internal object RussianOcrTextScoring {
  */
 internal object RussianOcrCandidateMerger {
     fun merge(candidates: List<String>): String {
-        val ranked = candidates.map(String::trim)
+        val ranked = candidates.map { it.trim() }
             .filter(String::isNotBlank)
             .distinct()
             .sortedByDescending(RussianOcrTextScoring::score)
