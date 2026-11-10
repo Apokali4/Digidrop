@@ -20,7 +20,7 @@ class LogisticsConverters{
 }
 @Entity(tableName="delivery_routes") data class DeliveryRouteEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeNumber:String,val createdAt:Long=System.currentTimeMillis(),val active:Boolean=true)
 @Entity(tableName="delivery_points",foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")])
-data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeId:Long,val storeName:String,val address:String,val phone:String="",val sortOrder:Int=0,val timeSlot:String="",val contactPerson:String="",val contactPhone:String="",val status:DeliveryStatus=DeliveryStatus.PENDING,val signaturePath:String="",val photoDocUri:String="",val latitude:Double?=null,val longitude:Double?=null)
+data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val routeId:Long,val storeName:String,val address:String,val phone:String="",val sortOrder:Int=0,val timeSlot:String="",val contactPerson:String="",val contactPhone:String="",val status:DeliveryStatus=DeliveryStatus.PENDING,val signaturePath:String="",val photoDocUri:String="",val latitude:Double?=null,val longitude:Double?=null,val workingHours:String="")
 @Entity(tableName="scan_codes",primaryKeys=["routeId","code"],foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")]) data class ScanCodeEntity(val routeId:Long,val code:String,val scannedAt:Long=System.currentTimeMillis())
 @Entity(tableName="products")
 data class ProductEntity(@PrimaryKey val barcode:String,val productName:String,val updatedAt:Long=System.currentTimeMillis())
@@ -69,7 +69,7 @@ data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val
  @Transaction suspend fun closePoint(id:Long):Boolean{if(unresolved(id)>0||invalidDiscrepancies(id)>0)return false;updateStatus(id,DeliveryStatus.COMPLETED);return true}
  @Query("SELECT p.storeName AS pointName,p.address AS pointAddress,c.itemName AS itemName,c.barcode AS barcode,c.expectedQty AS expectedQty,c.scannedQty AS scannedQty,c.discrepancyQty AS discrepancyQty,c.discrepancyReason AS discrepancyReason FROM cargo_items c JOIN delivery_points p ON p.id=c.pointId WHERE p.routeId=:routeId AND (c.discrepancyQty>0 OR c.scannedQty<c.expectedQty) ORDER BY p.sortOrder,p.storeName,c.itemName") suspend fun discrepancyReport(routeId:Long):List<DiscrepancyReportRow>
 }
-@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=5,exportSchema=true)
+@Database(entities=[DeliveryRouteEntity::class,DeliveryPointEntity::class,CargoItemEntity::class,ProductEntity::class,ScanCodeEntity::class],version=6,exportSchema=true)
 @TypeConverters(LogisticsConverters::class)
 abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
  companion object{
@@ -100,10 +100,23 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("ALTER TABLE cargo_items ADD COLUMN timeSlot TEXT NOT NULL DEFAULT ''")
    }
   }
+  private val MIGRATION_5_6=object:Migration(5,6){
+   override fun migrate(database:SupportSQLiteDatabase){
+    database.execSQL("ALTER TABLE delivery_points ADD COLUMN workingHours TEXT NOT NULL DEFAULT ''")
+    // Version 5 stored shop hours on every cargo row. Preserve existing data
+    // while moving the canonical value to the physical delivery point.
+    database.execSQL("""UPDATE delivery_points
+      SET workingHours = COALESCE((
+       SELECT workingHours FROM cargo_items
+       WHERE cargo_items.pointId = delivery_points.id AND TRIM(workingHours) != ''
+       ORDER BY id LIMIT 1
+      ), '')""")
+   }
+  }
   @Volatile private var db:LogisticsDatabase?=null
   fun get(c:Context):LogisticsDatabase=db?:synchronized(this){
    db?:Room.databaseBuilder(c.applicationContext,LogisticsDatabase::class.java,"digidrop.db")
-    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5).build().also{db=it}
+    .addMigrations(MIGRATION_1_2,MIGRATION_2_3,MIGRATION_3_4,MIGRATION_4_5,MIGRATION_5_6).build().also{db=it}
   }
 
  }

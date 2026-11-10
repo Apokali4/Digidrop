@@ -12,7 +12,6 @@ internal data class CargoImportPlan(
     val barcodeType: CargoBarcodeType,
     val note: String,
     val ownerName: String,
-    val workingHours: String,
     val timeSlot: String,
     val cashNote: String,
     val extraComment: String,
@@ -28,6 +27,7 @@ internal data class PointImportPlan(
     val longitude: Double?,
     val photoDocUri: String,
     val signaturePath: String,
+    val workingHours: String,
     val sortOrder: Int,
     val status: DeliveryStatus,
     val cargo: List<CargoImportPlan>
@@ -78,6 +78,8 @@ internal object RouteImportMapper {
                     longitude = group.firstNotNullOfOrNull { it.longitude },
                     photoDocUri = group.firstOrNull { it.photoDocUri.isNotBlank() }?.photoDocUri.orEmpty(),
                     signaturePath = group.firstOrNull { it.signaturePath.isNotBlank() }?.signaturePath.orEmpty(),
+                    // Shop opening hours belong to the physical stop, not to an invoice line.
+                    workingHours = group.firstNotNullOfOrNull { it.workingHours.trim().takeIf(String::isNotBlank) }.orEmpty(),
                     sortOrder = index,
                     status = status,
                     cargo = group.map { item ->
@@ -89,7 +91,6 @@ internal object RouteImportMapper {
                             barcodeType = barcodeType(item.barcode),
                             note = item.note,
                             ownerName = item.ownerName,
-                            workingHours = item.workingHours,
                             timeSlot = item.timeSlot,
                             cashNote = item.cashNote,
                             extraComment = item.extraComment,
