@@ -51,7 +51,7 @@ internal data class PhotoStopMetadata(
     val phone: String = "",
     val workingHours: String = "",
     val timeSlot: String = "",
-    val cashNote: String = "
+    val cashNote: String = "",
     val comment: String = "",
     val customerCode: String = "",
     val pointNumber: String = "",
