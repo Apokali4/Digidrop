@@ -144,8 +144,24 @@ class PhotoRouteTextParserTest {
         """.trimIndent()
         val metadata = PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Тарутинская, д. 168")
         assertEquals("Красное и Белое", metadata.storeName)
-        assertEquals("до 10:00", metadata.workingHours)
+        assertEquals("", metadata.workingHours)
+        assertEquals("до 10:00", metadata.timeSlot)
         assertEquals("Магазин открывается с 12:00", metadata.comment)
+    }
+
+    @Test fun extractsStoreOpeningHoursAndDeliveryWindowIndependentlyFromOcrLines() {
+        val metadata = PhotoRouteTextParser.extractMetadata(
+            """
+                Магазин Север
+                Калуга, ул. Победы, д. 2
+                Время работы 08:00-22:00
+                Доставить с 09:00 до 11:00
+            """.trimIndent(),
+            "Калуга, ул. Победы, д. 2"
+        )
+
+        assertEquals("08:00-22:00", metadata.workingHours)
+        assertEquals("с 09:00 до 11:00", metadata.timeSlot)
     }
 
     @Test fun joinsStreetAndHouseWhenOcrWrapsOneAddressAcrossTwoLines() {
