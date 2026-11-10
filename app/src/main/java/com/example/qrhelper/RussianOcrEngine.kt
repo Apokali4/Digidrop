@@ -131,16 +131,28 @@ internal object RussianOcrCandidateMerger {
                     PhotoRouteTextParser.extractRouteAddressRows(lines[it]).isNotEmpty() } ?: lines.size
                 val blockStart = maxOf(previousAddress + 1, index - 2)
                 val blockEnd = minOf(nextAddress, index + 5)
-                for (blockIndex in blockStart until blockEnd) {
-                    val recovered = lines[blockIndex].trim()
-                    val normalized = normalizeOcrLine(recovered)
-                    if (normalized.isNotBlank() && normalizedLines.add(normalized)) output += recovered
+                val recoveredBlock = lines.subList(blockStart, blockEnd)
+                    .map(String::trim)
+                    .filter { it.isNotBlank() }
+                    .filter { recovered -> normalizedLines.add(normalizeOcrLine(recovered)) }
+                if (recoveredBlock.isNotEmpty()) {
+                    val recoveredNumber = recoveredBlock.firstNotNullOfOrNull(::routeRowNumber)
+                    val insertionIndex = recoveredNumber?.let { number ->
+                        output.indexOfFirst { existing ->
+                            routeRowNumber(existing)?.let { it > number } == true
+                        }.takeIf { it >= 0 }
+                    } ?: output.size
+                    output.addAll(insertionIndex, recoveredBlock)
                 }
                 baseCounts[key] = occurrence
             }
         }
         return output.joinToString("\n")
     }
+
+    private fun routeRowNumber(line: String): Int? =
+        Regex("""^\\s*(?:№\\s*)?(\\d{1,3})[.)]?\\s+""")
+            .find(line)?.groupValues?.get(1)?.toIntOrNull()
 
     private fun normalizeOcrLine(value: String): String =
         value.lowercase(java.util.Locale("ru", "RU"))
