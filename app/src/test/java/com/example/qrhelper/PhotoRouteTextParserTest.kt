@@ -878,4 +878,23 @@ class PhotoRouteTextParserTest {
         )
     }
 
+
+    @Test
+    fun recoversFinalUnnumberedAddressAfterNumberOnlyRouteRow() {
+        val text = """
+            1 1708
+            г. Калуга, ул. Кирова, д. 8
+            2 1646
+            г. Калуга, ул. Ленина, д. 14
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Кирова, д. 8",
+                "г. Калуга, ул. Ленина, д. 14"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
 }
