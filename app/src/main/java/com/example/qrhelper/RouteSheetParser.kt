@@ -11,7 +11,9 @@ internal object RouteSheetParser {
         "code" to setOf("код", "кодклиента", "кодмагазина", "кодполучателя", "кодточки"),
         "client" to setOf("клиент", "магазин", "получатель", "наименованиеполучателя", "торговаяточка", "объект", "названиеточки"),
         "address" to setOf("адрес", "адресдоставки", "адресточки", "местодоставки", "адресполучателя"),
-        "comment" to setOf("комментарий", "примечание", "дополнительно", "условиядоставки", "информация")
+        "comment" to setOf("комментарий", "примечание", "дополнительно", "условиядоставки", "информация"),
+        "hours" to setOf("времяработы", "режимработы", "графикработы", "часыработы"),
+        "timeSlot" to setOf("времядоставки", "интервалдоставки", "окнодоставки", "временноокно", "таймслот")
     )
 
     private val addressHint = Regex(
@@ -157,6 +159,8 @@ internal object RouteSheetParser {
             val client = value(row, "client")
             val address = value(row, "address")
             val comment = value(row, "comment")
+            val workingHours = value(row, "hours")
+            val timeSlot = value(row, "timeSlot")
             if (number.isBlank() && client.isBlank() && address.isBlank()) {
                 if (last != null && (comment.isNotBlank() || row.any(String::isNotBlank))) {
                     val previous = result.removeAt(result.lastIndex)
@@ -191,7 +195,10 @@ internal object RouteSheetParser {
                 continue
             }
             if (number.isNotBlank() && number.filter(Char::isDigit).isBlank()) continue
-            val item = routeItem(result.size + 1, code, client, address, comment)
+            val item = routeItem(result.size + 1, code, client, address, comment).copy(
+                workingHours = workingHours,
+                timeSlot = timeSlot
+            )
             result += item
             last = item
         }
