@@ -25,12 +25,10 @@ class LogisticsDatabasePersistenceTest {
             databaseName
         ).allowMainThreadQueries().build()
 
-        val routeId: Long
-        val pointId: Long
         try {
             val dao = firstOpen.dao()
-            routeId = dao.insertRoute(DeliveryRouteEntity(routeNumber = "TEST"))
-            pointId = dao.insertPoint(
+            val routeId = dao.insertRoute(DeliveryRouteEntity(routeNumber = "TEST"))
+            val pointId = dao.insertPoint(
                 DeliveryPointEntity(
                     routeId = routeId,
                     storeName = "Магазин Север",
