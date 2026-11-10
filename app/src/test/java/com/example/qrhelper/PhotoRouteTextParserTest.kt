@@ -633,7 +633,7 @@ class PhotoRouteTextParserTest {
                 RussianOcrWord("12", 360, 50, 18, 18, 88f)
             )
         )
-        assertEquals("№\\tАдрес\\tКоробки\\n1\\tКалуга\\t12", text)
+        assertEquals("№\tАдрес\tКоробки\n1\tКалуга\t12", text)
     }
 
     @Test fun geometryOcrKeepsWordsInReadingOrderAndDoesNotMergeSeparateRows() {
@@ -645,7 +645,7 @@ class PhotoRouteTextParserTest {
                 RussianOcrWord("строка", 60, 11, 40, 18, 90f)
             )
         )
-        assertEquals("Первая строка\\nВторая строка", text)
+        assertEquals("Первая строка\nВторая строка", text)
     }
 
     @Test fun geometryOcrIgnoresBlankWordsAndInvalidBoxes() {
