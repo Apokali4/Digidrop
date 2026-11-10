@@ -133,6 +133,18 @@ internal object RussianOcrCandidateMerger {
             .filter(Char::isLetterOrDigit)
 }
 
+/**
+ * Keeps OCR fast on phone hardware: the normal orientation gets one pass;
+ * a quarter-turn and adaptive thresholding are recovery paths only.
+ */
+internal object RussianOcrPassPlanner {
+    const val QUARTER_TURN_SCORE_THRESHOLD = 320
+    const val ADAPTIVE_SCORE_THRESHOLD = 520
+
+    fun shouldTryQuarterTurn(score: Int): Boolean = score < QUARTER_TURN_SCORE_THRESHOLD
+    fun shouldTryAdaptive(score: Int): Boolean = score < ADAPTIVE_SCORE_THRESHOLD
+}
+
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
 internal object RussianOcrEngine {
     suspend fun recognizeUri(
@@ -188,7 +200,7 @@ internal object RussianOcrEngine {
         onProgress: suspend (String) -> Unit = {}
     ): String = withContext(Dispatchers.IO) {
         ensureRussianModel(context, onProgress)
-        withContext(Dispatchers.Main) { onProgress("Улучшаю фото и проверяю четыре поворота в двух режимах распознавания…") }
+        withContext(Dispatchers.Main) { onProgress("Быстро распознаю страницу без лишних поворотов…") }
         val tessDirectory = File(context.filesDir, "tesseract")
         val api = TessBaseAPI()
         try {
@@ -197,31 +209,59 @@ internal object RussianOcrEngine {
             }
             api.setVariable("preserve_interword_spaces", "1")
             api.setVariable("user_defined_dpi", "300")
-            val candidates = mutableListOf<String>()
-            val rotations = intArrayOf(0, 90, 180, 270)
-            rotations.forEachIndexed { index, degrees ->
-                withContext(Dispatchers.Main) {
-                    onProgress("Распознаю страницу: поворот ${degrees}° (${index + 1}/4)…")
+            api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO)
+            
+            fun recognize(source: Bitmap, adaptive: Boolean): String {
+                val prepared = prepareDocumentBitmap(source, adaptive)
+                return try {
+                    api.setImage(prepared)
+                    api.getUTF8Text().orEmpty().trim()
+                } finally {
+                    prepared.recycle()
                 }
-                val oriented = rotate(bitmap, degrees)
+            }
+
+            // First pass keeps the photo exactly as captured. Rotate only when
+            // the first OCR result lacks enough route-sheet structure.
+            var bestText = recognize(bitmap, adaptive = false)
+            var bestScore = RussianOcrTextScoring.score(bestText)
+            var bestRotation = 0
+
+            if (RussianOcrPassPlanner.shouldTryQuarterTurn(bestScore)) {
+                withContext(Dispatchers.Main) { onProgress("Похоже, таблица снята боком. Проверяю поворот на 90°…") }
+                val rotated = rotate(bitmap, 90)
                 try {
-                    for (adaptive in listOf(false, true)) {
-                        val prepared = prepareDocumentBitmap(oriented, adaptive)
-                        try {
-                            api.setImage(prepared)
-                            val text = api.getUTF8Text().orEmpty().trim()
-                            if (text.isNotBlank()) candidates += text
-                        } finally {
-                            prepared.recycle()
-                        }
+                    val rotatedText = recognize(rotated, adaptive = false)
+                    val rotatedScore = RussianOcrTextScoring.score(rotatedText)
+                    if (rotatedScore > bestScore) {
+                        bestText = rotatedText
+                        bestScore = rotatedScore
+                        bestRotation = 90
+                    }
+                } finally {
+                    rotated.recycle()
+                }
+            }
+
+            // Expensive local thresholding is a recovery pass, not a default
+            // second engine run on every photograph.
+            if (RussianOcrPassPlanner.shouldTryAdaptive(bestScore)) {
+                withContext(Dispatchers.Main) {
+                    onProgress("Текст читается плохо. Улучшаю контраст только для выбранной ориентации…")
+                }
+                val oriented = rotate(bitmap, bestRotation)
+                try {
+                    val adaptiveText = recognize(oriented, adaptive = true)
+                    if (RussianOcrTextScoring.score(adaptiveText) > bestScore) {
+                        bestText = adaptiveText
+                        bestScore = RussianOcrTextScoring.score(adaptiveText)
                     }
                 } finally {
                     if (oriented !== bitmap) oriented.recycle()
                 }
             }
-            val mergedText = RussianOcrCandidateMerger.merge(candidates)
-            check(mergedText.isNotBlank()) { "Не удалось распознать текст ни в одной ориентации" }
-            mergedText
+            check(bestText.isNotBlank()) { "Не удалось распознать текст. Проверьте фокус и освещение фотографии." }
+            bestText
         } finally {
             api.recycle()
         }

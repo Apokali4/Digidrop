@@ -1173,10 +1173,11 @@ fun PhotoRoutePlannerScreen(
             status = "Фотография получена. Сохраняю копию…"
             runCatching { copyPhotoIntoRouteStorage(uri) }
                 .onSuccess { saved ->
-                    val photosForRecognition = (capturedUris + saved).distinctBy(Uri::toString)
-                    capturedUris = photosForRecognition
-                    status = "Фото сохранено локально. Повторно распознаю все ${photosForRecognition.size} фото рейса…"
-                    processPhotoUris(photosForRecognition, onFinished = onInitialImageConsumed)
+                    capturedUris = (capturedUris + saved).distinctBy(Uri::toString)
+                    status = "Фото сохранено локально. Распознаю только новый снимок…"
+                    // A newly captured page must not trigger OCR again for every
+                    // page already added to this route session.
+                    processPhotoUris(listOf(saved), onFinished = onInitialImageConsumed)
                 }
                 .onFailure { error ->
                     status = "Не удалось сохранить фото: ${error.message}"
