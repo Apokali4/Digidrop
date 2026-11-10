@@ -285,6 +285,7 @@ internal object PhotoRouteTextParser {
         // row as continuation rows whose number was lost by OCR. A lone address
         // above the table is commonly the dispatch/header address, not a stop.
         val firstNumbered = numberedIndexes.firstOrNull()
+        val lastNumbered = numberedIndexes.lastOrNull()
         val result = mutableListOf<Pair<Int, String>>()
         lines.forEachIndexed { index, line ->
             val numbered = rowStart.find(line)
@@ -299,7 +300,7 @@ internal object PhotoRouteTextParser {
                 !metadataHint.containsMatchIn(previousLine) &&
                 !streetHint.containsMatchIn(previousLine)
             val isRecoverableUnnumberedRow = numbered == null && lineStreet != null &&
-                (firstNumbered == null || index > firstNumbered || hasStoreNameOnRow || previousLineLooksLikeStore)
+                (firstNumbered == null || (index > firstNumbered && index < (lastNumbered ?: firstNumbered)) || hasStoreNameOnRow || previousLineLooksLikeStore)
             if (numbered == null && !isRecoverableUnnumberedRow) return@forEachIndexed
 
             var candidate = numbered?.groupValues?.get(3) ?: line
