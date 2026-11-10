@@ -692,4 +692,29 @@ class PhotoRouteTextParserTest {
         assertEquals(5, rows.single().rawCells.size)
     }
 
+
+    @Test fun tableParserFlagsAmbiguousCountsInsteadOfInventingNumericValues() {
+        val text = listOf(
+            "№\tКлиент\tАдрес доставки\tКоробки\tМеста",
+            "9\tМагазин Тест\tКалуга, ул. Кирова, д. 8\t1O\t12/13"
+        ).joinToString("\n")
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertEquals(0, row.packageCount)
+        assertEquals(0, row.placeCount)
+        assertEquals(listOf("Коробки: 1O", "Места: 12/13"), row.numericReviewFields)
+        assertEquals("1O", row.rawCells[3])
+        assertEquals("12/13", row.rawCells[4])
+    }
+
+    @Test fun tableParserAcceptsClearCountsWithCommonUnitSuffixes() {
+        val text = listOf(
+            "№\tКлиент\tАдрес доставки\tКоробки\tМеста",
+            "10\tМагазин Тест\tКалуга, ул. Кирова, д. 8\t3 кор.\t5 мест"
+        ).joinToString("\n")
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertEquals(3, row.packageCount)
+        assertEquals(5, row.placeCount)
+        assertEquals(emptyList<String>(), row.numericReviewFields)
+    }
+
 }
