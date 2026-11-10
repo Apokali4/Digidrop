@@ -50,7 +50,8 @@ internal data class PhotoStopMetadata(
     val ownerName: String = "",
     val phone: String = "",
     val workingHours: String = "",
-    val cashNote: String = "",
+    val timeSlot: String = "",
+    val cashNote: String = "
     val comment: String = "",
     val customerCode: String = "",
     val pointNumber: String = "",
@@ -1353,7 +1354,8 @@ fun PhotoRoutePlannerScreen(
                                 storeName = tableDelivery.organization,
                                 ownerName = tableDelivery.organization,
                                 phone = tableDelivery.phone,
-                                workingHours = tableDelivery.workingHours.ifBlank { tableDelivery.timeSlot },
+                                workingHours = tableDelivery.workingHours,
+                                timeSlot = tableDelivery.timeSlot,
                                 comment = tableDelivery.comment,
                                 customerCode = tableDelivery.customerCode,
                                 pointNumber = tableDelivery.pointNumber,
@@ -1699,6 +1701,7 @@ fun PhotoRoutePlannerScreen(
                             longitude = stop.longitude,
                             ownerName = delivery.ownerName,
                             workingHours = delivery.workingHours,
+                            timeSlot = delivery.timeSlot,
                             cashNote = delivery.cashNote,
                             extraComment = delivery.extraColumns.joinToString(" • ")
                         )
