@@ -92,11 +92,17 @@ internal object RussianOcrTextScoring {
  */
 internal object RussianOcrCandidateMerger {
     fun merge(candidates: List<String>): String {
-        val ranked = candidates.map { it.trim() }
+        val nonBlank = candidates.map { it.trim() }
             .filter(String::isNotBlank)
             .distinct()
+        if (nonBlank.isEmpty()) return ""
+        // Ignore isolated address-shaped noise from a failed orientation when
+        // another pass found a real multi-row route table.
+        val multiRowCandidates = nonBlank.filter {
+            RussianOcrTextScoring.routeRowCount(it) >= 2
+        }
+        val ranked = (multiRowCandidates.ifEmpty { nonBlank })
             .sortedByDescending(RussianOcrTextScoring::score)
-        if (ranked.isEmpty()) return ""
 
         val output = ranked.first().lineSequence().toMutableList()
         val baseCounts = mutableMapOf<String, Int>()
