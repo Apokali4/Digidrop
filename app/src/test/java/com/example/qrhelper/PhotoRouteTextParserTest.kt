@@ -532,6 +532,7 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    // [build-apk] Keep conditional OCR work covered in the APK verification run.
     @Test fun ocrUsesQuarterTurnOnlyWhenFirstPassIsWeak() {
         assertEquals(false, RussianOcrPassPlanner.shouldTryQuarterTurn(500))
         assertEquals(true, RussianOcrPassPlanner.shouldTryQuarterTurn(100))
