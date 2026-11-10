@@ -184,6 +184,7 @@ data class RouteItem(
     val scannedBoxes: Int = 0,
     val ownerName: String = "",
     val workingHours: String = "",
+    val timeSlot: String = "",
     val cashNote: String = "",
     val extraComment: String = "",
     val photoDocUri: String = "",
@@ -360,6 +361,7 @@ internal fun parseManifest(text: String): List<RouteItem> {
         "phone" to setOf("phone", "телефон", "контакт", "мобильный", "номертелефона"),
         "owner" to setOf("owner", "ип", "фио", "предприниматель", "владелец", "контактноелицо"),
         "hours" to setOf("hours", "времяработы", "графикработы", "режимработы", "работает"),
+        "timeSlot" to setOf("timeslot", "времядоставки", "интервалдоставки", "окнодоставки", "временноокно", "таймслот"),
         "cash" to setOf("cash", "наличные", "деньги", "забратьденьги", "оплата", "инкассация"),
         "note" to setOf("note", "комментарий", "примечание", "инструкция", "условиядоставки"),
         "extra" to setOf("extra", "дополнительно", "допкомментарий"),
@@ -369,7 +371,7 @@ internal fun parseManifest(text: String): List<RouteItem> {
     val normalized = first.map(::normalize)
     val hasHeader = normalized.any { it in aliases.values.flatten() }
     val columns = if (hasHeader) aliases.mapValues { (_, names) -> normalized.indexOfFirst { it in names } } else
-        mapOf("barcode" to 0, "store" to 1, "address" to 2, "item" to 3, "boxes" to 4, "phone" to 5, "note" to 6, "lat" to 7, "lon" to 8, "owner" to 9, "hours" to 10, "cash" to 11, "extra" to 12)
+        mapOf("barcode" to 0, "store" to 1, "address" to 2, "item" to 3, "boxes" to 4, "phone" to 5, "note" to 6, "lat" to 7, "lon" to 8, "owner" to 9, "hours" to 10, "cash" to 11, "extra" to 12, "timeSlot" to 13)
     fun value(row: List<String>, key: String): String {
         val i = columns[key] ?: -1
         return if (i >= 0 && i < row.size) row[i].trim() else ""
@@ -407,6 +409,7 @@ internal fun parseManifest(text: String): List<RouteItem> {
             latitude = latitude, longitude = longitude,
             ownerName = value(row, "owner"),
             workingHours = value(row, "hours"),
+            timeSlot = value(row, "timeSlot"),
             cashNote = value(row, "cash"),
             extraComment = value(row, "extra")
         ))
@@ -808,7 +811,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                 val manifest = authoritativeItems.joinToString("\n") { item ->
                     listOf(item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                        item.ownerName, item.workingHours, item.cashNote, item.extraComment)
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment, item.timeSlot)
                         .joinToString("\t") { it.replace("\t", " ") }
                 }
                 prefs.edit().putString("active_manifest", manifest)
@@ -1018,7 +1021,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment, item.timeSlot
                     ).joinToString("\t") { it.replace("\t", " ") }
                 }
                 prefs.edit()
@@ -2474,7 +2477,7 @@ fun StoreGroupCard(
                 Text(first.storeName.ifBlank { "Точка доставки" }, color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Text(first.address, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 2)
-                val details = listOf(first.workingHours, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
+                val details = listOf(first.workingHours, first.timeSlot, first.phone).filter { it.isNotBlank() }.joinToString(" • ")
                 if (details.isNotBlank()) Text(details, color = DigiDropPalette.accent, fontSize = 11.sp, maxLines = 1)
                 Text("$total мест • ${items.size} накладных",
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
@@ -2514,7 +2517,8 @@ fun PointGroupScreen(
         items.firstOrNull()?.let { point ->
             if (point.ownerName.isNotBlank()) Text("ИП / контакт: ${point.ownerName}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             if (point.phone.isNotBlank()) Text("Телефон: ${point.phone}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            if (point.workingHours.isNotBlank()) Text("Время работы: ${point.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            if (point.workingHours.isNotBlank()) Text("Время работы магазина: ${point.workingHours}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            if (point.timeSlot.isNotBlank()) Text("Окно доставки: ${point.timeSlot}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             if (point.cashNote.isNotBlank()) Text("Наличные: ${point.cashNote}", color = DigiDropPalette.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             if (point.extraComment.isNotBlank()) Text("Дополнительно: ${point.extraComment}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             if (point.note.isNotBlank()) Text("Комментарий: ${point.note}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
