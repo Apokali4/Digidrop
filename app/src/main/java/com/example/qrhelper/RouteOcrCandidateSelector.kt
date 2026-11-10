@@ -82,14 +82,12 @@ internal object RouteOcrCandidateSelector {
         val readableNames = items.count {
             PhotoRouteTextParser.cleanDetectedStoreName(it.storeName).isNotBlank()
         }
-        val coverage = validAddresses.toDouble() / items.size
-        // One uncertain row is retained for manual correction. Several uncertain
-        // rows still strongly penalize a noisy OCR candidate so it cannot beat a
-        // smaller, clean parse merely by inventing lots of fragments.
-        val uncertaintyPenalty = (invalidAddresses - 1).coerceAtLeast(0) * 1_000
+        // Keep one uncertain row for manual correction when it accompanies a
+        // complete set of valid stops. Additional uncertain rows are expensive:
+        // OCR noise must not win merely by producing a longer list.
+        val uncertaintyPenalty = (invalidAddresses - 1).coerceAtLeast(0) * 1_200
         return validAddresses * 1_000 -
             uncertaintyPenalty +
-            (coverage * 1_000).toInt() +
             readableNames * 10 +
             items.size.coerceAtMost(10_000)
     }
