@@ -154,10 +154,10 @@ class RouteOcrCandidateSelectorTest {
     @Test
     fun routePhotoUsesStoreBrandFromAddressInsteadOfSupplierCompanyName() {
         val text = listOf(
-            "№\\tКод\\tКлиент\\tАдрес доставки",
-            "1\\t1708\\tБалтика ПК ООО\\tг. Калуга, ул. Врубовая, д. 2, Бристоль",
-            "2\\t1646\\tАльфа Рязань ООО\\tг. Калуга, ул. Болдина, д. 9, Красное и Белое"
-        ).joinToString("\\n")
+            "№\tКод\tКлиент\tАдрес доставки",
+            "1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Врубовая, д. 2, Бристоль",
+            "2\t1646\tАльфа Рязань ООО\tг. Калуга, ул. Болдина, д. 9, Красное и Белое"
+        ).joinToString("\n")
 
         val items = PhotoRouteTableParser.parse(text, "Калуга").mapIndexed { index, row ->
             row.toRouteItem(index + 1)
@@ -168,6 +168,10 @@ class RouteOcrCandidateSelectorTest {
             listOf("г. Калуга, ул. Врубовая, д. 2", "г. Калуга, ул. Болдина, д. 9"),
             items.map { it.address }
         )
+        assertTrue(items.all {
+            it.barcode.isBlank() && it.itemName.isBlank() && it.totalBoxes == 0 &&
+                it.phone.isBlank() && it.note.isBlank() && it.workingHours.isBlank()
+        })
     }
 
 }
