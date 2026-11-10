@@ -622,6 +622,33 @@ class PhotoRouteTextParserTest {
         assertEquals(listOf("Сумма долга: 3400", "Товар: Молоко 2.5%"), row.extraColumns)
     }
 
+    @Test fun tableParserKeepsExtraColumnHeadersAcrossHeaderlessPhotoPages() {
+        val firstPage = listOf(
+            "№\tКлиент\tАдрес\tСумма долга\tОкно доставки\tТовар",
+            "1\tМагазин Север\tКалуга, ул. Победы, д. 2\t3400\t09:00-12:00\tМолоко"
+        ).joinToString("\n")
+        val secondPage = "2\tМагазин Юг\tКалуга, ул. Кирова, д. 8\t0\t13:00-16:00\tХлеб"
+
+        val rows = PhotoRouteTableParser.parse("$firstPage\n--- Следующая фотография ---\n$secondPage", "Калуга")
+        assertEquals(2, rows.size)
+        assertEquals(
+            listOf("Сумма долга: 0", "Окно доставки: 13:00-16:00", "Товар: Хлеб"),
+            rows[1].extraColumns
+        )
+    }
+
+    @Test fun tableParserDoesNotExposeRecognizedFieldsAsUnknownExtraColumns() {
+        val text = listOf(
+            "№\tКлиент\tАдрес\tТелефон\tКоробки\tМеста\tИнкассация\tПримечание",
+            "3\tМагазин Центр\tКалуга, ул. Ленина, д. 1\t8 900 111 22 33\t2\t4\t1500 руб.\tПозвонить"
+        ).joinToString("\n")
+
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertTrue(row.extraColumns.isEmpty())
+        assertEquals("1500 руб.", row.cashCollection)
+        assertEquals("Позвонить", row.comment)
+    }
+
 
     @Test fun geometryOcrGroupsWordsByVerticalPositionAndKeepsColumnGaps() {
         val text = RussianOcrGeometryText.reconstruct(
