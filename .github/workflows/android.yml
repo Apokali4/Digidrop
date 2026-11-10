@@ -79,3 +79,6 @@ jobs:
       - name: Run unit tests
         if: always()
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
+      - name: Compile Android instrumentation tests
+        if: always()
+        run: ./gradlew --no-daemon --stacktrace compileDebugAndroidTestKotlin

@@ -24,6 +24,8 @@ data class DeliveryPointEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val 
 @Entity(tableName="scan_codes",primaryKeys=["routeId","code"],foreignKeys=[ForeignKey(entity=DeliveryRouteEntity::class,parentColumns=["id"],childColumns=["routeId"],onDelete=ForeignKey.CASCADE)],indices=[Index("routeId")]) data class ScanCodeEntity(val routeId:Long,val code:String,val scannedAt:Long=System.currentTimeMillis())
 @Entity(tableName="products")
 data class ProductEntity(@PrimaryKey val barcode:String,val productName:String,val updatedAt:Long=System.currentTimeMillis())
+// Legacy workingHours remains in this table so version-5 data can be migrated safely.
+ // New imports and reads use DeliveryPointEntity.workingHours instead.
 @Entity(tableName="cargo_items",foreignKeys=[ForeignKey(entity=DeliveryPointEntity::class,parentColumns=["id"],childColumns=["pointId"],onDelete=ForeignKey.CASCADE)],indices=[Index("pointId"),Index("barcode")])
 data class CargoItemEntity(@PrimaryKey(autoGenerate=true) val id:Long=0,val pointId:Long,val barcode:String,val itemName:String,val expectedQty:Int,val scannedQty:Int=0,val unitType:CargoUnitType=CargoUnitType.PACK,val barcodeType:CargoBarcodeType=CargoBarcodeType.EAN_13,val discrepancyQty:Int=0,val discrepancyReason:DiscrepancyReason?=null,val note:String="",val ownerName:String="",val workingHours:String="",val cashNote:String="",val extraComment:String="",val timeSlot:String="")
 data class DiscrepancyReportRow(val pointName:String,val pointAddress:String,val itemName:String,val barcode:String,val expectedQty:Int,val scannedQty:Int,val discrepancyQty:Int,val discrepancyReason:String?)
@@ -107,9 +109,9 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     // while moving the canonical value to the physical delivery point.
     database.execSQL("""UPDATE delivery_points
       SET workingHours = COALESCE((
-       SELECT workingHours FROM cargo_items
-       WHERE cargo_items.pointId = delivery_points.id AND TRIM(workingHours) != ''
-       ORDER BY id LIMIT 1
+       SELECT cargo_items.workingHours FROM cargo_items
+       WHERE cargo_items.pointId = delivery_points.id AND TRIM(cargo_items.workingHours) != ''
+       ORDER BY cargo_items.id LIMIT 1
       ), '')""")
    }
   }
