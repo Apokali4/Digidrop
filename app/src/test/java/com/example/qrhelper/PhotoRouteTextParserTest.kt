@@ -797,4 +797,22 @@ class PhotoRouteTextParserTest {
         assertEquals(emptyList<String>(), rows[1].cashReviewFields)
     }
 
+
+    @Test fun tableParserAttachesWrappedAddressAndInstructionsToPreviousDelivery() {
+        val text = listOf(
+            "№\tКод\tКлиент\tАдрес доставки\tКоробки\tПримечание",
+            "1\t1708\tБалтика ПК ООО\tКалуга, ул. Болдина, д. 9\t3\t",
+            "\t\t\tкорпус 2, вход со двора\t\tДоставить до 10:00",
+            "2\t1646\tАльфа Рязань ООО\tКалуга, ул. Кирова, д. 12\t2\tПозвонить"
+        ).joinToString("\n")
+
+        val rows = PhotoRouteTableParser.parse(text, "Калуга")
+
+        assertEquals(2, rows.size)
+        assertTrue(rows[0].address.contains("корпус 2"))
+        assertTrue(rows[0].comment.contains("Доставить до 10:00"))
+        assertTrue(rows[0].rawCells.any { it.contains("корпус 2") })
+        assertEquals("Альфа Рязань ООО", rows[1].organization)
+    }
+
 }
