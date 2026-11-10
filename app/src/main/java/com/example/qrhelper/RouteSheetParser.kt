@@ -171,25 +171,42 @@ internal object RouteSheetParser {
                 }
                 continue
             }
+            // A blank delivery number means this is a wrapped continuation row,
+            // not a new stop. Preserve address fragments and metadata on the prior
+            // delivery instead of manufacturing a phantom point.
+            if (number.isBlank() && last != null) {
+                val previous = result.lastOrNull() ?: continue
+                fun appendDistinct(base: String, addition: String): String {
+                    val value = addition.trim()
+                    if (value.isBlank() || base.contains(value, ignoreCase = true)) return base
+                    return listOf(base, value).filter(String::isNotBlank).joinToString(" ")
+                }
+                val continuation = listOf(code, client, comment, workingHours, timeSlot)
+                    .filter(String::isNotBlank)
+                    .distinct()
+                    .joinToString(" • ")
+                val updated = previous.copy(
+                    address = appendDistinct(previous.address, address),
+                    note = appendDistinct(previous.note, continuation),
+                    extraComment = appendDistinct(previous.extraComment, continuation),
+                    workingHours = appendDistinct(previous.workingHours, workingHours),
+                    timeSlot = appendDistinct(previous.timeSlot, timeSlot)
+                )
+                result[result.lastIndex] = updated
+                last = updated
+                continue
+            }
             if (address.isBlank()) {
-                // Route sheets often wrap a client name, delivery instruction or
-                // address fragment onto a following table row. Keep that data
-                // attached to the preceding delivery instead of silently dropping it.
                 val previous = result.lastOrNull() ?: continue
                 val continuation = listOf(code, client, comment)
                     .filter(String::isNotBlank)
                     .distinct()
                     .joinToString(" • ")
                 if (continuation.isNotBlank()) {
-                    val mergedNote = listOf(previous.note, continuation)
-                        .filter(String::isNotBlank)
-                        .distinct()
-                        .joinToString(" • ")
-                    val mergedExtra = listOf(previous.extraComment, continuation)
-                        .filter(String::isNotBlank)
-                        .distinct()
-                        .joinToString(" • ")
-                    val updated = previous.copy(note = mergedNote, extraComment = mergedExtra)
+                    val updated = previous.copy(
+                        note = listOf(previous.note, continuation).filter(String::isNotBlank).distinct().joinToString(" • "),
+                        extraComment = listOf(previous.extraComment, continuation).filter(String::isNotBlank).distinct().joinToString(" • ")
+                    )
                     result[result.lastIndex] = updated
                     last = updated
                 }
