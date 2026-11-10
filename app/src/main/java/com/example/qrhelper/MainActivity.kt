@@ -1416,6 +1416,30 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     val chosen = nextSegments.getOrNull(index) ?: segment
                     openYandexNavigator(context, chosen, startsFromPreviousStop = false)
                 },
+                onCoordinatesResolved = { resolved ->
+                    val updatedItems = routeItems.map { item ->
+                        resolved[PhotoRouteTextParser.canonicalAddressKey(item.address)]?.let { coordinate ->
+                            item.copy(latitude = coordinate.latitude, longitude = coordinate.longitude)
+                        } ?: item
+                    }
+                    importScope.launch {
+                        val repository = LogisticsRepository(context)
+                        val saved = repository.syncCoordinates(updatedItems)
+                        if (saved > 0) {
+                            val authoritativeItems = repository.activeRouteItems()
+                            routeItems = authoritativeItems
+                            val manifest = authoritativeItems.joinToString("\n") { item ->
+                                listOf(
+                                    item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
+                                    item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
+                                    item.ownerName, item.workingHours, item.cashNote, item.extraComment, item.timeSlot
+                                ).joinToString("\t") { it.replace("\t", " ") }
+                            }
+                            prefs.edit().putString("active_manifest", manifest).apply()
+                        }
+                    }
+                },
+                onNavigateFirstAddress = { address -> launchNavigation(address) },
                 onRebuildRoute = {
                     importScope.launch {
                         val original = routeItems
@@ -3082,6 +3106,8 @@ fun RouteListScreen(
     onOpenScanner: () -> Unit,
     onEditRoute: () -> Unit,
     onNavigateSegment: (Int, List<PhotoRouteCoordinate>) -> Unit,
+    onCoordinatesResolved: (Map<String, PhotoRouteCoordinate>) -> Unit,
+    onNavigateFirstAddress: (String) -> Unit,
     onRebuildRoute: () -> Unit,
     onOpenPointMap: (String) -> Unit,
     onCallClient: (String) -> Unit,
@@ -3188,18 +3214,21 @@ fun RouteListScreen(
                     Button(onClick = {
                         navigationScope.launch {
                             val index = navigationSegmentIndex.coerceAtLeast(0)
+                            val resolvedByAddress = linkedMapOf<String, PhotoRouteCoordinate>()
                             val allCoordinates = pendingGroups.mapNotNull { group ->
                                 val point = group.firstOrNull() ?: return@mapNotNull null
+                                val key = PhotoRouteTextParser.canonicalAddressKey(point.address)
                                 val existing = if (point.latitude != null && point.longitude != null &&
                                     PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга"))
                                     PhotoRouteCoordinate(point.latitude, point.longitude) else null
-                                if (existing != null) existing else withContext(Dispatchers.IO) {
+                                val resolved = if (existing != null) existing else withContext(Dispatchers.IO) {
                                     runCatching {
                                         if (!Geocoder.isPresent()) null else {
                                             val geocoder = Geocoder(context, Locale("ru", "RU"))
-                                            val query = PhotoRouteGeocodingQuery.build(point.address, "Калуга")
-                                            geocoder.getFromLocationName(query, 8)
-                                                ?.filter { candidate ->
+                                            PhotoRouteGeocodingQuery.candidateQueries(point.address, "Калуга")
+                                                .asSequence()
+                                                .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
+                                                .firstOrNull { candidate ->
                                                     PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, "Калуга") &&
                                                         PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, "Калуга") &&
                                                         PhotoRouteGeocodingQuery.matchesRequestedAddress(
@@ -3208,18 +3237,18 @@ fun RouteListScreen(
                                                             candidateHouse = candidate.subThoroughfare,
                                                             candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
                                                         )
-                                                }
-                                                ?.firstOrNull()?.let {
-                                                    PhotoRouteCoordinate(it.latitude, it.longitude)
-                                                }
+                                                }?.let { PhotoRouteCoordinate(it.latitude, it.longitude) }
                                         }
                                     }.getOrNull()
                                 }
+                                if (resolved != null) resolvedByAddress[key] = resolved
+                                resolved
                             }
-                            val missingCount = pendingGroups.size - allCoordinates.size
-                            // Яндекс принимает до 20 остановок за участок; следующий участок
-                            // продолжает маршрут с последней точки предыдущего.
-                            val readySegments = if (missingCount == 0 && allCoordinates.size >= 2)
+                            if (resolvedByAddress.isNotEmpty()) onCoordinatesResolved(resolvedByAddress)
+                            val missingCount = pendingGroups.size - resolvedByAddress.size
+                            // Навигация доступна по всем подтверждённым координатам.
+                            // Нераспознанные точки не блокируют заведомо корректную часть рейса.
+                            val readySegments = if (allCoordinates.isNotEmpty())
                                 PhotoRouteNavigationUrls.yandexSegments(allCoordinates) else emptyList()
                             if (readySegments.isNotEmpty()) {
                                 navigationSegmentCount = readySegments.size
@@ -3229,23 +3258,27 @@ fun RouteListScreen(
                                 if (missingCount > 0) {
                                     val missingAddresses = pendingGroups.mapNotNull { group ->
                                         group.firstOrNull()?.takeIf { point ->
-                                            point.latitude == null || point.longitude == null ||
-                                                !PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга")
+                                            PhotoRouteTextParser.canonicalAddressKey(point.address) !in resolvedByAddress
                                         }?.address
                                     }
                                     Toast.makeText(
                                         context,
-                                        "Открыта точка с подтверждёнными координатами. Не определены ещё $missingCount из ${pendingGroups.size}: ${missingAddresses.take(2).joinToString("; ")}",
+                                        "Открыта подтверждённая часть маршрута. Не определены ещё $missingCount из \${pendingGroups.size}: \${missingAddresses.take(2).joinToString("; ")}",
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
                             } else {
-                                val missingAddresses = pendingGroups.mapNotNull { it.firstOrNull()?.address }
-                                Toast.makeText(
-                                    context,
-                                    "Координаты не найдены ни для одной точки. Проверьте адреса в Яндекс Картах: ${missingAddresses.take(2).joinToString("; ")}",
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                val firstAddress = pendingGroups.firstOrNull()?.firstOrNull()?.address.orEmpty()
+                                if (firstAddress.isNotBlank()) {
+                                    onNavigateFirstAddress(firstAddress)
+                                    Toast.makeText(
+                                        context,
+                                        "Координаты не найдены. Открываю первую точку по адресу; полный маршрут пока не построен.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                } else {
+                                    Toast.makeText(context, "В маршруте нет адресов для навигации", Toast.LENGTH_LONG).show()
+                                }
                             }
                         }
                     }, enabled = pendingGroups.size >= 2, modifier = Modifier.fillMaxWidth().height(46.dp),
