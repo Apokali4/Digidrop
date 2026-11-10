@@ -106,6 +106,24 @@ class RouteOcrCandidateSelectorTest {
     }
 
     @Test
+    fun keepsOneAdditionalDeliveryRowWhenOnlyItsAddressNeedsReview() {
+        val cleanCandidate = (1..26).map { index ->
+            routeItem(index, "Калуга, ул. Кирова, $index")
+        }
+        val completeCandidate = cleanCandidate + routeItem(
+            27,
+            "Калуга, ул. , 27",
+            "Проверить название"
+        )
+
+        val selected = RouteOcrCandidateSelector.select(listOf(cleanCandidate, completeCandidate))
+
+        assertEquals(27, selected.size)
+        assertEquals(1, RouteOcrCandidateSelector.invalidAddressRows(selected).size)
+        assertEquals("Проверить название", selected.last().storeName)
+    }
+
+    @Test
     fun smallCleanCandidateDoesNotHideThirteenUnresolvedRowsInLargerParse() {
         val small = (1..6).map { routeItem(it, "Калуга, ул. Кирова, $it") }
         val larger = small + (7..19).map {
