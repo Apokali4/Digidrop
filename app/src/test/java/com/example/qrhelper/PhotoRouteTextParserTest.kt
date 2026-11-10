@@ -440,4 +440,22 @@ class PhotoRouteTextParserTest {
         )
     }
 
+
+    @Test fun photoRouteImportAcceptsNumberedRowsWithoutCustomerCodes() {
+        val text = """
+            Маршрут на день
+            1 Магазин Север г. Калуга, ул. Кирова, д. 8
+            2 Пятёрочка г. Калуга, ул. Ленина, д. 14
+            Итого: 2 точки
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Кирова, д. 8",
+                "г. Калуга, ул. Ленина, д. 14"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
 }
