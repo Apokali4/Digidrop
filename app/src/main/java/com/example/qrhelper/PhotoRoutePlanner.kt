@@ -526,8 +526,11 @@ internal object PhotoRouteTextParser {
             val previousLineLooksLikeStore = previousLine.count(Char::isLetter) >= 3 &&
                 !metadataHint.containsMatchIn(previousLine) &&
                 !streetHint.containsMatchIn(previousLine)
+            val followsNumberedRow = rowStart.containsMatchIn(previousLine)
             val isRecoverableUnnumberedRow = numbered == null && lineStreet != null &&
-                (firstNumbered == null || (index > firstNumbered && index < (lastNumbered ?: firstNumbered)) || hasStoreNameOnRow || previousLineLooksLikeStore)
+                (firstNumbered == null ||
+                    (index > firstNumbered && index < (lastNumbered ?: firstNumbered)) ||
+                    hasStoreNameOnRow || previousLineLooksLikeStore || followsNumberedRow)
             if (numbered == null && !isRecoverableUnnumberedRow) return@forEachIndexed
 
             var candidate = numbered?.groupValues?.get(3) ?: line
