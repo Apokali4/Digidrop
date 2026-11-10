@@ -339,4 +339,29 @@ class PhotoRouteTextParserTest {
         assertEquals("Шаурма", PhotoRouteTextParser.cleanStoreName("Шаурма x1pe-6001230285"))
     }
 
+    @Test fun rejectsOcrGarbageAndGeneratedPointLabelsAsStoreNames() {
+        assertEquals("", PhotoRouteTextParser.cleanStoreName("Букпр: 2"))
+        assertEquals("", PhotoRouteTextParser.cleanStoreName("Точка 20"))
+        assertEquals("", PhotoRouteTextParser.cleanStoreName("крп. 178"))
+    }
+
+    @Test fun doesNotBorrowNextDeliveryBrandForCurrentAddress() {
+        val text = """
+            Калуга, ул. Ленина, д. 10
+            Бристоль
+            Калуга, ул. Победы, д. 2
+        """.trimIndent()
+        assertEquals("", PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Ленина, д. 10").storeName)
+        assertEquals("Бристоль", PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Победы, д. 2").storeName)
+    }
+
+    @Test fun doesNotUseCompanyTextAfterAddressAsStoreName() {
+        val text = """
+            Калуга, ул. Ленина, д. 10
+            ООО Следующая организация
+            Калуга, ул. Победы, д. 2
+        """.trimIndent()
+        assertEquals("", PhotoRouteTextParser.extractMetadata(text, "Калуга, ул. Ленина, д. 10").storeName)
+    }
+
 }
