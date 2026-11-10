@@ -752,7 +752,8 @@ internal object PhotoRouteNavigationUrls {
     const val YANDEX_MAX_STOPS = 20
 
     fun yandexSegments(stops: List<PhotoRouteCoordinate>): List<List<PhotoRouteCoordinate>> {
-        validate(stops)
+        require(stops.isNotEmpty()) { "Нет подтверждённых координат для навигации" }
+        if (stops.size == 1) return listOf(stops)
         val firstSegmentLimit = YANDEX_MAX_STOPS - 1 // Первый участок: текущая позиция водителя тоже занимает одну из 20 точек Яндекса.
         if (stops.size <= firstSegmentLimit) return listOf(stops)
         val segments = mutableListOf<List<PhotoRouteCoordinate>>()
