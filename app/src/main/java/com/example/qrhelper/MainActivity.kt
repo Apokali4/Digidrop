@@ -1125,7 +1125,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     listOf(
                         item.barcode, item.storeName, item.address, item.itemName, item.totalBoxes.toString(),
                         item.phone, item.note, item.latitude?.toString().orEmpty(), item.longitude?.toString().orEmpty(),
-                        item.ownerName, item.workingHours, item.cashNote, item.extraComment
+                        item.ownerName, item.workingHours, item.cashNote, item.extraComment, item.timeSlot
                     ).joinToString("\t") { it.replace("\t", " ") }
                 }
                 prefs.edit()
