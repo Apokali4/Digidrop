@@ -74,6 +74,15 @@ internal object RussianOcrTextScoring {
         val digits = text.count(Char::isDigit)
         return addresses * 120 + numberedRows * 35 + cyrillic + digits / 2 + text.length / 20
     }
+
+    /** Number of distinct route-row signals recovered from the OCR text. */
+    fun routeRowCount(text: String): Int {
+        if (text.isBlank()) return 0
+        val normalized = text.lowercase(java.util.Locale("ru", "RU")).replace('ё', 'е')
+        val addresses = addressPattern.findAll(normalized).count()
+        val numberedRows = numberedRowPattern.findAll(text).count()
+        return maxOf(addresses, numberedRows)
+    }
 }
 
 /**
@@ -140,14 +149,23 @@ internal object RussianOcrCandidateMerger {
 internal object RussianOcrPassPlanner {
     const val QUARTER_TURN_SCORE_THRESHOLD = 320
     const val ADAPTIVE_SCORE_THRESHOLD = 520
+    const val MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY = 24
 
     fun shouldTryQuarterTurn(score: Int): Boolean = score < QUARTER_TURN_SCORE_THRESHOLD
 
-    /** Try every non-zero orthogonal orientation only when the first pass is weak. */
-    fun candidateRotations(score: Int): List<Int> =
-        if (shouldTryQuarterTurn(score)) listOf(90, 180, 270) else emptyList()
+    /**
+     * A high text score is not proof of a complete route: eight clean rows from
+     * a 36-row sheet can score well while most deliveries are still missing.
+     */
+    fun candidateRotations(score: Int, detectedRows: Int): List<Int> =
+        if (shouldTryQuarterTurn(score) || detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY) {
+            listOf(90, 180, 270)
+        } else emptyList()
 
     fun shouldTryAdaptive(score: Int): Boolean = score < ADAPTIVE_SCORE_THRESHOLD
+
+    fun shouldTryAdaptive(score: Int, detectedRows: Int): Boolean =
+        shouldTryAdaptive(score) || detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY
 }
 
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
@@ -234,9 +252,10 @@ internal object RussianOcrEngine {
             // the first OCR result lacks enough route-sheet structure.
             var bestText = recognize(bitmap, adaptive = false)
             var bestScore = RussianOcrTextScoring.score(bestText)
+            var bestRowCount = RussianOcrTextScoring.routeRowCount(bestText)
             var bestRotation = 0
 
-            for (degrees in RussianOcrPassPlanner.candidateRotations(bestScore)) {
+            for (degrees in RussianOcrPassPlanner.candidateRotations(bestScore, bestRowCount)) {
                 withContext(Dispatchers.Main) {
                     onProgress("Проверяю ориентацию страницы: $degrees°…")
                 }
@@ -244,9 +263,13 @@ internal object RussianOcrEngine {
                 try {
                     val rotatedText = recognize(rotated, adaptive = false)
                     val rotatedScore = RussianOcrTextScoring.score(rotatedText)
-                    if (rotatedScore > bestScore) {
+                    val rotatedRows = RussianOcrTextScoring.routeRowCount(rotatedText)
+                    if (rotatedScore > bestScore ||
+                        (rotatedRows > bestRowCount && rotatedScore >= bestScore * 0.65f)
+                    ) {
                         bestText = rotatedText
                         bestScore = rotatedScore
+                        bestRowCount = rotatedRows
                         bestRotation = degrees
                     }
                 } finally {
@@ -256,16 +279,21 @@ internal object RussianOcrEngine {
 
             // Expensive local thresholding is a recovery pass, not a default
             // second engine run on every photograph.
-            if (RussianOcrPassPlanner.shouldTryAdaptive(bestScore)) {
+            if (RussianOcrPassPlanner.shouldTryAdaptive(bestScore, bestRowCount)) {
                 withContext(Dispatchers.Main) {
                     onProgress("Текст читается плохо. Улучшаю контраст только для выбранной ориентации…")
                 }
                 val oriented = rotate(bitmap, bestRotation)
                 try {
                     val adaptiveText = recognize(oriented, adaptive = true)
-                    if (RussianOcrTextScoring.score(adaptiveText) > bestScore) {
+                    val adaptiveScore = RussianOcrTextScoring.score(adaptiveText)
+                    val adaptiveRows = RussianOcrTextScoring.routeRowCount(adaptiveText)
+                    if (adaptiveScore > bestScore ||
+                        (adaptiveRows > bestRowCount && adaptiveScore >= bestScore * 0.65f)
+                    ) {
                         bestText = adaptiveText
-                        bestScore = RussianOcrTextScoring.score(adaptiveText)
+                        bestScore = adaptiveScore
+                        bestRowCount = adaptiveRows
                     }
                 } finally {
                     if (oriented !== bitmap) oriented.recycle()
