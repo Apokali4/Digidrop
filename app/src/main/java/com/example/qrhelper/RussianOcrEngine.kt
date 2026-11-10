@@ -55,6 +55,27 @@ internal fun installOcrModel(input: InputStream, target: File) {
     }
 }
 
+/**
+ * Scores OCR candidates by route-sheet evidence. Raw Kotlin regex strings use
+ * single backslashes; double escaping would search for literal backslashes.
+ */
+internal object RussianOcrTextScoring {
+    private val addressPattern = Regex(
+        """(?iu)(?:\b(?:ул\.?|улица|проспект|пр\.?|переулок|пер\.?|шоссе|наб\.?|набережная|пл\.?|площадь)\b)"""
+    )
+    private val numberedRowPattern = Regex("""(?m)^\s*(?:№\s*)?\d{1,3}[.)]?\s+\d{2,8}\s+""")
+
+    fun score(text: String): Int {
+        if (text.isBlank()) return Int.MIN_VALUE
+        val normalized = text.lowercase(java.util.Locale("ru", "RU")).replace('ё', 'е')
+        val addresses = addressPattern.findAll(normalized).count()
+        val numberedRows = numberedRowPattern.findAll(text).count()
+        val cyrillic = text.count { it in 'А'..'я' || it == 'Ё' || it == 'ё' }
+        val digits = text.count(Char::isDigit)
+        return addresses * 120 + numberedRows * 35 + cyrillic + digits / 2 + text.length / 20
+    }
+}
+
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
 internal object RussianOcrEngine {
     suspend fun recognizeUri(
@@ -127,17 +148,19 @@ internal object RussianOcrEngine {
                     onProgress("Распознаю страницу: поворот ${degrees}° (${index + 1}/4)…")
                 }
                 val oriented = rotate(bitmap, degrees)
-                val prepared = enhanceForDocument(oriented)
+                val variants = prepareDocumentVariants(oriented)
                 try {
-                    api.setImage(prepared)
-                    val text = api.getUTF8Text().orEmpty().trim()
-                    val score = scoreRouteText(text)
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestText = text
+                    variants.forEach { prepared ->
+                        api.setImage(prepared)
+                        val text = api.getUTF8Text().orEmpty().trim()
+                        val score = RussianOcrTextScoring.score(text)
+                        if (score > bestScore) {
+                            bestScore = score
+                            bestText = text
+                        }
                     }
                 } finally {
-                    if (prepared !== oriented) prepared.recycle()
+                    variants.forEach { it.recycle() }
                     if (oriented !== bitmap) oriented.recycle()
                 }
             }
@@ -155,46 +178,64 @@ internal object RussianOcrEngine {
     }
 
     /** Grayscale + local contrast stretch for photographed paper and faint table print. */
-    private fun enhanceForDocument(source: Bitmap): Bitmap {
+    /**
+     * Produce two OCR-friendly images: restrained grayscale/contrast and a
+     * locally thresholded version. Local thresholding handles uneven lighting
+     * without clipping faint characters using one global threshold.
+     */
+    private fun prepareDocumentVariants(source: Bitmap): List<Bitmap> {
         val width = source.width
         val height = source.height
-        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(width * height)
         source.getPixels(pixels, 0, width, 0, 0, width, height)
+        val gray = IntArray(pixels.size)
         var min = 255
         var max = 0
-        val gray = IntArray(pixels.size)
         for (i in pixels.indices) {
             val color = pixels[i]
-            val value = (Color.red(color) * 0.299 + Color.green(color) * 0.587 + Color.blue(color) * 0.114).toInt()
+            val value = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114) / 1000
             gray[i] = value
-            if (value < min) min = value
-            if (value > max) max = value
+            min = minOf(min, value)
+            max = maxOf(max, value)
         }
         val range = (max - min).coerceAtLeast(1)
-        for (i in pixels.indices) {
+        val contrastPixels = IntArray(gray.size)
+        for (i in gray.indices) {
             val value = (((gray[i] - min) * 255) / range).coerceIn(0, 255)
-            // Keep faint gray grid lines while making black print easier to separate.
-            val contrasted = when {
-                value < 105 -> 0
-                value > 235 -> 255
-                else -> value
-            }
-            pixels[i] = Color.rgb(contrasted, contrasted, contrasted)
+            contrastPixels[i] = Color.rgb(value, value, value)
         }
-        output.setPixels(pixels, 0, width, 0, 0, width, height)
-        return output
-    }
+        val contrast = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        contrast.setPixels(contrastPixels, 0, width, 0, 0, width, height)
 
-    private fun scoreRouteText(text: String): Int {
-        if (text.isBlank()) return Int.MIN_VALUE
-        val lower = text.lowercase(java.util.Locale("ru", "RU")).replace('ё', 'е')
-        val addresses = Regex("""(?iu)(?:ул\\.?|улица|проспект|пр\\.?|переулок|пер\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь)""")
-            .findAll(lower).count()
-        val numberedRows = Regex("""(?m)^\\s*\\d{1,3}\\s+""").findAll(text).count()
-        val cyrillic = text.count { it in 'А'..'я' || it == 'Ё' || it == 'ё' }
-        val digits = text.count(Char::isDigit)
-        return addresses * 120 + numberedRows * 35 + cyrillic + digits / 2 + text.length / 20
+        // Per-tile threshold compensates for shadows and gradients with bounded memory.
+        val adaptivePixels = IntArray(gray.size)
+        val tile = 32
+        for (top in 0 until height step tile) {
+            for (left in 0 until width step tile) {
+                val right = minOf(width, left + tile)
+                val bottom = minOf(height, top + tile)
+                var sum = 0L
+                var count = 0
+                for (y in top until bottom) {
+                    val row = y * width
+                    for (x in left until right) {
+                        sum += gray[row + x]
+                        count++
+                    }
+                }
+                val threshold = (sum / count.coerceAtLeast(1) - 28).toInt().coerceIn(70, 225)
+                for (y in top until bottom) {
+                    val row = y * width
+                    for (x in left until right) {
+                        val value = if (gray[row + x] < threshold) 0 else 255
+                        adaptivePixels[row + x] = Color.rgb(value, value, value)
+                    }
+                }
+            }
+        }
+        val adaptive = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        adaptive.setPixels(adaptivePixels, 0, width, 0, 0, width, height)
+        return listOf(contrast, adaptive)
     }
 
     private suspend fun ensureRussianModel(
