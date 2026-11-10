@@ -677,10 +677,10 @@ class PhotoRouteTextParserTest {
 
     @Test fun tableParserPreservesIdentifiableRowsWhenAddressWasNotRecognized() {
         val rows = PhotoRouteTableParser.parse(
-            """
-                №\tКлиент\tАдрес доставки\tКоробки\tПримечание
-                17\tМагазин Центральный\t[неразборчиво]\t8\tпроверить адрес
-            """.trimIndent(),
+            listOf(
+                "№\tКлиент\tАдрес доставки\tКоробки\tПримечание",
+                "17\tМагазин Центральный\t[неразборчиво]\t8\tпроверить адрес"
+            ).joinToString("\n"),
             "Калуга"
         )
         assertEquals(1, rows.size)
