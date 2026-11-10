@@ -564,6 +564,7 @@ internal object PhotoRouteGeocodingQuery {
      * and house. Geocoder.getFromLocationName is fuzzy and may otherwise return
      * a nearby, unrelated address (which used to create phantom route stops).
      */
+    // [build-apk] Rebuild after strict route/geocoder test correction.
     fun matchesRequestedAddress(
         requestedAddress: String,
         candidateStreet: String?,
