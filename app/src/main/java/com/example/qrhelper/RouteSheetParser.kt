@@ -273,5 +273,6 @@ internal object RouteSheetParser {
 
     private fun normalize(value: String): String =
         value.trim().lowercase().replace("ё", "е")
-            .replace(Regex("[\\s_№.\\-]+"), "")
+            // Keep the № symbol: it is a real route-table header alias.
+            .replace(Regex("[\\s_.\\-]+"), "")
 }
