@@ -215,7 +215,11 @@ internal object RussianOcrEngine {
                 val prepared = prepareDocumentBitmap(source, adaptive)
                 return try {
                     api.setImage(prepared)
-                    api.getUTF8Text().orEmpty().trim()
+                    val plainText = api.getUTF8Text().orEmpty().trim()
+                    val geometryText = extractGeometryText(api)
+                    if (geometryText.isNotBlank() &&
+                        RussianOcrTextScoring.score(geometryText) > RussianOcrTextScoring.score(plainText)
+                    ) geometryText else plainText
                 } finally {
                     prepared.recycle()
                 }
@@ -265,6 +269,35 @@ internal object RussianOcrEngine {
         } finally {
             api.recycle()
         }
+    }
+
+    /**
+     * Tesseract's iterator exposes word coordinates and confidence after text recognition.
+     * Reconstructing rows from these boxes preserves table gaps lost by getUTF8Text().
+     */
+    private fun extractGeometryText(api: TessBaseAPI): String {
+        val iterator = api.resultIterator
+        val words = mutableListOf<RussianOcrWord>()
+        try {
+            iterator.begin()
+            do {
+                val text = iterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_WORD).orEmpty()
+                val box = iterator.getBoundingBox(TessBaseAPI.PageIteratorLevel.RIL_WORD)
+                if (box.size >= 4 && text.isNotBlank()) {
+                    words += RussianOcrWord(
+                        text = text,
+                        left = box[0],
+                        top = box[1],
+                        width = box[2] - box[0],
+                        height = box[3] - box[1],
+                        confidence = iterator.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD)
+                    )
+                }
+            } while (iterator.next(TessBaseAPI.PageIteratorLevel.RIL_WORD))
+        } finally {
+            iterator.delete()
+        }
+        return RussianOcrGeometryText.reconstruct(words)
     }
 
     private fun rotate(source: Bitmap, degrees: Int): Bitmap {
