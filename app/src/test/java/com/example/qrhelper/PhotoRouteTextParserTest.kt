@@ -321,4 +321,22 @@ class PhotoRouteTextParserTest {
         assertEquals(10, groups.first().size)
     }
 
+    @Test fun doesNotTreatRussianAbbreviationUpAsStreetOrLegalEntity() {
+        val text = """
+            УП ПостоваловаЕАаБАКОцЕИ ЕЕ 5
+            г. Калуга, ул. Кирова, д. 12
+        """.trimIndent()
+        assertEquals(listOf("г. Калуга, ул. Кирова, д. 12"), PhotoRouteTextParser.extractCandidates(text, "Калуга"))
+        assertEquals("", PhotoRouteTextParser.extractMetadata(text, "г. Калуга, ул. Кирова, д. 12").storeName)
+    }
+
+    @Test fun preservesFullLegibleStoreNameInsteadOfTruncatingLongLastWord() {
+        assertEquals("Павильон Калуга жарит пекарня",
+            PhotoRouteTextParser.cleanStoreName("Павильон Калуга жарит пекарня"))
+    }
+
+    @Test fun removesBarcodeSuffixWithoutDeletingStoreName() {
+        assertEquals("Шаурма", PhotoRouteTextParser.cleanStoreName("Шаурма x1pe-6001230285"))
+    }
+
 }
