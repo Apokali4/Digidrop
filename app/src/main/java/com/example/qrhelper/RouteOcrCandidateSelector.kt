@@ -82,13 +82,13 @@ internal object RouteOcrCandidateSelector {
         val readableNames = items.count {
             PhotoRouteTextParser.cleanDetectedStoreName(it.storeName).isNotBlank()
         }
-        val coverage = validAddresses.toDouble() / items.size
-        // Prefer useful row coverage, but don't silently replace a mostly complete
-        // result with a tiny fragment just because one row needs address review.
-        // The common import gate rejects uncertain rows before saving the route.
+        // A single uncertain row must not make us discard an otherwise complete
+        // route. Penalize multiple uncertain rows progressively: this preserves a
+        // 27th delivery for manual address review, while rejecting a much larger
+        // OCR candidate polluted by many fragments or false street matches.
+        val uncertaintyPenalty = invalidAddresses * (invalidAddresses - 1).coerceAtLeast(0) * 10
         return validAddresses * 1_000 -
-            invalidAddresses * 1_000 +
-            (coverage * 1_000).toInt() +
+            uncertaintyPenalty +
             readableNames * 10 +
             items.size.coerceAtMost(10_000)
     }
