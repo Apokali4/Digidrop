@@ -1194,6 +1194,9 @@ fun PhotoRoutePlannerScreen(
     val rowsNeedingNumericReview = remember(rawText, routeCity) {
         PhotoRouteTableParser.parse(rawText, routeCity).filter { it.numericReviewFields.isNotEmpty() }
     }
+    val rowsNeedingCashReview = remember(rawText, routeCity) {
+        PhotoRouteTableParser.parse(rawText, routeCity).filter { it.cashReviewFields.isNotEmpty() }
+    }
     var routeOrigin by remember { mutableStateOf<LocatedPhotoStop?>(null) }
     var status by remember { mutableStateOf("Сфотографируйте маршрутный лист. Русский текст распознаётся на устройстве.") }
     var busy by remember { mutableStateOf(false) }
@@ -1535,6 +1538,29 @@ fun PhotoRoutePlannerScreen(
                         Text(
                             listOf(row.pointNumber, row.organization).filter(String::isNotBlank).joinToString(" • ") +
                                 ": " + row.numericReviewFields.joinToString(", "),
+                            color = palette.onSurface,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        if (rowsNeedingCashReview.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ПРОВЕРИТЬ ИНКАССАЦИЮ: ${rowsNeedingCashReview.size}",
+                        color = palette.error, style = MaterialTheme.typography.titleSmall)
+                    Text("Суммы оставлены как в распознанном тексте. Сверьте неоднозначные цифры с фотографией, ничего автоматически не исправлялось.",
+                        color = palette.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    rowsNeedingCashReview.forEach { row ->
+                        Text(
+                            listOf(row.pointNumber, row.organization).filter(String::isNotBlank).joinToString(" • ") +
+                                ": " + row.cashReviewFields.joinToString(", "),
                             color = palette.onSurface,
                             style = MaterialTheme.typography.bodySmall
                         )
