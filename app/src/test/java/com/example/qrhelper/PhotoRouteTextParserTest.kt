@@ -621,4 +621,42 @@ class PhotoRouteTextParserTest {
         assertEquals(listOf("1", "Магазин Север", "Калуга, ул. Победы, д. 2", "3400", "Молоко 2.5%"), row.rawCells)
     }
 
+
+    @Test fun geometryOcrGroupsWordsByVerticalPositionAndKeepsColumnGaps() {
+        val text = RussianOcrGeometryText.reconstruct(
+            listOf(
+                RussianOcrWord("№", 10, 10, 12, 20, 96f),
+                RussianOcrWord("Адрес", 180, 11, 45, 20, 94f),
+                RussianOcrWord("Коробки", 360, 10, 60, 20, 91f),
+                RussianOcrWord("1", 12, 50, 8, 18, 99f),
+                RussianOcrWord("Калуга", 180, 51, 48, 18, 93f),
+                RussianOcrWord("12", 360, 50, 18, 18, 88f)
+            )
+        )
+        assertEquals("№\\tАдрес\\tКоробки\\n1\\tКалуга\\t12", text)
+    }
+
+    @Test fun geometryOcrKeepsWordsInReadingOrderAndDoesNotMergeSeparateRows() {
+        val text = RussianOcrGeometryText.reconstruct(
+            listOf(
+                RussianOcrWord("Вторая", 120, 42, 42, 18, 90f),
+                RussianOcrWord("Первая", 10, 10, 40, 18, 90f),
+                RussianOcrWord("строка", 170, 43, 40, 18, 90f),
+                RussianOcrWord("строка", 60, 11, 40, 18, 90f)
+            )
+        )
+        assertEquals("Первая строка\\nВторая строка", text)
+    }
+
+    @Test fun geometryOcrIgnoresBlankWordsAndInvalidBoxes() {
+        val text = RussianOcrGeometryText.reconstruct(
+            listOf(
+                RussianOcrWord(" ", 0, 0, 10, 10, 90f),
+                RussianOcrWord("битое", 0, 0, 0, 10, 90f),
+                RussianOcrWord("Адрес", 10, 10, 40, 18, 90f)
+            )
+        )
+        assertEquals("Адрес", text)
+    }
+
 }
