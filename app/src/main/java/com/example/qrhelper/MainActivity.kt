@@ -3294,7 +3294,9 @@ fun RouteListScreen(
                             ) {
                                 if (point.address.isNotBlank()) {
                                     Text(
-                                        formatCompactRouteAddress(point.address),
+                                        if (point.address.contains("Калуга", ignoreCase = true))
+                                            formatCompactRouteAddress(point.address)
+                                        else "Калуга, ${formatCompactRouteAddress(point.address)}",
                                         modifier = Modifier.weight(1f),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodySmall,
