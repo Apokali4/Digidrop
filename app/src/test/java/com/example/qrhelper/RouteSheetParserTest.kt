@@ -5,6 +5,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RouteSheetParserTest {
+    @Test fun keepsStoreHoursSeparateFromDeliveryWindowInRouteSheet() {
+        val text = listOf(
+            "№\tКлиент\tАдрес\tВремя работы\tОкно доставки",
+            "1\tМагазин Север\tКалуга, ул. Победы, д. 2\t08:00-22:00\t09:00-11:00"
+        ).joinToString("\n")
+
+        val item = RouteSheetParser.parse(text).single()
+
+        assertEquals("08:00-22:00", item.workingHours)
+        assertEquals("09:00-11:00", item.timeSlot)
+    }
+
     @Test fun parsesDispatchRouteRowsWithoutCargoBarcodeOrQuantity() {
         val text = """
             Задание на отгрузку №Л00000006924
