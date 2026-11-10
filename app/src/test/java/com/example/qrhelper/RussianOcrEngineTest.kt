@@ -46,7 +46,7 @@ class RussianOcrEngineTest {
 
         val merged = RussianOcrCandidateMerger.merge(listOf(firstPass, stripPass))
         val numbers = merged.lineSequence().mapNotNull {
-            Regex("""^\\s*(\\d{1,3})[.)]?\\s+""").find(it)?.groupValues?.get(1)?.toIntOrNull()
+            Regex("""^\s*(\d{1,3})[.)]?\s+""").find(it)?.groupValues?.get(1)?.toIntOrNull()
         }.toList()
 
         assertEquals(listOf(1, 2, 3), numbers)
