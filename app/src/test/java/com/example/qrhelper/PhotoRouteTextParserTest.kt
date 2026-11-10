@@ -392,4 +392,52 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    @Test fun photoRouteImportOnlyAcceptsAddressesInsideNumberedCustomerRows() {
+        val text = """
+            Задание на отгрузку №Л00000006924
+            г. Калуга, ул. Ленина, д. 13
+            1 1708 Балтика ПК ООО г. Калуга, ул. Врубовая, д. 2, Бристоль
+            2 1646 Альфа Рязань ООО г. Калуга, ул. Никитиной, д. 21Б
+            Итого: 2 точки
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Врубовая, д. 2",
+                "г. Калуга, ул. Никитиной, д. 21Б"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
+    @Test fun photoRouteImportDoesNotInventAddressFromUnnumberedStreetMention() {
+        val text = """
+            Маршрут № 18
+            ул. Ленина, д. 13
+            Итого 19 мест
+            1 1708 Балтика ПК ООО г. Калуга, ул. Врубовая, д. 2
+        """.trimIndent()
+
+        assertEquals(
+            listOf("г. Калуга, ул. Врубовая, д. 2"),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
+    @Test fun photoRouteImportKeepsWrappedHouseNumberInsideItsNumberedRow() {
+        val text = """
+            1 1708 Балтика ПК ООО г. Калуга, ул. Врубовая,
+            д. 2, Бристоль
+            2 1646 Альфа Рязань ООО г. Калуга, ул. Никитиной, д. 21
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Врубовая, д. 2",
+                "г. Калуга, ул. Никитиной, д. 21"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
 }
