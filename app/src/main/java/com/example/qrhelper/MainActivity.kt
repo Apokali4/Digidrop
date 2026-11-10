@@ -1498,7 +1498,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                             if (point.latitude != null && point.longitude != null) PhotoRouteCoordinate(point.latitude, point.longitude) else null
                         }
                     }
-                    val nextSegments = if (coords.size == pending.size && coords.size >= 2)
+                    val nextSegments = if (coords.size == pending.size && coords.size >= 1)
                         PhotoRouteNavigationUrls.yandexSegments(coords) else emptyList()
                     val chosen = nextSegments.getOrNull(index) ?: segment
                     openYandexNavigator(context, chosen, startsFromPreviousStop = false)
@@ -3351,7 +3351,7 @@ fun RouteListScreen(
                             val readySegments = if (
                                 missingCount == 0 &&
                                 allCoordinates.size == pendingGroups.size &&
-                                allCoordinates.size >= 2
+                                allCoordinates.size >= 1
                             ) PhotoRouteNavigationUrls.yandexSegments(allCoordinates) else emptyList()
                             if (readySegments.isNotEmpty()) {
                                 navigationSegmentCount = readySegments.size
@@ -3373,7 +3373,7 @@ fun RouteListScreen(
                                 ).show()
                             }
                         }
-                    }, enabled = pendingGroups.size >= 2, modifier = Modifier.fillMaxWidth().height(46.dp),
+                    }, enabled = pendingGroups.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(46.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(13.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
