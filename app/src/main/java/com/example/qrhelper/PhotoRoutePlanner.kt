@@ -141,7 +141,7 @@ internal object PhotoRouteTableParser {
     private fun detectHeader(cells: List<String>): Map<Column, Int>? {
         val found = mutableMapOf<Column, Int>()
         cells.forEachIndexed { index, raw ->
-            val value = raw.trim().trim(':', '.', '#').replace(Regex("""\\\s+"""), " ")
+            val value = raw.trim().trim(':', '.', '#').replace(Regex("""\s+"""), " ")
             aliases.entries.firstOrNull { (_, patterns) -> patterns.any { it.matches(value) } }
                 ?.key?.let { found.putIfAbsent(it, index) }
         }
