@@ -73,6 +73,7 @@ internal object RouteSheetParser {
                 note = metadata.comment.ifBlank { "Доставка по маршрутному списку" },
                 ownerName = metadata.ownerName,
                 workingHours = metadata.workingHours,
+                timeSlot = metadata.timeSlot,
                 cashNote = metadata.cashNote,
                 extraComment = metadata.comment
             )
