@@ -1695,7 +1695,8 @@ fun PhotoRoutePlannerScreen(
                             ownerName = delivery.ownerName,
                             workingHours = delivery.workingHours,
                             cashNote = delivery.cashNote,
-                            extraComment = delivery.comment
+                            extraComment = (listOf(delivery.comment) + delivery.extraColumns)
+                                .filter(String::isNotBlank).joinToString(" • ")
                         )
                     }
                 }
