@@ -1085,7 +1085,12 @@ fun PhotoRoutePlannerScreen(
                     phone = metadata.optString("phone"),
                     workingHours = metadata.optString("workingHours"),
                     cashNote = metadata.optString("cashNote"),
-                    comment = metadata.optString("comment")
+                    comment = metadata.optString("comment"),
+                    customerCode = metadata.optString("customerCode"),
+                    pointNumber = metadata.optString("pointNumber"),
+                    packageCount = metadata.optInt("packageCount"),
+                    placeCount = metadata.optInt("placeCount"),
+                    invoiceNumber = metadata.optString("invoiceNumber")
                 ),
                 additionalDeliveries = item.optJSONArray("additionalDeliveries")?.let { deliveries ->
                     (0 until deliveries.length()).mapNotNull { deliveryIndex ->
@@ -1096,7 +1101,12 @@ fun PhotoRoutePlannerScreen(
                                 phone = delivery.optString("phone"),
                                 workingHours = delivery.optString("workingHours"),
                                 cashNote = delivery.optString("cashNote"),
-                                comment = delivery.optString("comment")
+                                comment = delivery.optString("comment"),
+                                customerCode = delivery.optString("customerCode"),
+                                pointNumber = delivery.optString("pointNumber"),
+                                packageCount = delivery.optInt("packageCount"),
+                                placeCount = delivery.optInt("placeCount"),
+                                invoiceNumber = delivery.optString("invoiceNumber")
                             )
                         }
                     }
@@ -1142,6 +1152,11 @@ fun PhotoRoutePlannerScreen(
                         put("workingHours", stop.metadata.workingHours)
                         put("cashNote", stop.metadata.cashNote)
                         put("comment", stop.metadata.comment)
+                        put("customerCode", stop.metadata.customerCode)
+                        put("pointNumber", stop.metadata.pointNumber)
+                        put("packageCount", stop.metadata.packageCount)
+                        put("placeCount", stop.metadata.placeCount)
+                        put("invoiceNumber", stop.metadata.invoiceNumber)
                     })
                     put("additionalDeliveries", org.json.JSONArray().apply {
                         stop.additionalDeliveries.forEach { delivery ->
@@ -1152,6 +1167,11 @@ fun PhotoRoutePlannerScreen(
                                 put("workingHours", delivery.workingHours)
                                 put("cashNote", delivery.cashNote)
                                 put("comment", delivery.comment)
+                                put("customerCode", delivery.customerCode)
+                                put("pointNumber", delivery.pointNumber)
+                                put("packageCount", delivery.packageCount)
+                                put("placeCount", delivery.placeCount)
+                                put("invoiceNumber", delivery.invoiceNumber)
                             })
                         }
                     })
@@ -1412,7 +1432,9 @@ fun PhotoRoutePlannerScreen(
             OutlinedTextField(rawText, { rawText = it }, label = { Text("Распознанный текст") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp), minLines = 4)
             PhotoPlannerTile("Повторно выделить адреса", "Перестроить список по исправленному тексту") {
-                addresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
+                val rows = PhotoRouteTableParser.parse(rawText, routeCity)
+                addresses = if (rows.isNotEmpty()) rows.map { it.address }
+                    else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
                 located = emptyList()
                 routeOrigin = null
                 status = "Найдено адресов: ${addresses.size}."
@@ -1484,10 +1506,13 @@ fun PhotoRoutePlannerScreen(
                             barcode = "",
                             storeName = delivery.storeName.ifBlank { "Точка ${index + 1}" },
                             address = stop.address,
-                            itemName = delivery.ownerName.takeIf(String::isNotBlank)
-                                ?.let { "Доставка по маршрутному листу • $it" }
-                                ?: "Доставка по маршрутному листу • запись ${deliveryIndex + 1}",
-                            totalBoxes = 0,
+                            itemName = buildString {
+                                append(delivery.ownerName.ifBlank { "Доставка по маршрутному листу" })
+                                if (delivery.customerCode.isNotBlank()) append(" • код ${delivery.customerCode}")
+                                if (delivery.invoiceNumber.isNotBlank()) append(" • накладная ${delivery.invoiceNumber}")
+                                if (delivery.placeCount > 0) append(" • мест: ${delivery.placeCount}")
+                            },
+                            totalBoxes = delivery.packageCount,
                             phone = delivery.phone,
                             note = delivery.comment.ifBlank { "Импортировано из маршрутного листа" },
                             latitude = stop.latitude,
