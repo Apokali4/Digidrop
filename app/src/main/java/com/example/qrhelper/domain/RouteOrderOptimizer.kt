@@ -34,7 +34,10 @@ object RouteOrderOptimizer {
         val completed = stops.filter { it.completed }
         val pending = stops.filterNot { it.completed }
         if (pending.size < 2 || pending.any { !it.hasValidCoordinates() }) return stops
-        val start = pending.first()
+        val lastCompleted = completed.lastOrNull()?.takeIf { it.hasValidCoordinates() }
+        val start = lastCompleted?.let { origin ->
+            pending.minByOrNull { distanceMeters(origin, it) }
+        } ?: pending.first()
         return completed + improveTwoOpt(nearestNeighbor(pending, start), start)
     }
 
