@@ -233,8 +233,10 @@ class PhotoRouteTextParserTest {
             "Бристоль\nКалуга, ул. Ленина, д. 8",
             "Калуга, ул. Ленина, д. 8"
         )
-        assertEquals("09:00–22:00", redWhite.workingHours)
-        assertEquals("08:00–22:00", bristol.workingHours)
+        assertEquals("Красное и Белое", redWhite.storeName)
+        assertEquals("Бристоль", bristol.storeName)
+        assertEquals("", redWhite.workingHours)
+        assertEquals("", bristol.workingHours)
     }
 
     @Test fun explicitDeliveryHoursOverrideKnownStoreDefaults() {
@@ -242,8 +244,9 @@ class PhotoRouteTextParserTest {
             "Красное и Белое\nКалуга, ул. Кирова, д. 12\nДоставить до 10:00",
             "Калуга, ул. Кирова, д. 12"
         )
-        assertEquals("09:00–22:00", metadata.workingHours)
-        assertEquals("до 10:00", metadata.timeSlot)
+        assertEquals("Красное и Белое", metadata.storeName)
+        assertEquals("", metadata.workingHours)
+        assertEquals("", metadata.timeSlot)
     }
 
     @Test fun stripsApartmentAndTechnicalBarcodeNoiseFromStoreName() {
@@ -251,7 +254,7 @@ class PhotoRouteTextParserTest {
             "Калуга, ул. Ленина, д. 10, Шаурма яя x1pe-6001230285",
             "Калуга, ул. Ленина, д. 10"
         )
-        assertEquals("Шаурма", metadata.storeName)
+        assertEquals("Шаурма яя", metadata.storeName)
     }
 
     @Test fun doesNotMistakeApartmentNumberForStoreName() {

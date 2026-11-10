@@ -454,6 +454,10 @@ internal object PhotoRouteTextParser {
         if (Regex("""(?iu)^(?:пом\.?|помещение|подъезд|офис|кв\.?|квартира)\s*№?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
         if (Regex("""(?iu)^(?:точка|магазин|объект)\s*#?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
         if (cleaned.all(Char::isDigit) || streetHint.containsMatchIn(cleaned)) return ""
+        if (cleaned.count { it == '(' } != cleaned.count { it == ')' }) return ""
+        if (cleaned.count { it == '"' } % 2 != 0 ||
+            cleaned.count { it == '«' } != cleaned.count { it == '»' }
+        ) return ""
         if (Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){8,}(?!\d)""").containsMatchIn(cleaned)) return ""
         if (Regex("""(?iu)\b(?:достав\w*|доставиа|забрать|инкассац\w*|оплат\w*)\b""").containsMatchIn(cleaned)) return ""
         return cleaned
@@ -637,10 +641,19 @@ internal object PhotoRouteTextParser {
             .filter { (_, line) -> Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(line) }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
         val suffixName = afterHouse
-            .takeIf { isPlausibleStoreSuffix(it) && !legalPattern.containsMatchIn(it) }
-        // Keep the printed recipient exactly as OCR read it. IP/sole proprietor
-        // lines are valid recipient names, not metadata to be discarded.
-        val store = cleanDetectedStoreName(suffixName ?: owner.ifBlank { companyLine })
+            .takeIf { isPlausibleStoreSuffix(it) }
+        val recipientLine = if (index >= 0) {
+            (index - 1 downTo (previousAddress + 1).coerceAtMost(index - 1))
+                .asSequence()
+                .map { lines[it] }
+                .firstOrNull(::isPlausibleStoreSuffix)
+        } else null
+        // Prefer the recipient written beside the address. If it is on the
+        // preceding line, stay inside this address block so a previous/next
+        // delivery can never donate its store name.
+        val store = cleanDetectedStoreName(
+            suffixName ?: recipientLine ?: owner.ifBlank { companyLine }
+        )
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex
@@ -650,11 +663,6 @@ internal object PhotoRouteTextParser {
                 (instructionPattern.containsMatchIn(line) ||
                     line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
         }.map { it.value }.distinct().joinToString("; ")
-        val defaultHours = when (store) {
-            "Красное и Белое" -> "09:00–22:00"
-            "Бристоль" -> "08:00–22:00"
-            else -> ""
-        }
         val displayName = store.ifBlank {
             owner.takeIf { it.startsWith("ИП", ignoreCase = true) }.orEmpty()
         }
@@ -662,7 +670,7 @@ internal object PhotoRouteTextParser {
             storeName = displayName,
             ownerName = owner,
             phone = phone,
-            workingHours = hours.ifBlank { defaultHours },
+            workingHours = hours,
             timeSlot = deliveryWindow,
             cashNote = cash,
             comment = comment
