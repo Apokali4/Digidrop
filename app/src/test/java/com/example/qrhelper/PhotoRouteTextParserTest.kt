@@ -506,7 +506,7 @@ class PhotoRouteTextParserTest {
                 add("ООО Получатель $index, Калуга, ул. Новая, д. ${index + 1}")
             }
         }
-        val text = rows.joinToString("\\n")
+        val text = rows.joinToString("\n")
         val extracted = PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
         val grouped = groupPhotoRouteAddresses(extracted)
 
