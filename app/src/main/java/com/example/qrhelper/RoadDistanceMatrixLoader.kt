@@ -6,8 +6,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * Fetches a directed OSRM distance table for a small route.
+/** [build-apk] Fetches a directed OSRM distance table for a small route.
  * This is called only after the driver explicitly taps Optimize.
  */
 internal object RoadDistanceMatrixLoader {
