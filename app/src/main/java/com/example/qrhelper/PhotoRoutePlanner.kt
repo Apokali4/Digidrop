@@ -1330,8 +1330,11 @@ fun PhotoRoutePlannerScreen(
     val rowsNeedingAddressReview = remember(parsedRouteRows) {
         parsedRouteRows.filter { it.address.isBlank() }
     }
-    val unnumberedOcrEvidence = remember(parsedRouteRows) {
-        PhotoRouteUnnumberedEvidence.collect(parsedRouteRows)
+    val unnumberedOcrEvidence: List<String> = remember(parsedRouteRows) {
+        parsedRouteRows
+            .flatMap { row -> row.extraColumns }
+            .filter { evidence -> evidence.startsWith("Строка без номера точки/клиента пропущена:") }
+            .distinct()
     }
     val missingPointNumbers = remember(rawText, routeCity) {
         RouteNumberingAudit.missingPointNumbers(PhotoRouteTableParser.parse(rawText, routeCity))
