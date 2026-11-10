@@ -3155,27 +3155,32 @@ fun RouteListScreen(
                                 }
                             }
                             val missingCount = pendingGroups.size - allCoordinates.size
-                            if (missingCount > 0) {
-                                val missingAddresses = pendingGroups.mapNotNull { group ->
-                                    group.firstOrNull()?.takeIf { point -> point.latitude == null || point.longitude == null || !PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга") }?.address
-                                }
-                                Toast.makeText(
-                                    context,
-                                    "Не удалось определить координаты для $missingCount точек. Маршрут не отправлен: ${missingAddresses.take(2).joinToString("; ")}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            } else if (allCoordinates.size >= 2) {
-                                val readySegments = allCoordinates.map { listOf(it) }
+                            val readySegments = allCoordinates.map { listOf(it) }
+                            if (readySegments.isNotEmpty()) {
                                 navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
                                 onNavigateSegment(chosenIndex, readySegments[chosenIndex])
                                 navigationSegmentIndex = nextNavigationSegmentIndex(chosenIndex, readySegments.size)
+                                if (missingCount > 0) {
+                                    val missingAddresses = pendingGroups.mapNotNull { group ->
+                                        group.firstOrNull()?.takeIf { point ->
+                                            point.latitude == null || point.longitude == null ||
+                                                !PhotoRouteGeocodingQuery.isWithinSelectedCity(point.latitude, point.longitude, "Калуга")
+                                        }?.address
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        "Открыта точка с подтверждёнными координатами. Не определены ещё $missingCount из ${pendingGroups.size}: ${missingAddresses.take(2).joinToString("; ")}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                             } else {
-                                val nextAddress = pendingGroups.firstOrNull()?.firstOrNull()?.address.orEmpty()
-                                Toast.makeText(context,
-                                    if (nextAddress.isNotBlank()) "Не удалось определить координаты маршрута. Проверьте адрес: $nextAddress"
-                                    else "Нужны минимум две незавершённые точки",
-                                    Toast.LENGTH_LONG).show()
+                                val missingAddresses = pendingGroups.mapNotNull { it.firstOrNull()?.address }
+                                Toast.makeText(
+                                    context,
+                                    "Координаты не найдены ни для одной точки. Проверьте адреса в Яндекс Картах: ${missingAddresses.take(2).joinToString("; ")}",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }, enabled = pendingGroups.size >= 2, modifier = Modifier.fillMaxWidth().height(46.dp),
