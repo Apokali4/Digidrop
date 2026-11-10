@@ -48,8 +48,8 @@ class RouteEditorLogicTest {
 
     @Test fun updatesPointMetadataAcrossCargoRowsWithoutChangingDeliveryProgress() {
         val rows = listOf(
-            item("Старый магазин", "Старый адрес", "a", "Молоко", scanned = 2),
-            item("Старый магазин", "Старый адрес", "b", "Хлеб", scanned = 1),
+            item("Старый магазин", "Старый адрес", "a", "Молоко", scanned = 2).copy(timeSlot = "09:00-11:00"),
+            item("Старый магазин", "Старый адрес", "b", "Хлеб", scanned = 1).copy(timeSlot = "13:00-15:00"),
             item("Другой", "Адрес 2", "c", "Вода")
         )
         val updated = updateRoutePointDetails(
@@ -72,6 +72,8 @@ class RouteEditorLogicTest {
         assertEquals(listOf("Новый магазин", "Новый магазин", "Другой"), updated.map { it.storeName })
         assertEquals(listOf(2, 1, 0), updated.map { it.scannedBoxes })
         assertEquals(listOf("a", "b", "c"), updated.map { it.barcode })
+        assertEquals(listOf("09:00-11:00", "13:00-15:00", ""), updated.map { it.timeSlot })
+        assertEquals(listOf("09:00-18:00", "09:00-18:00"), updated.take(2).map { it.workingHours })
         assertEquals("+7999", updated.first().phone)
         assertEquals("ИП Иванов", updated.lastOrNull { it.barcode == "b" }?.ownerName)
         assertEquals(54.5, updated.first().latitude!!, 0.0001)

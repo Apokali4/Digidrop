@@ -111,7 +111,7 @@ class RouteImportMapperTest {
         val cargo = point.cargo.single()
         assertEquals("Въезд со двора", cargo.note)
         assertEquals("Иванов", cargo.ownerName)
-        assertEquals("09:00-18:00", cargo.workingHours)
+        assertEquals("09:00-18:00", point.workingHours)
         assertEquals("Забрать документы", cargo.cashNote)
         assertEquals("Позвонить заранее", cargo.extraComment)
     }
@@ -132,8 +132,8 @@ class RouteImportMapperTest {
 
         val point = RouteImportMapper.map(items).single()
 
+        assertEquals("08:00-22:00", point.workingHours)
         assertEquals(2, point.cargo.size)
-        assertEquals(listOf("08:00-22:00", "08:00-22:00"), point.cargo.map { it.workingHours })
         assertEquals(listOf("09:00-11:00", "13:00-15:00"), point.cargo.map { it.timeSlot })
     }
 
