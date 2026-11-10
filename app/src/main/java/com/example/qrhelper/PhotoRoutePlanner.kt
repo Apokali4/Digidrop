@@ -332,7 +332,7 @@ internal object PhotoRouteTextParser {
         address: String,
         occurrence: Int
     ): PhotoStopMetadata {
-        val normalizedText = text.replace("\\r\\n", "\\n").replace("\\n", "\\n").replace("\\r", "\\n")
+        val normalizedText = text.replace("\r\n", "\n").replace("\r", "\n")
         val lines = normalizedText.lineSequence().map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.isNotBlank() }.toList()
         val targetKey = canonicalAddressKey(address)
@@ -393,8 +393,10 @@ internal object PhotoRouteTextParser {
                 if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
             } else cleanStoreName(suffix)
         }
+        // OCR часто распознаёт название магазина отдельной строкой СРАЗУ ПОСЛЕ адреса.
+        // Ищем известный бренд по обе стороны адреса, но только внутри блока текущей точки.
         val brandNearby = block.withIndex()
-            .filter { (lineIndex, _) -> blockStart + lineIndex < index }
+            .filter { (_, line) -> line != anchor }
             .mapNotNull { (lineIndex, line) ->
                 brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
             }.minByOrNull { it.first }?.second
