@@ -74,4 +74,45 @@ class RouteOrderOptimizerTest {
         )
         assertEquals(3, RouteOrderOptimizer.alternatives(stops).size)
     }
+    @Test fun usesDirectedRoadDistancesInsteadOfStraightLineWhenProvided() {
+        val stops = listOf(
+            RouteStop("start", 0.0, 0.0, false),
+            RouteStop("nearByAir", 0.0, 0.1, false),
+            RouteStop("roadFast", 1.0, 1.0, false)
+        )
+        val roads = RouteDistanceMatrix(
+            mapOf(
+                ("start" to "nearByAir") to 9000.0,
+                ("start" to "roadFast") to 1000.0,
+                ("roadFast" to "nearByAir") to 1000.0,
+                ("nearByAir" to "roadFast") to 12000.0
+            )
+        )
+
+        assertEquals(
+            listOf("start", "roadFast", "nearByAir"),
+            RouteOrderOptimizer.optimize(stops, roads).map { it.id }
+        )
+    }
+
+    @Test fun choosesFirstStopByRoadDistanceFromLastCompletedPoint() {
+        val stops = listOf(
+            RouteStop("done", 0.0, 0.0, true),
+            RouteStop("nearByAir", 0.0, 0.01, false),
+            RouteStop("roadFast", 1.0, 1.0, false)
+        )
+        val roads = RouteDistanceMatrix(
+            mapOf(
+                ("done" to "nearByAir") to 8000.0,
+                ("done" to "roadFast") to 1000.0,
+                ("roadFast" to "nearByAir") to 1000.0
+            )
+        )
+
+        assertEquals(
+            listOf("done", "roadFast", "nearByAir"),
+            RouteOrderOptimizer.optimize(stops, roads).map { it.id }
+        )
+    }
+
 }
