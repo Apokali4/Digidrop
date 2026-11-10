@@ -494,10 +494,33 @@ internal fun openYandexNavigator(
 }
 
 internal object PhotoRouteGeocodingQuery {
+    private const val KALUGA_LATITUDE = 54.5138
+    private const val KALUGA_LONGITUDE = 36.2612
+    private const val KALUGA_MAX_RADIUS_KM = 45.0
+
     fun build(address: String, city: String): String {
         val cleanCity = city.trim()
-        return if (cleanCity.isEmpty()) address.trim()
+        if (cleanCity.isEmpty()) return address.trim()
+        return if (cleanCity.equals("Калуга", ignoreCase = true))
+            "${address.trim()}, г. Калуга, Калужская область, Россия"
         else "${address.trim()}, $cleanCity, Россия"
+    }
+
+    fun isWithinSelectedCity(latitude: Double, longitude: Double, city: String): Boolean {
+        if (!latitude.isFinite() || !longitude.isFinite() ||
+            latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return false
+        if (city.trim().equals("Калуга", ignoreCase = true)) {
+            val lat1 = Math.toRadians(KALUGA_LATITUDE)
+            val lat2 = Math.toRadians(latitude)
+            val dLat = lat2 - lat1
+            val dLon = Math.toRadians(longitude - KALUGA_LONGITUDE)
+            val a = kotlin.math.sin(dLat / 2).let { it * it } +
+                kotlin.math.cos(lat1) * kotlin.math.cos(lat2) *
+                kotlin.math.sin(dLon / 2).let { it * it }
+            val distanceKm = 6371.0 * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+            return distanceKm <= KALUGA_MAX_RADIUS_KM
+        }
+        return true
     }
 }
 
@@ -512,10 +535,12 @@ private suspend fun geocodePhotoStops(
     for (address in addresses) {
         try {
             val query = PhotoRouteGeocodingQuery.build(address, city)
-            val result = geocoder.getFromLocationName(query, 3)
+            val result = geocoder.getFromLocationName(query, 8)
+                ?.filter { candidate ->
+                    PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, city)
+                }
                 ?.minByOrNull { candidate ->
-                    // Prefer a result whose locality/sub-admin area matches the selected city.
-                    val locality = listOfNotNull(candidate.locality, candidate.subAdminArea, candidate.adminArea)
+                    val locality = listOfNotNull(candidate.locality, candidate.subAdminArea)
                         .joinToString(" ").lowercase(Locale("ru", "RU"))
                     if (city.isNotBlank() && locality.contains(city.trim().lowercase(Locale("ru", "RU")))) 0 else 1
                 }
