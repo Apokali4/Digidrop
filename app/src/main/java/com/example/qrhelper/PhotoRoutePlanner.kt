@@ -562,8 +562,21 @@ internal object PhotoRouteTextParser {
             Regex("""(?iu)до\s*\d{1,2}[:.]\d{2}"""),
             Regex("""(?iu)(?:с|после)\s*\d{1,2}[:.]\d{2}""")
         )
+        val deliveryLinePattern = Regex("""(?iu)(достав|доставка|привез|окно\s+доставки|интервал\s+доставки|при[её]м\s+товара)""")
+        val hoursLabelPattern = Regex("""(?iu)(время\s+работы|часы\s+работы|режим\s+работы|график\s+работы|работает|открыт)""")
+        val deliveryWindow = block.withIndex().mapNotNull { (lineIndex, line) ->
+            if (!deliveryLinePattern.containsMatchIn(line)) return@mapNotNull null
+            val value = line.substringAfter(Regex("""(?iu)(?:достав\w*|доставк\w*|привез\w*|окно\s+доставки|интервал\s+доставки|при[её]м\s+товара)\s*[:：-]?""").find(line)?.value.orEmpty())
+                .trim().ifBlank { line }
+            timePatterns.firstNotNullOfOrNull { it.find(value)?.value }?.let {
+                kotlin.math.abs(blockStart + lineIndex - index) to it
+            }
+        }.minByOrNull { it.first }?.second.orEmpty()
         val hours = block.withIndex().mapNotNull { (lineIndex, line) ->
-            timePatterns.firstNotNullOfOrNull { it.find(line)?.value }?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
+            if (deliveryLinePattern.containsMatchIn(line)) return@mapNotNull null
+            val time = timePatterns.firstNotNullOfOrNull { it.find(line)?.value } ?: return@mapNotNull null
+            val priority = if (hoursLabelPattern.containsMatchIn(line)) 0 else 1
+            (priority * 1000 + kotlin.math.abs(blockStart + lineIndex - index)) to time
         }.minByOrNull { it.first }?.second.orEmpty()
 
         val cash = block.withIndex()
@@ -591,6 +604,7 @@ internal object PhotoRouteTextParser {
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex
             absoluteIndex > index && absoluteIndex < nextAddress && line != cash &&
+                !deliveryLinePattern.containsMatchIn(line) &&
                 !(hours.isNotBlank() && line.contains(hours, ignoreCase = true)) &&
                 (instructionPattern.containsMatchIn(line) ||
                     line.contains("с ", ignoreCase = true) && Regex("""\d{1,2}[:.]\d{2}""").containsMatchIn(line))
@@ -603,7 +617,15 @@ internal object PhotoRouteTextParser {
         val displayName = store.ifBlank {
             owner.takeIf { it.startsWith("ИП", ignoreCase = true) }.orEmpty()
         }
-        return PhotoStopMetadata(displayName, owner, phone, hours.ifBlank { defaultHours }, cash, comment)
+        return PhotoStopMetadata(
+            storeName = displayName,
+            ownerName = owner,
+            phone = phone,
+            workingHours = hours.ifBlank { defaultHours },
+            timeSlot = deliveryWindow,
+            cashNote = cash,
+            comment = comment
+        )
     }
 }
 internal object PhotoOcrImageSizing {
