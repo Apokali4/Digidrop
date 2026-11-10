@@ -81,13 +81,13 @@ internal object PhotoRouteTableParser {
     private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, PACKAGES, PLACES, INVOICE, COMMENT }
     private val aliases = mapOf(
         Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
-        Column.CODE to listOf(Regex("""(?iu)^(?:код|кодs+клиента|кодs+торговойs+точки)$""")),
-        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговаяs+точка|магазин|наименование)$""")),
-        Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адресs+доставки|местоs+доставки|адресs+точки)$""")),
-        Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел.?|контакт|телефонs+контакта)$""")),
-        Column.PACKAGES to listOf(Regex("""(?iu)^(?:коробки|короб|кор.?|упаковки|упак.?|количествоs+коробок)$""")),
-        Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количествоs+мест|кол-воs+мест)$""")),
-        Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номерs+накладной|документ|№s*накладной)$""")),
+        Column.CODE to listOf(Regex("""(?iu)^(?:код|код\\s+клиента|код\\s+торговой\\s+точки)$""")),
+        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговая\\s+точка|магазин|наименование)$""")),
+        Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адрес\\s+доставки|место\\s+доставки|адрес\\s+точки)$""")),
+        Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел.?|контакт|телефон\\s+контакта)$""")),
+        Column.PACKAGES to listOf(Regex("""(?iu)^(?:коробки|короб|кор.?|упаковки|упак.?|количество\\s+коробок)$""")),
+        Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количество\\s+мест|кол-во\\s+мест)$""")),
+        Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номер\\s+накладной|документ|№\\s*накладной)$""")),
         Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент.?|примечание|примечания)$"""))
     )
 
@@ -134,7 +134,7 @@ internal object PhotoRouteTableParser {
     private fun detectHeader(cells: List<String>): Map<Column, Int>? {
         val found = mutableMapOf<Column, Int>()
         cells.forEachIndexed { index, raw ->
-            val value = raw.trim().trim(':', '.', '#').replace(Regex("""\s+"""), " ")
+            val value = raw.trim().trim(':', '.', '#').replace(Regex("""\\\s+"""), " ")
             aliases.entries.firstOrNull { (_, patterns) -> patterns.any { it.matches(value) } }
                 ?.key?.let { found.putIfAbsent(it, index) }
         }
