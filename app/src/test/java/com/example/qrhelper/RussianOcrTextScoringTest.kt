@@ -25,4 +25,10 @@ class RussianOcrTextScoringTest {
         val two = one + "\n2 1646 Альфа ООО г. Калуга, ул. Ленина, д. 8"
         assertTrue(RussianOcrTextScoring.score(two) > RussianOcrTextScoring.score(one))
     }
+
+    @Test fun numberedRouteRowsWithoutCustomerCodesStillCountAsRouteEvidence() {
+        val plain = RussianOcrTextScoring.score("Магазин Север г. Калуга, ул. Кирова, д. 8")
+        val numbered = RussianOcrTextScoring.score("1 Магазин Север г. Калуга, ул. Кирова, д. 8")
+        assertTrue(numbered > plain)
+    }
 }
