@@ -12,6 +12,44 @@ internal object RouteOcrCandidateSelector {
             .maxByOrNull(::qualityScore)
             .orEmpty()
 
+    /**
+     * Compare the header-based table parse with the independent free-text parse.
+     * A partially recognized table must not hide stops that the text parser found.
+     */
+    fun selectPhotoRouteAddresses(
+        tableRows: List<PhotoRouteDeliveryRow>,
+        recognizedText: String,
+        city: String
+    ): List<String> {
+        val tableCandidate = tableRows.mapIndexed { index, row ->
+            row.toRouteItem(index + 1)
+        }
+        val freeTextAddresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(
+            recognizedText,
+            city
+        )
+        val occurrences = mutableMapOf<String, Int>()
+        val freeTextCandidate = freeTextAddresses.mapIndexed { index, address ->
+            val key = PhotoRouteTextParser.canonicalAddressKey(address)
+            val occurrence = occurrences.getOrDefault(key, 0)
+            occurrences[key] = occurrence + 1
+            RouteItem(
+                barcode = "",
+                storeName = PhotoRouteTextParser.extractMetadataForOccurrence(
+                    recognizedText,
+                    address,
+                    occurrence
+                ).storeName,
+                address = address,
+                itemName = "",
+                totalBoxes = 0,
+                phone = ""
+            )
+        }
+        return select(listOf(tableCandidate, freeTextCandidate))
+            .map { it.address }
+    }
+
     fun invalidAddressRows(items: List<RouteItem>): List<RouteItem> =
         items.filterNot { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) }
 
