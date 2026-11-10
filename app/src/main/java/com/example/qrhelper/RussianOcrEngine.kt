@@ -76,6 +76,63 @@ internal object RussianOcrTextScoring {
     }
 }
 
+/**
+ * Combines complementary OCR passes. The strongest pass is the base document;
+ * rows found only by weaker passes are restored with their nearby context.
+ * Repeated deliveries at the same address in the base document remain repeated.
+ */
+internal object RussianOcrCandidateMerger {
+    fun merge(candidates: List<String>): String {
+        val ranked = candidates.map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .sortedByDescending(RussianOcrTextScoring::score)
+        if (ranked.isEmpty()) return ""
+
+        val output = ranked.first().lineSequence().toMutableList()
+        val baseCounts = mutableMapOf<String, Int>()
+        output.forEach { line ->
+            PhotoRouteTextParser.extractRouteAddressRows(line).firstOrNull()?.let { address ->
+                val key = PhotoRouteTextParser.canonicalAddressKey(address)
+                baseCounts[key] = (baseCounts[key] ?: 0) + 1
+            }
+        }
+        val normalizedLines = output.mapTo(mutableSetOf()) { normalizeOcrLine(it) }
+
+        for (candidate in ranked.drop(1)) {
+            val lines = candidate.lines()
+            val seenCounts = mutableMapOf<String, Int>()
+            lines.forEachIndexed { index, line ->
+                val address = PhotoRouteTextParser.extractRouteAddressRows(line).firstOrNull()
+                    ?: return@forEachIndexed
+                val key = PhotoRouteTextParser.canonicalAddressKey(address)
+                val occurrence = (seenCounts[key] ?: 0) + 1
+                seenCounts[key] = occurrence
+                if (occurrence <= (baseCounts[key] ?: 0)) return@forEachIndexed
+
+                val previousAddress = lines.indices.lastOrNull { it < index &&
+                    PhotoRouteTextParser.extractRouteAddressRows(lines[it]).isNotEmpty() } ?: -1
+                val nextAddress = lines.indices.firstOrNull { it > index &&
+                    PhotoRouteTextParser.extractRouteAddressRows(lines[it]).isNotEmpty() } ?: lines.size
+                val blockStart = maxOf(previousAddress + 1, index - 2)
+                val blockEnd = minOf(nextAddress, index + 5)
+                for (blockIndex in blockStart until blockEnd) {
+                    val recovered = lines[blockIndex].trim()
+                    val normalized = normalizeOcrLine(recovered)
+                    if (normalized.isNotBlank() && normalizedLines.add(normalized)) output += recovered
+                }
+                baseCounts[key] = occurrence
+            }
+        }
+        return output.joinToString("\n")
+    }
+
+    private fun normalizeOcrLine(value: String): String =
+        value.lowercase(java.util.Locale("ru", "RU"))
+            .replace('ё', 'е')
+            .filter(Char::isLetterOrDigit)
+}
+
 /** Shared on-device Russian OCR engine for photo route sheets and scanned PDF invoices. */
 internal object RussianOcrEngine {
     suspend fun recognizeUri(
@@ -154,11 +211,7 @@ internal object RussianOcrEngine {
                         try {
                             api.setImage(prepared)
                             val text = api.getUTF8Text().orEmpty().trim()
-                            val score = RussianOcrTextScoring.score(text)
-                            if (score > bestScore) {
-                                bestScore = score
-                                bestText = text
-                            }
+                            if (text.isNotBlank()) candidates += text
                         } finally {
                             prepared.recycle()
                         }
@@ -167,8 +220,9 @@ internal object RussianOcrEngine {
                     if (oriented !== bitmap) oriented.recycle()
                 }
             }
-            check(bestText.isNotBlank()) { "Не удалось распознать текст ни в одной ориентации" }
-            bestText
+            val mergedText = RussianOcrCandidateMerger.merge(candidates)
+            check(mergedText.isNotBlank()) { "Не удалось распознать текст ни в одной ориентации" }
+            mergedText
         } finally {
             api.recycle()
         }
