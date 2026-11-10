@@ -15,9 +15,27 @@ internal object RouteOcrCandidateSelector {
     fun invalidAddressRows(items: List<RouteItem>): List<RouteItem> =
         items.filterNot { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) }
 
+    fun unresolvedRowsFromLargerCandidate(
+        candidates: List<List<RouteItem>>,
+        selected: List<RouteItem>
+    ): List<RouteItem> {
+        if (selected.isEmpty()) return emptyList()
+        val selectedValid = selected.count { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) }
+        val minimumExtraRows = maxOf(3, selected.size / 2)
+        val largerCandidate = candidates
+            .filter { it.size >= selected.size + minimumExtraRows }
+            .filter { candidate ->
+                candidate.count { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) } <= selectedValid + 1
+            }
+            .maxByOrNull { it.size }
+            ?: return emptyList()
+        return invalidAddressRows(largerCandidate)
+    }
+
     fun sanitizeStoreNames(items: List<RouteItem>): List<RouteItem> =
         items.map { item ->
-            item.copy(storeName = PhotoRouteTextParser.cleanDetectedStoreName(item.storeName))
+            val cleaned = PhotoRouteTextParser.cleanDetectedStoreName(item.storeName)
+            item.copy(storeName = cleaned.ifBlank { "Проверить название" })
         }
 
     private fun qualityScore(items: List<RouteItem>): Int {

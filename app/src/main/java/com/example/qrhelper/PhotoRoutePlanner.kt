@@ -519,8 +519,10 @@ internal object PhotoRouteTextParser {
         if (cleaned.count { it == '(' } != cleaned.count { it == ')' }) return ""
         if (cleaned.count { it == '"' } % 2 != 0 || cleaned.count { it == '«' } != cleaned.count { it == '»' }) return ""
         if (Regex("""(?iu)\b\d{4,}\b""").containsMatchIn(cleaned)) return ""
+        if (Regex("""(?iu)\b(?:достав\w*|доставиа|забрать|инкассац\w*|оплат\w*)\b""").containsMatchIn(cleaned)) return ""
+        if (Regex("""(?iu)\b(?:кция|тез)\b""").containsMatchIn(cleaned)) return ""
         if (Regex("""[^\p{L}\p{N}\s.&()/-]""").containsMatchIn(cleaned)) return ""
-        return cleaned
+        return brandFromLine(cleaned) ?: cleaned
     }
 
     internal fun canonicalAddressKey(address: String): String {
@@ -934,6 +936,31 @@ internal object PhotoRouteGeocodingQuery {
         fun normalizeHouse(value: String): String = value.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
 
+        fun editDistance(left: String, right: String): Int {
+            if (left == right) return 0
+            if (left.isEmpty()) return right.length
+            if (right.isEmpty()) return left.length
+            var previous = IntArray(right.length + 1) { it }
+            for (i in left.indices) {
+                val current = IntArray(right.length + 1)
+                current[0] = i + 1
+                for (j in right.indices) {
+                    val substitution = previous[j] + if (left[i] == right[j]) 0 else 1
+                    current[j + 1] = minOf(current[j] + 1, previous[j + 1] + 1, substitution)
+                }
+                previous = current
+            }
+            return previous[right.length]
+        }
+
+        fun streetMatches(requested: String, resolved: String): Boolean {
+            if (requested == resolved) return true
+            val shortest = minOf(requested.length, resolved.length)
+            if (shortest < 6 || kotlin.math.abs(requested.length - resolved.length) > 2) return false
+            val allowedErrors = if (shortest >= 10) 2 else 1
+            return editDistance(requested, resolved) <= allowedErrors
+        }
+
         fun parts(value: String): Pair<String, String>? {
             val street = streetPatternForGeocoding.find(value) ?: return null
             val tail = value.substring(street.range.last + 1)
@@ -958,7 +985,9 @@ internal object PhotoRouteGeocodingQuery {
             resolvedHouses += house
         }
         return requested.any { (street, house) ->
-            resolvedStreets.any { it == street } && resolvedHouses.any { it == house }
+            // Street may contain a tiny OCR typo; the house/building number must remain exact.
+            resolvedStreets.any { resolved -> streetMatches(street, resolved) } &&
+                resolvedHouses.any { it == house }
         }
     }
 

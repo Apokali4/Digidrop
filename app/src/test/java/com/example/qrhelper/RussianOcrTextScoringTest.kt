@@ -51,7 +51,17 @@ class RussianOcrTextScoringTest {
     }
 
     @Test fun partialRouteRecognitionForcesRecoveryEvenWhenTextScoreIsHigh() {
-        assertTrue(RussianOcrPassPlanner.candidateRotations(1700, 8) == listOf(90, 180, 270))
+        assertTrue(RussianOcrPassPlanner.candidateRotations(1700, 8) == listOf(90, 270))
+    }
+
+    @Test fun aNineteenStopPageDoesNotTriggerThreeExtraRotations() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(1700, 19).isEmpty())
+        assertTrue(!RussianOcrPassPlanner.shouldTryAdaptive(1700, 19))
+    }
+
+    @Test fun weakShortPageGetsTwoQuarterTurnRecoveryPasses() {
+        assertTrue(RussianOcrPassPlanner.candidateRotations(1700, 8) == listOf(90, 270))
+        assertTrue(RussianOcrPassPlanner.candidateRotations(100, 8) == listOf(90, 180, 270))
     }
 
     @Test fun completeRouteRecognitionSkipsExpensiveRotationAttempts() {
@@ -67,8 +77,10 @@ class RussianOcrTextScoringTest {
     }
 
 
-    @Test fun incompleteRowsAlsoTriggerAdaptiveThresholding() {
-        assertTrue(RussianOcrPassPlanner.shouldTryAdaptive(1700, 8))
+    @Test fun adaptiveThresholdRunsOnlyForWeakTextOrNoRecognizedRows() {
+        assertTrue(RussianOcrPassPlanner.shouldTryAdaptive(200, 19))
+        assertTrue(RussianOcrPassPlanner.shouldTryAdaptive(1700, 0))
+        assertTrue(!RussianOcrPassPlanner.shouldTryAdaptive(1700, 8))
         assertTrue(!RussianOcrPassPlanner.shouldTryAdaptive(2500, 24))
     }
 

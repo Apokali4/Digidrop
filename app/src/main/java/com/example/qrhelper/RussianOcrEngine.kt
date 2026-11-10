@@ -155,23 +155,25 @@ internal object RussianOcrCandidateMerger {
 internal object RussianOcrPassPlanner {
     const val QUARTER_TURN_SCORE_THRESHOLD = 320
     const val ADAPTIVE_SCORE_THRESHOLD = 520
-    const val MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY = 24
+    const val MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY = 12
 
     fun shouldTryQuarterTurn(score: Int): Boolean = score < QUARTER_TURN_SCORE_THRESHOLD
 
     /**
-     * A high text score is not proof of a complete route: eight clean rows from
-     * a 36-row sheet can score well while most deliveries are still missing.
+     * A readable page with a dozen or more route rows is normally upright.
+     * Avoid three full-page OCR passes and adaptive thresholding on every page.
+     * Short or genuinely weak reads still get recovery attempts.
      */
-    fun candidateRotations(score: Int, detectedRows: Int): List<Int> =
-        if (shouldTryQuarterTurn(score) || detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY) {
-            listOf(90, 180, 270)
-        } else emptyList()
+    fun candidateRotations(score: Int, detectedRows: Int): List<Int> = when {
+        shouldTryQuarterTurn(score) || detectedRows == 0 -> listOf(90, 180, 270)
+        detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY -> listOf(90, 270)
+        else -> emptyList()
+    }
 
     fun shouldTryAdaptive(score: Int): Boolean = score < ADAPTIVE_SCORE_THRESHOLD
 
     fun shouldTryAdaptive(score: Int, detectedRows: Int): Boolean =
-        shouldTryAdaptive(score) || detectedRows < MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY
+        shouldTryAdaptive(score) || detectedRows == 0
 
     /** Recover delivery rows found by complementary orientation and threshold passes. */
     fun mergeCandidates(candidates: List<String>): String =
@@ -284,6 +286,9 @@ internal object RussianOcrEngine {
                         bestRowCount = rotatedRows
                         bestRotation = degrees
                     }
+                    if (rotatedScore >= RussianOcrPassPlanner.QUARTER_TURN_SCORE_THRESHOLD &&
+                        rotatedRows >= RussianOcrPassPlanner.MIN_ROUTE_ROWS_BEFORE_SKIP_RECOVERY
+                    ) break
                 } finally {
                     rotated.recycle()
                 }

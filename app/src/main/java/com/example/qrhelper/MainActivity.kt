@@ -477,7 +477,7 @@ private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List
             val point = runCatching {
                 PhotoRouteGeocodingQuery.candidateQueries(address, "Калуга")
                     .asSequence()
-                    .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
+                    .flatMap { query -> geocoder.getFromLocationName(query, 4).orEmpty().asSequence() }
                     .firstOrNull { candidate ->
                         PhotoRouteGeocodingQuery.isWithinSelectedCity(
                             candidate.latitude, candidate.longitude, "Калуга"
@@ -1144,9 +1144,17 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                                     .mapIndexed { rowIndex, row -> row.toRouteItem(rowIndex + 1) }
                                 val structuredRows = RouteSheetParser.parse(normalized)
                                 val addressRows = RouteSheetParser.parseOcrText(recognized)
-                                val routeRows = RouteOcrCandidateSelector.select(
-                                    listOf(photoTableRows, structuredRows, addressRows)
+                                val routeCandidates = listOf(photoTableRows, structuredRows, addressRows)
+                                val routeRows = RouteOcrCandidateSelector.select(routeCandidates)
+                                val discardedRows = RouteOcrCandidateSelector.unresolvedRowsFromLargerCandidate(
+                                    routeCandidates,
+                                    routeRows
                                 )
+                                check(discardedRows.isEmpty()) {
+                                    "Файл №" + (index + 1) + ": распознано несколько вариантов таблицы, но " +
+                                        discardedRows.size + " дополнительных строк имеют неуверенный адрес. " +
+                                        "Импорт остановлен, чтобы не сократить маршрут до меньшего числа точек."
+                                }
                                 check(routeRows.isNotEmpty()) {
                                     "Файл №" + (index + 1) + ": OCR не нашёл строк доставки с адресами"
                                 }
@@ -3292,7 +3300,7 @@ fun RouteListScreen(
                                             val geocoder = Geocoder(context, Locale("ru", "RU"))
                                             PhotoRouteGeocodingQuery.candidateQueries(point.address, "Калуга")
                                                 .asSequence()
-                                                .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
+                                                .flatMap { query -> geocoder.getFromLocationName(query, 4).orEmpty().asSequence() }
                                                 .firstOrNull { candidate ->
                                                     PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, "Калуга") &&
                                                         PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, "Калуга") &&
@@ -3311,39 +3319,29 @@ fun RouteListScreen(
                             }
                             if (resolvedByAddress.isNotEmpty()) onCoordinatesResolved(resolvedByAddress)
                             val missingCount = pendingGroups.size - resolvedByAddress.size
-                            // Навигация доступна по всем подтверждённым координатам.
-                            // Нераспознанные точки не блокируют заведомо корректную часть рейса.
-                            val readySegments = if (allCoordinates.isNotEmpty())
-                                PhotoRouteNavigationUrls.yandexSegments(allCoordinates) else emptyList()
+                            val readySegments = if (
+                                missingCount == 0 &&
+                                allCoordinates.size == pendingGroups.size &&
+                                allCoordinates.size >= 2
+                            ) PhotoRouteNavigationUrls.yandexSegments(allCoordinates) else emptyList()
                             if (readySegments.isNotEmpty()) {
                                 navigationSegmentCount = readySegments.size
                                 val chosenIndex = index.coerceIn(0, readySegments.lastIndex)
                                 onNavigateSegment(chosenIndex, readySegments[chosenIndex])
                                 navigationSegmentIndex = nextNavigationSegmentIndex(chosenIndex, readySegments.size)
-                                if (missingCount > 0) {
-                                    val missingAddresses = pendingGroups.mapNotNull { group ->
-                                        group.firstOrNull()?.takeIf { point ->
-                                            PhotoRouteTextParser.canonicalAddressKey(point.address) !in resolvedByAddress
-                                        }?.address
-                                    }
-                                    Toast.makeText(
-                                        context,
-                                        "Открыта подтверждённая часть маршрута. Не определены ещё " + missingCount + " из " + pendingGroups.size + ": " + missingAddresses.take(2).joinToString("; "),
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
                             } else {
-                                val firstAddress = pendingGroups.firstOrNull()?.firstOrNull()?.address.orEmpty()
-                                if (firstAddress.isNotBlank()) {
-                                    onNavigateFirstAddress(firstAddress)
-                                    Toast.makeText(
-                                        context,
-                                        "Координаты не найдены. Открываю первую точку по адресу; полный маршрут пока не построен.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                } else {
-                                    Toast.makeText(context, "В маршруте нет адресов для навигации", Toast.LENGTH_LONG).show()
+                                val missingAddresses = pendingGroups.mapNotNull { group ->
+                                    group.firstOrNull()?.takeIf { point ->
+                                        PhotoRouteTextParser.canonicalAddressKey(point.address) !in resolvedByAddress
+                                    }?.address
                                 }
+                                Toast.makeText(
+                                    context,
+                                    "Маршрут не отправлен: координаты подтверждены для " +
+                                        resolvedByAddress.size + " из " + pendingGroups.size +
+                                        " точек. Проверьте адреса: " + missingAddresses.take(3).joinToString("; "),
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
                     }, enabled = pendingGroups.size >= 2, modifier = Modifier.fillMaxWidth().height(46.dp),

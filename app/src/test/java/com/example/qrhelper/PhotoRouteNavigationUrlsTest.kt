@@ -80,6 +80,23 @@ class PhotoRouteNavigationUrlsTest {
         assertEquals("Советская, 2", PhotoRouteGeocodingQuery.build("Советская, 2", " "))
     }
 
+    @Test fun geocoderToleratesTinyStreetOcrErrorButRequiresExactHouse() {
+        assertTrue(
+            PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                requestedAddress = "Калуга, ул. Тарутинскал, д. 72",
+                candidateStreet = "улица Тарутинская",
+                candidateHouse = "72"
+            )
+        )
+        assertTrue(
+            !PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                requestedAddress = "Калуга, ул. Тарутинскал, д. 72",
+                candidateStreet = "улица Тарутинская",
+                candidateHouse = "27"
+            )
+        )
+    }
+
     @Test fun routeOptimizerChoosesFarthestDeliveryAsFinalStop() {
         val depot = PhotoRouteCoordinate(54.51, 36.25)
         val points = listOf(

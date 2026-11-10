@@ -106,6 +106,21 @@ class RouteOcrCandidateSelectorTest {
     }
 
     @Test
+    fun smallCleanCandidateDoesNotHideThirteenUnresolvedRowsInLargerParse() {
+        val small = (1..6).map { routeItem(it, "Калуга, ул. Кирова, $it") }
+        val larger = small + (7..19).map {
+            routeItem(it, "Калуга, ул. , $it", "Проверить адрес $it")
+        }
+        val selected = RouteOcrCandidateSelector.select(listOf(small, larger))
+
+        assertEquals(6, selected.size)
+        assertEquals(13, RouteOcrCandidateSelector.unresolvedRowsFromLargerCandidate(
+            listOf(small, larger),
+            selected
+        ).size)
+    }
+
+    @Test
     fun canonicalGroupingRepairsKnownShortOcrPrefixVariant() {
         assertEquals(
             PhotoRouteTextParser.canonicalAddressKey("Калуга, ул. Щедрина, 71"),
@@ -119,6 +134,21 @@ class RouteOcrCandidateSelectorTest {
         assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("пом.105"))
         assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("ул. Победы, 24"))
         assertEquals("Красное и Белое", PhotoRouteTextParser.cleanDetectedStoreName("Красное и Белое"))
+    }
+
+    @Test
+    fun barcodeDeliveryAndBrokenOcrTokensAreNotShownAsStoreNames() {
+        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("234636125 доставка до 11"))
+        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("Кафе кция тез"))
+        assertEquals("Бристоль", PhotoRouteTextParser.cleanDetectedStoreName("БРИСТО"))
+    }
+
+    @Test
+    fun sanitizedMissingStoreNamesAreMarkedForReview() {
+        val cleaned = RouteOcrCandidateSelector.sanitizeStoreNames(
+            listOf(routeItem(1, "Калуга, ул. Кирова, 8", "пом.105"))
+        )
+        assertEquals("Проверить название", cleaned.single().storeName)
     }
 
 }
