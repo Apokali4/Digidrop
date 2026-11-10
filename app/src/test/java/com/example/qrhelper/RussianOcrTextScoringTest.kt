@@ -19,4 +19,10 @@ class RussianOcrTextScoringTest {
     @Test fun blankOcrTextGetsLowestScore() {
         assertTrue(RussianOcrTextScoring.score("   ") < 0)
     }
+
+    @Test fun twoDeliveryRowsScoreHigherThanOneDeliveryRow() {
+        val one = "1 1708 Балтика ООО г. Калуга, ул. Кирова, д. 12"
+        val two = one + "\n2 1646 Альфа ООО г. Калуга, ул. Ленина, д. 8"
+        assertTrue(RussianOcrTextScoring.score(two) > RussianOcrTextScoring.score(one))
+    }
 }
