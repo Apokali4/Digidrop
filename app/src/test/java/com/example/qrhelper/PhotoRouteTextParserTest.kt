@@ -632,9 +632,10 @@ class PhotoRouteTextParserTest {
         val rows = PhotoRouteTableParser.parse("$firstPage\n--- Следующая фотография ---\n$secondPage", "Калуга")
         assertEquals(2, rows.size)
         assertEquals(
-            listOf("Сумма долга: 0", "Окно доставки: 13:00-16:00", "Товар: Хлеб"),
+            listOf("Сумма долга: 0", "Товар: Хлеб"),
             rows[1].extraColumns
         )
+        assertEquals("13:00-16:00", rows[1].timeSlot)
     }
 
     @Test fun tableParserDoesNotExposeRecognizedFieldsAsUnknownExtraColumns() {
