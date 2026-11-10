@@ -274,10 +274,10 @@ internal object PhotoRouteTextParser {
      */
     internal fun extractNumberedRouteAddressRows(text: String, city: String = ""): List<String> {
         val lines = text.lineSequence()
-            .map { it.replace(Regex("""^[\\s•*№\\-–—]+"""), "").trim() }
+            .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
             .filter { it.isNotBlank() }
             .toList()
-        val rowStart = Regex("""(?iu)^\\s*(?:№\\s*)?(\\d{1,3})[.)]?\\s+(\\d{2,8})\\s+(.+)$""")
+        val rowStart = Regex("""(?iu)^\s*(?:№\s*)?(\d{1,3})[.)]?\s+(\d{2,8})\s+(.+)$""")
         val result = mutableListOf<String>()
         lines.forEachIndexed { index, line ->
             val row = rowStart.find(line) ?: return@forEachIndexed
@@ -288,7 +288,7 @@ internal object PhotoRouteTextParser {
                 val next = lines.getOrNull(index + 1).orEmpty()
                 if (next.isNotBlank() && !rowStart.containsMatchIn(next) &&
                     !streetHint.containsMatchIn(next) &&
-                    Regex("""(?<!\\d)\\d{1,4}(?!\\d)""").containsMatchIn(next)
+                    Regex("""(?<!\d)\d{1,4}(?!\d)""").containsMatchIn(next)
                 ) candidate = "$candidate $next"
             }
             val address = cleanAddressFragment(candidate, city) ?: return@forEachIndexed
