@@ -52,7 +52,9 @@ internal object RouteSheetParser {
     }
 
     fun parseOcrText(text: String, city: String = "Калуга"): List<RouteItem> {
-        val addresses = PhotoRouteTextParser.extractRouteAddressRows(text, city)
+        // A route sheet may contain addresses in its header/footer. Only numbered
+        // customer rows are valid deliveries; never turn a stray header address into a stop.
+        val addresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(text, city)
         val occurrences = mutableMapOf<String, Int>()
         return addresses.mapIndexed { index, address ->
             val key = PhotoRouteTextParser.canonicalAddressKey(address)
@@ -61,7 +63,7 @@ internal object RouteSheetParser {
             val metadata = PhotoRouteTextParser.extractMetadataForOccurrence(text, address, occurrence)
             RouteItem(
                 barcode = "",
-                storeName = metadata.storeName.ifBlank { "Точка ${index + 1}" },
+                storeName = metadata.storeName,
                 address = address,
                 itemName = "Доставка по маршрутному списку",
                 totalBoxes = 1,
