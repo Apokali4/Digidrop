@@ -52,6 +52,7 @@ internal fun RouteEditorScreen(
     var phone by remember { mutableStateOf("") }
     var ownerName by remember { mutableStateOf("") }
     var workingHours by remember { mutableStateOf("") }
+    var timeSlot by remember { mutableStateOf("") }
     var cashNote by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var extraComment by remember { mutableStateOf("") }
@@ -69,6 +70,7 @@ internal fun RouteEditorScreen(
         phone = first?.phone.orEmpty()
         ownerName = first?.ownerName.orEmpty()
         workingHours = first?.workingHours.orEmpty()
+        timeSlot = ""
         cashNote = first?.cashNote.orEmpty()
         note = first?.note.orEmpty()
         extraComment = first?.extraComment.orEmpty()
@@ -169,6 +171,13 @@ internal fun RouteEditorScreen(
                             Text("ТОЧКА ${index + 1}  •  ⠿ ПЕРЕТАЩИТЬ", color = palette.primary, fontSize = 12.sp)
                             Text(first.storeName.ifBlank { "Магазин не указан" }, color = palette.onSurface, fontSize = 19.sp)
                             Text(first.address, color = palette.onSurfaceVariant, fontSize = 14.sp)
+                            if (first.workingHours.isNotBlank()) {
+                                Text("График магазина: ${first.workingHours}", color = palette.onSurfaceVariant, fontSize = 12.sp)
+                            }
+                            val deliveryWindows = group.map { it.timeSlot }.filter(String::isNotBlank).distinct()
+                            if (deliveryWindows.isNotEmpty()) {
+                                Text("Окна доставки: ${deliveryWindows.joinToString(" • ")}", color = palette.primary, fontSize = 12.sp)
+                            }
                             Text("${group.size} строк груза • мест: ${group.sumOf { it.totalBoxes }} • сканов: ${group.sumOf { it.scannedBoxes }}",
                                 color = palette.onSurfaceVariant, fontSize = 12.sp)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -205,7 +214,21 @@ internal fun RouteEditorScreen(
                     OutlinedTextField(address, { address = it }, label = { Text("Адрес") })
                     OutlinedTextField(phone, { phone = it }, label = { Text("Телефон") }, singleLine = true)
                     OutlinedTextField(ownerName, { ownerName = it }, label = { Text("ИП / контактное лицо") }, singleLine = true)
-                    OutlinedTextField(workingHours, { workingHours = it }, label = { Text("График работы") }, singleLine = true)
+                    OutlinedTextField(workingHours, { workingHours = it }, label = { Text("График работы магазина") }, singleLine = true)
+                    if (adding) {
+                        OutlinedTextField(timeSlot, { timeSlot = it }, label = { Text("Окно доставки") }, singleLine = true)
+                    } else {
+                        val existingWindows = editingGroup.orEmpty().mapIndexedNotNull { index, item ->
+                            item.timeSlot.takeIf(String::isNotBlank)?.let { "Строка ${index + 1}: $it" }
+                        }
+                        if (existingWindows.isNotEmpty()) {
+                            Text(
+                                "Окна доставки по отдельным строкам груза:\n${existingWindows.joinToString("\n")}",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                     OutlinedTextField(cashNote, { cashNote = it }, label = { Text("Наличные / документы") })
                     OutlinedTextField(note, { note = it }, label = { Text("Инструкция к заезду") })
                     OutlinedTextField(extraComment, { extraComment = it }, label = { Text("Дополнительный комментарий") })
@@ -239,6 +262,7 @@ internal fun RouteEditorScreen(
                                 note = note.trim(),
                                 ownerName = ownerName.trim(),
                                 workingHours = workingHours.trim(),
+                                timeSlot = timeSlot.trim(),
                                 cashNote = cashNote.trim(),
                                 extraComment = extraComment.trim()
                             )
