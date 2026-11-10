@@ -393,10 +393,8 @@ internal object PhotoRouteTextParser {
                 if (trailingNumber.isNotBlank()) "$recognizedBrand $trailingNumber" else recognizedBrand
             } else cleanStoreName(suffix)
         }
-        // OCR часто распознаёт название магазина отдельной строкой СРАЗУ ПОСЛЕ адреса.
-        // Ищем известный бренд по обе стороны адреса, но только внутри блока текущей точки.
         val brandNearby = block.withIndex()
-            .filter { (_, line) -> line != anchor }
+            .filter { (lineIndex, _) -> blockStart + lineIndex < index }
             .mapNotNull { (lineIndex, line) ->
                 brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
             }.minByOrNull { it.first }?.second
