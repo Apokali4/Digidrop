@@ -7,6 +7,7 @@ name: Android CI
 # [build-apk] Validate Yandex's 20-node cap including the driver's current position.
 # [build-apk] Verify OCR cleanup, segment handoff and no partial routes.
 # [build-apk] Build fixed-start physical-stop route optimization.
+# [build-apk] Re-run unit tests with package-count completion logic.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
