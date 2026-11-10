@@ -414,4 +414,29 @@ internal class LogisticsRepository(context: Context) {
                 }
         }
     }
-}
+
+
+    /** Persist geocoding results on physical Room points so the next shift works offline. */
+    suspend fun syncCoordinates(items: List<RouteItem>): Int = database.withTransaction {
+        val dao = database.dao()
+        val activeRoute = dao.activeRouteOnce() ?: return@withTransaction 0
+        val coordinatesByAddress = items.asSequence()
+            .filter { item ->
+                item.latitude != null && item.longitude != null &&
+                    item.latitude.isFinite() && item.longitude.isFinite() &&
+                    item.latitude in -90.0..90.0 && item.longitude in -180.0..180.0
+            }
+            .groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+            .mapValues { (_, rows) -> rows.first() }
+        var updated = 0
+        dao.pointsOnce(activeRoute.id).forEach { point ->
+            val resolved = coordinatesByAddress[PhotoRouteTextParser.canonicalAddressKey(point.address)]
+            if (resolved != null && dao.updateCoordinates(
+                    point.id,
+                    resolved.latitude!!,
+                    resolved.longitude!!
+                ) > 0
+            ) updated++
+        }
+        updated
+    }}
