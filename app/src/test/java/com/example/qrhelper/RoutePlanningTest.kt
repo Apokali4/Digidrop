@@ -104,4 +104,25 @@ class NavigationSegmentProgressTest {
     @Test fun emptyRouteHasNoNextSegment() {
         assertEquals(0, nextNavigationSegmentIndex(0, 0))
     }
+    @Test
+    fun rebuildUsesRoadNetworkDistancesWhenProvided() {
+        val start = RouteItem("a", "Старт", "A", "Товар", 1, "", latitude = 0.0, longitude = 0.0)
+        val nearByAir = RouteItem("b", "Близко по прямой", "B", "Товар", 1, "", latitude = 0.0, longitude = 0.1)
+        val roadFast = RouteItem("c", "Быстрее по дороге", "C", "Товар", 1, "", latitude = 1.0, longitude = 1.0)
+        val ids = listOf(start, nearByAir, roadFast).associateBy {
+            PhotoRouteTextParser.canonicalAddressKey(it.address)
+        }
+        val roads = com.example.qrhelper.domain.RouteDistanceMatrix(
+            mapOf(
+                (PhotoRouteTextParser.canonicalAddressKey("A") to PhotoRouteTextParser.canonicalAddressKey("B")) to 9000.0,
+                (PhotoRouteTextParser.canonicalAddressKey("A") to PhotoRouteTextParser.canonicalAddressKey("C")) to 1000.0,
+                (PhotoRouteTextParser.canonicalAddressKey("C") to PhotoRouteTextParser.canonicalAddressKey("B")) to 1000.0
+            )
+        )
+
+        val result = rebuildRemainingRoute(listOf(start, nearByAir, roadFast), roads)
+
+        assertEquals(listOf("Старт", "Быстрее по дороге", "Близко по прямой"), result.map { it.storeName })
+    }
+
 }
