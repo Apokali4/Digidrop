@@ -66,7 +66,7 @@ internal object RussianOcrGeometryText {
             if (anchors.size >= 2) {
                 return orderedRows.mapIndexed { index, row ->
                     if (index == headerIndex) {
-                        headerGroups.joinToString("\\t") { group ->
+                        headerGroups.joinToString("\t") { group ->
                             group.sortedBy { it.left }.joinToString(" ") { it.text.trim() }
                         }
                     } else if (index < headerIndex) {
@@ -79,13 +79,13 @@ internal object RussianOcrGeometryText {
                             } ?: 0
                             cells[column] += word.text.trim()
                         }
-                        cells.joinToString("\\t") { it.joinToString(" ") }
+                        cells.joinToString("\t") { it.joinToString(" ") }
                     }
-                }.filter(String::isNotBlank).joinToString("\\n").trim()
+                }.filter(String::isNotBlank).joinToString("\n").trim()
             }
         }
 
-        return orderedRows.joinToString("\\n") { renderByGaps(it, columnGap) }.trim()
+        return orderedRows.joinToString("\n") { renderByGaps(it, columnGap) }.trim()
     }
 
     private fun renderByGaps(row: List<RussianOcrWord>, columnGap: Float): String {
@@ -95,7 +95,7 @@ internal object RussianOcrGeometryText {
                 if (index > 0) {
                     val previous = ordered[index - 1]
                     val gap = word.left - (previous.left + previous.width)
-                    append(if (gap >= columnGap) '\\t' else ' ')
+                    append(if (gap >= columnGap) '\t' else ' ')
                 }
                 append(word.text.trim())
             }
