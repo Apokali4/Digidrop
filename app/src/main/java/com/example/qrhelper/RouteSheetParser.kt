@@ -174,7 +174,7 @@ internal object RouteSheetParser {
             // A blank delivery number means this is a wrapped continuation row,
             // not a new stop. Preserve address fragments and metadata on the prior
             // delivery instead of manufacturing a phantom point.
-            if (number.isBlank() && last != null) {
+            if ((columns["number"] ?: -1) >= 0 && number.isBlank() && last != null) {
                 val previous = result.lastOrNull() ?: continue
                 fun appendDistinct(base: String, addition: String): String {
                     val value = addition.trim()
