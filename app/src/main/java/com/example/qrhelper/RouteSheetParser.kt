@@ -65,7 +65,7 @@ internal object RouteSheetParser {
             val metadata = PhotoRouteTextParser.extractMetadataForOccurrence(text, address, occurrence)
             RouteItem(
                 barcode = "",
-                storeName = metadata.storeName,
+                storeName = PhotoRouteTextParser.cleanDetectedStoreName(metadata.storeName),
                 address = address,
                 itemName = "Доставка по маршрутному списку",
                 totalBoxes = 1,

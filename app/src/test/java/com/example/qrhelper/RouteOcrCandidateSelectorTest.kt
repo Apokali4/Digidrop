@@ -51,7 +51,7 @@ class RouteOcrCandidateSelectorTest {
     fun addressQualityRejectsFragmentsAndAcceptsReadableStreetHousePairs() {
         assertTrue(PhotoRouteTextParser.isPlausibleRouteAddress("Калуга, ул. Постовалова, 24"))
         assertTrue(PhotoRouteTextParser.isPlausibleRouteAddress("Калуга, б-р Солнечный, 4"))
-        assertTrue(!PhotoRouteTextParser.isPlausibleRouteAddress("Калуга, ул. ло Щедрина, 71"))
+        assertTrue(PhotoRouteTextParser.isPlausibleRouteAddress("Калуга, ул. ло Щедрина, 71"))
         assertTrue(!PhotoRouteTextParser.isPlausibleRouteAddress("ульская, 7475"))
         assertTrue(!PhotoRouteTextParser.isPlausibleRouteAddress("Калуга, ул. , 186"))
     }
@@ -91,4 +91,34 @@ class RouteOcrCandidateSelectorTest {
         val point = PhotoRouteCoordinate(54.51, 36.25)
         assertEquals(listOf(listOf(point)), PhotoRouteNavigationUrls.yandexSegments(listOf(point)))
     }
+
+    @Test
+    fun largerCandidateWithOneUncertainRowIsNotSilentlyReducedToTinyPartialRoute() {
+        val partial = (1..11).map { index ->
+            routeItem(index, "Калуга, ул. Победы, $index")
+        } + listOf(routeItem(12, "Калуга, ул. , 186"))
+        val tiny = listOf(routeItem(1, "Калуга, ул. Ленина, 10"))
+
+        val selected = RouteOcrCandidateSelector.select(listOf(tiny, partial))
+
+        assertEquals(partial.size, selected.size)
+        assertEquals(1, RouteOcrCandidateSelector.invalidAddressRows(selected).size)
+    }
+
+    @Test
+    fun canonicalGroupingRepairsKnownShortOcrPrefixVariant() {
+        assertEquals(
+            PhotoRouteTextParser.canonicalAddressKey("Калуга, ул. Щедрина, 71"),
+            PhotoRouteTextParser.canonicalAddressKey("Калуга, ул. ло Щедрина, 71")
+        )
+    }
+
+    @Test
+    fun genericLocationLabelsAndStreetTextAreNotPresentedAsStoreNames() {
+        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("Точка без названия"))
+        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("пом.105"))
+        assertEquals("", PhotoRouteTextParser.cleanDetectedStoreName("ул. Победы, 24"))
+        assertEquals("Красное и Белое", PhotoRouteTextParser.cleanDetectedStoreName("Красное и Белое"))
+    }
+
 }

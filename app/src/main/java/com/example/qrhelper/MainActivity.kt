@@ -439,31 +439,71 @@ private fun orderRouteByCoordinates(items: List<RouteItem>): List<RouteItem> {
 private suspend fun geocodeRoute(context: Context, items: List<RouteItem>): List<RouteItem> =
     withContext(Dispatchers.IO) {
         if (!Geocoder.isPresent()) return@withContext items
+
+        // Offline mode controls road routing, not one-time coordinate lookup.
+        // Skip failed service calls quickly when the device has no network.
+        val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return@withContext items
+        val activeNetwork = connectivity.activeNetwork ?: return@withContext items
+        val capabilities = connectivity.getNetworkCapabilities(activeNetwork)
+        if (capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) != true) {
+            return@withContext items
+        }
+
         val geocoder = Geocoder(context, Locale("ru", "RU"))
-        val resolved = items.map { item ->
-            val existingIsLocal = item.latitude != null && item.longitude != null &&
-                PhotoRouteGeocodingQuery.isWithinSelectedCity(item.latitude, item.longitude, "Калуга")
-            if (existingIsLocal || item.address.isBlank()) item
-            else try {
-                val point = PhotoRouteGeocodingQuery.candidateQueries(item.address, "Калуга")
+        val coordinatesByAddress = linkedMapOf<String, Pair<Double, Double>>()
+        val physicalAddressGroups = items
+            .filter { it.address.isNotBlank() }
+            .groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }
+
+        // Resolve each physical stop once, not once for every cargo row at that stop.
+        for ((addressKey, group) in physicalAddressGroups) {
+            val existing = group.firstNotNullOfOrNull { item ->
+                val latitude = item.latitude
+                val longitude = item.longitude
+                if (latitude != null && longitude != null &&
+                    PhotoRouteGeocodingQuery.isWithinSelectedCity(latitude, longitude, "Калуга")
+                ) latitude to longitude else null
+            }
+            if (existing != null) {
+                coordinatesByAddress[addressKey] = existing
+                continue
+            }
+
+            val address = group.firstOrNull {
+                PhotoRouteTextParser.isPlausibleRouteAddress(it.address)
+            }?.address ?: continue
+
+            val point = runCatching {
+                PhotoRouteGeocodingQuery.candidateQueries(address, "Калуга")
                     .asSequence()
                     .flatMap { query -> geocoder.getFromLocationName(query, 8).orEmpty().asSequence() }
                     .firstOrNull { candidate ->
-                        PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, "Калуга") &&
+                        PhotoRouteGeocodingQuery.isWithinSelectedCity(
+                            candidate.latitude, candidate.longitude, "Калуга"
+                        ) &&
                             PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, "Калуга") &&
                             PhotoRouteGeocodingQuery.matchesRequestedAddress(
-                                requestedAddress = item.address,
+                                requestedAddress = address,
                                 candidateStreet = candidate.thoroughfare,
                                 candidateHouse = candidate.subThoroughfare,
                                 candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
                             )
                     }
-                if (point != null) item.copy(latitude = point.latitude, longitude = point.longitude)
-                else item.copy(latitude = null, longitude = null)
-            } catch (_: Exception) { item.copy(latitude = null, longitude = null) }
+            }.getOrNull()
+
+            if (point != null) {
+                coordinatesByAddress[addressKey] = point.latitude to point.longitude
+            }
         }
-        // На этапе проверки сохраняем исходную последовательность из маршрутного листа.
-        resolved
+
+        items.map { item ->
+            val coordinate = coordinatesByAddress[PhotoRouteTextParser.canonicalAddressKey(item.address)]
+            if (coordinate != null) item.copy(
+                latitude = coordinate.first,
+                longitude = coordinate.second
+            ) else item
+        }
     }
 
 const val DISPATCHER_PHONE = "+74842998877"
@@ -1132,11 +1172,21 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                         check(rows.isNotEmpty()) {
                             "Файл №${index + 1}: маршрутные строки не найдены. Проверьте, что в документе есть клиенты и адреса доставки."
                         }
-                        rows
+                        // Use one safety gate for photo, PDF, Excel and text imports.
+                        // Never save a guessed route stop with a malformed street/house pair.
+                        val uncertainRows = RouteOcrCandidateSelector.invalidAddressRows(rows)
+                        check(uncertainRows.isEmpty()) {
+                            "Файл №" + (index + 1) + ": найдено " + uncertainRows.size +
+                                " строк с сомнительными адресами. Проверьте распознавание; примеры: " +
+                                uncertainRows.take(3).joinToString("; ") {
+                                    it.address.ifBlank { it.storeName.ifBlank { "строка без адреса" } }
+                                }
+                        }
+                        RouteOcrCandidateSelector.sanitizeStoreNames(rows)
                     }
                 }
                 check(imported.isNotEmpty()) { "В выбранных файлах не найдено ни одной точки маршрута" }
-                val ordered = if (settingsOffline) imported else geocodeRoute(context, imported)
+                val ordered = geocodeRoute(context, imported)
                 val repository = LogisticsRepository(context)
                 repository.replaceActiveRoute(ordered)
                 val authoritativeItems = repository.activeRouteItems()
@@ -1442,6 +1492,21 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                 onNavigateFirstAddress = { address -> launchNavigation(address) },
                 onRebuildRoute = {
                     importScope.launch {
+                        Toast.makeText(
+                            context,
+                            "Проверяю адреса и ищу координаты для оставшихся точек…",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        val resolvedCoordinates = geocodeRoute(context, routeItems)
+                        val coordinatesChanged = resolvedCoordinates.indices.any { index ->
+                            resolvedCoordinates[index].latitude != routeItems[index].latitude ||
+                                resolvedCoordinates[index].longitude != routeItems[index].longitude
+                        }
+                        if (coordinatesChanged) {
+                            val repository = LogisticsRepository(context)
+                            repository.syncCoordinates(resolvedCoordinates)
+                            routeItems = repository.activeRouteItems()
+                        }
                         val original = routeItems
                         val (reordered, usedRoadNetwork) = if (settingsOffline) {
                             rebuildRemainingRoute(original) to false

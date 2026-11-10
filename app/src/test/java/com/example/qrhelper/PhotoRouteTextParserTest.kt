@@ -837,4 +837,20 @@ class PhotoRouteTextParserTest {
         assertEquals(99, deliveries.sumOf { it.placeCount })
     }
 
+
+    @Test
+    fun tableParserDoesNotCreateStopFromAddressOnlyFooterRowWithoutCustomerIdentity() {
+        val text = listOf(
+            "№\tКод\tКлиент\tАдрес доставки\tМест",
+            "1\t1708\tБалтика ООО\tКалуга, ул. Кирова, д. 8\t3",
+            "\t\t\tКалуга, ул. Победы, д. 99\t1"
+        ).joinToString("\n")
+
+        val rows = PhotoRouteTableParser.parse(text, "Калуга")
+
+        assertEquals(1, rows.size)
+        assertEquals("Калуга, ул. Кирова, д. 8", rows.single().address)
+        assertTrue(rows.single().extraColumns.any { it.contains("ул. Победы, д. 99") })
+    }
+
 }

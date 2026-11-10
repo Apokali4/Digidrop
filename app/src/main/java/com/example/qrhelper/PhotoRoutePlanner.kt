@@ -124,8 +124,12 @@ internal object PhotoRouteTableParser {
             }
             val columns = schema ?: return@forEach
             val addressCell = cells.getOrNull(columns[Column.ADDRESS] ?: -1).orEmpty()
-            val address = PhotoRouteTextParser.extractCandidates(addressCell, city).firstOrNull()
-                ?: PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city).firstOrNull()
+            val address = PhotoRouteTextParser.extractCandidates(addressCell, city)
+                .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
+                ?: if (addressCell.isBlank()) {
+                    PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city)
+                        .firstOrNull(PhotoRouteTextParser::isPlausibleRouteAddress)
+                } else null
                 ?: ""
             val organization = cells.getOrNull(columns[Column.ORGANIZATION] ?: -1).orEmpty()
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
@@ -139,6 +143,22 @@ internal object PhotoRouteTableParser {
             if (firstCell == "итого" || firstCell == "всего" ||
                 firstCell.startsWith("итого ") || firstCell.startsWith("всего ") ||
                 firstCell.startsWith("общее итого") || firstCell.startsWith("общий итог")) {
+                return@forEach
+            }
+            // An address-only row without a row number, customer code or organization
+            // is usually page/footer noise, not a new delivery point.
+            if (Column.POINT in columns && pointNumber.isBlank() &&
+                customerCode.isBlank() && organization.isBlank() && address.isNotBlank()
+            ) {
+                val evidence = cells.map(String::trim).filter(String::isNotBlank).joinToString(" | ")
+                if (rows.isNotEmpty() && evidence.isNotBlank()) {
+                    val previous = rows.last()
+                    rows[rows.lastIndex] = previous.copy(
+                        rawCells = previous.rawCells + evidence,
+                        extraColumns = (previous.extraColumns +
+                            "Строка без номера точки/клиента пропущена: $evidence").distinct()
+                    )
+                }
                 return@forEach
             }
             // Never discard an identifiable delivery just because OCR failed on its address.
@@ -451,15 +471,24 @@ internal object PhotoRouteTextParser {
         }
         val start = cityMatch?.range?.first ?: street.range.first
         val buildingSuffix = buildingSuffixPattern.find(line.substring(house.range.last + 1))?.value.orEmpty()
-        return (line.substring(start, house.range.last + 1) + buildingSuffix)
+        val cleaned = (line.substring(start, house.range.last + 1) + buildingSuffix)
             .replace(Regex("""\s*,\s*"""), ", ")
             .replace(Regex("""\s+"""), " ")
             .trim(' ', ',', ';', '|', '.', ':')
-            .takeIf { it.length >= 8 }
+        return cleaned.takeIf { it.length >= 8 && isPlausibleRouteAddress(it) }
     }
 
     /** Reject OCR strings that merely resemble an address but have no reliable street/house pair. */
     internal fun isPlausibleRouteAddress(address: String): Boolean {
+        if (isPlausibleAddressShape(address)) return true
+        // Permit only the conservative repair already used for geocoder queries:
+        // a stray two-letter OCR prefix before a readable street name.
+        return PhotoRouteGeocodingQuery.addressVariants(address)
+            .drop(1)
+            .any(::isPlausibleAddressShape)
+    }
+
+    private fun isPlausibleAddressShape(address: String): Boolean {
         val street = streetHint.find(address) ?: return false
         val house = houseAfterStreet.find(address, street.range.last + 1) ?: return false
         val streetName = address.substring(street.range.last + 1, house.range.first)
@@ -468,8 +497,6 @@ internal object PhotoRouteTextParser {
             .trim()
         if (streetName.count(Char::isLetter) < 3) return false
         val firstWord = streetName.split(Regex("""\s+""")).firstOrNull().orEmpty()
-        // A short unpunctuated token at the start is usually a column/OCR fragment
-        // ("ло Щедрина"), while an initial ("В. Никитиной") is legitimate.
         if (firstWord.length == 2 && firstWord.all(Char::isLetter) &&
             !firstWord.equals("им", ignoreCase = true)
         ) return false
@@ -481,6 +508,13 @@ internal object PhotoRouteTextParser {
     internal fun cleanDetectedStoreName(candidate: String): String {
         val cleaned = cleanStoreName(candidate)
         if (cleaned.isBlank() || cleaned.count(Char::isLetter) < 3) return ""
+        val compact = cleaned.lowercase(Locale("ru", "RU"))
+            .replace('ё', 'е')
+            .filter(Char::isLetterOrDigit)
+        if (compact in setOf("точкабезназвания", "точка", "магазин", "объект", "пом", "помещение")) return ""
+        if (Regex("""(?iu)^(?:пом\.?|помещение)\s*№?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
+        if (Regex("""(?iu)^(?:точка|магазин|объект)\s*#?\s*\d+[а-яёa-z]?$""").matches(cleaned)) return ""
+        if (cleaned.all(Char::isDigit) || streetHint.containsMatchIn(cleaned)) return ""
         if (cleaned.count { it == '(' } != cleaned.count { it == ')' }) return ""
         if (cleaned.count { it == '"' } % 2 != 0 || cleaned.count { it == '«' } != cleaned.count { it == '»' }) return ""
         if (Regex("""(?iu)\b\d{4,}\b""").containsMatchIn(cleaned)) return ""
@@ -489,18 +523,22 @@ internal object PhotoRouteTextParser {
     }
 
     internal fun canonicalAddressKey(address: String): String {
-        val street = streetHint.find(address) ?: return address.lowercase(Locale("ru", "RU"))
+        // Correct the same conservative OCR prefix variant used for geocoding,
+        // so one real address does not turn into several physical route stops.
+        val source = PhotoRouteGeocodingQuery.addressVariants(address).lastOrNull()
+            .orEmpty().ifBlank { address }
+        val street = streetHint.find(source) ?: return source.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
-        val house = houseAfterStreet.find(address, street.range.last + 1)
-        if (house == null) return address.lowercase(Locale("ru", "RU"))
+        val house = houseAfterStreet.find(source, street.range.last + 1)
+        if (house == null) return source.lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
-        val streetName = address.substring(street.range.last + 1, house.range.first)
+        val streetName = source.substring(street.range.last + 1, house.range.first)
             .lowercase(Locale("ru", "RU"))
             .replace(Regex("""(?iu)[,\s]*(?:д\.?|дом|вх\.?|в)\s*[-–—]?\s*$"""), "")
             .replace(Regex("""[\s.,;:|()_-]+"""), "")
         val houseNumber = house.groupValues[1].lowercase(Locale("ru", "RU"))
             .replace(Regex("""[^\p{L}\p{N}]"""), "")
-        val buildingSuffix = buildingSuffixPattern.find(address.substring(house.range.last + 1))
+        val buildingSuffix = buildingSuffixPattern.find(source.substring(house.range.last + 1))
             ?.value.orEmpty()
             .lowercase(Locale("ru", "RU"))
             .replace(Regex("""(?iu)^(?:\s*[,;]?\s*)?(?:корп(?:ус)?\.?|крп\.?|строен(?:ие)?\.?|стр\.?|лит(?:ера)?\.?)\s*№?\s*"""), "")
@@ -678,7 +716,7 @@ internal object PhotoRouteTextParser {
             .mapNotNull { (lineIndex, line) ->
                 brandFromLine(line)?.let { kotlin.math.abs(blockStart + lineIndex - index) to it }
             }.minByOrNull { it.first }?.second
-        val store = brandInSuffix ?: cleanDetectedStoreName(brandNearby ?: companyLine)
+        val store = cleanDetectedStoreName(brandInSuffix ?: brandNearby ?: companyLine)
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex

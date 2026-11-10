@@ -15,6 +15,11 @@ internal object RouteOcrCandidateSelector {
     fun invalidAddressRows(items: List<RouteItem>): List<RouteItem> =
         items.filterNot { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) }
 
+    fun sanitizeStoreNames(items: List<RouteItem>): List<RouteItem> =
+        items.map { item ->
+            item.copy(storeName = PhotoRouteTextParser.cleanDetectedStoreName(item.storeName))
+        }
+
     private fun qualityScore(items: List<RouteItem>): Int {
         val validAddresses = items.count { PhotoRouteTextParser.isPlausibleRouteAddress(it.address) }
         val invalidAddresses = items.size - validAddresses
@@ -22,12 +27,14 @@ internal object RouteOcrCandidateSelector {
             PhotoRouteTextParser.cleanDetectedStoreName(it.storeName).isNotBlank()
         }
         val coverage = validAddresses.toDouble() / items.size
-        // A single unverified row costs more than any plausible gain from a larger
-        // candidate. This prevents a 101-row noisy parse from beating a clean parse.
-        return (coverage * 10_000).toInt() +
-            validAddresses * 100 +
-            readableNames * 10 -
-            invalidAddresses * 20_000
+        // Prefer useful row coverage, but don't silently replace a mostly complete
+        // result with a tiny fragment just because one row needs address review.
+        // The common import gate rejects uncertain rows before saving the route.
+        return validAddresses * 1_000 -
+            invalidAddresses * 1_000 +
+            (coverage * 1_000).toInt() +
+            readableNames * 10 +
+            items.size.coerceAtMost(10_000)
     }
 }
 
