@@ -557,7 +557,7 @@ class PhotoRouteTextParserTest {
         assertEquals("Балтика ПК ООО", rows[0].organization)
         assertEquals("г. Калуга, ул. Врубовая, д. 2", rows[0].address)
         assertEquals("8 900 111 22 33", rows[0].phone)
-        assertEquals(4, rows[0].packageCount)
+        assertEquals(4, rows[0].placeCount)
         assertEquals("Позвонить перед приездом", rows[0].comment)
     }
 
