@@ -441,6 +441,45 @@ class PhotoRouteTextParserTest {
     }
 
 
+    @Test fun photoRouteImportRecoversUnnumberedRowsWhenTheWholeDocumentHasNoRowNumbers() {
+        val text = """
+            ООО Север
+            г. Калуга, ул. Кирова, д. 8
+            Пятёрочка
+            Калуга, проспект Ленина, 14
+            ИП Иванов
+            Калуга, ул. Победы, д. 2
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Кирова, д. 8",
+                "Калуга, проспект Ленина, 14",
+                "Калуга, ул. Победы, д. 2"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
+    @Test fun photoRouteImportRecoversUnnumberedRowsBetweenNumberedRowsButSkipsHeaderAddress() {
+        val text = """
+            Задание на отгрузку
+            г. Калуга, ул. Ленина, д. 13
+            1 ООО Север г. Калуга, ул. Кирова, д. 8
+            Пятёрочка Калуга, проспект Ленина, 14
+            3 ИП Иванов Калуга, ул. Победы, д. 2
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "г. Калуга, ул. Кирова, д. 8",
+                "Калуга, проспект Ленина, 14",
+                "Калуга, ул. Победы, д. 2"
+            ),
+            PhotoRouteTextParser.extractNumberedRouteAddressRows(text, "Калуга")
+        )
+    }
+
     @Test fun photoRouteImportAcceptsNumberedRowsWithoutCustomerCodes() {
         val text = """
             Маршрут на день
