@@ -29,7 +29,7 @@ internal fun rebuildRemainingRoute(items: List<RouteItem>, roadDistances: RouteD
 /**
  * Uses OSRM road-network distances for the explicit Optimize action.
  * If the device is offline or the routing service is unavailable, the existing
- * deterministic geodesic optimizer remains the safe fallback.
+ * deterministic geodesic optimizer remains the safe fallback. [build-apk]
  */
 internal suspend fun rebuildRemainingRouteWithRoadNetwork(items: List<RouteItem>): Pair<List<RouteItem>, Boolean> =
     withContext(Dispatchers.IO) {
