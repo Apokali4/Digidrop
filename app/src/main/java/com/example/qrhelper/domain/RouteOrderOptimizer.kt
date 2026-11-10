@@ -29,7 +29,7 @@ object RouteOrderOptimizer {
         val pending = stops.filterNot { it.completed }
         if (pending.size < 2 || pending.any { !it.hasValidCoordinates() }) return emptyList()
         return pending.take(limit).map { start ->
-            completed + improveTwoOpt(nearestNeighbor(pending, start), start)
+            completed + improveTwoOpt(nearestNeighbor(pending, start, null), start, null)
         }.distinctBy { route -> route.map(RouteStop::id) }
     }
 
@@ -63,7 +63,7 @@ object RouteOrderOptimizer {
         return ordered
     }
 
-    /** Reverses route subsections while they shorten total straight-line travel distance. */
+    /** Reverses route subsections while they shorten total directed route distance. */
     private fun improveTwoOpt(route: List<RouteStop>, fixedStart: RouteStop, roadDistances: RouteDistanceMatrix?): List<RouteStop> {
         if (route.size < 4) return route
         val result = route.toMutableList()
@@ -73,10 +73,6 @@ object RouteOrderOptimizer {
             improved = false
             for (i in 1 until result.size - 1) {
                 for (k in i + 1 until result.size) {
-                    val a = result[i - 1]
-                    val b = result[i]
-                    val c = result[k]
-                    val d = result.getOrNull(k + 1)
                     // Road distances are directed. Compare the full route cost after
                     // reversal instead of applying the symmetric 2-opt shortcut.
                     val before = routeDistance(result, roadDistances)
