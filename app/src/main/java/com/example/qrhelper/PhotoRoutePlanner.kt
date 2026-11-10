@@ -368,7 +368,7 @@ internal object PhotoRouteTextParser {
     private fun isPlausibleStoreSuffix(value: String): Boolean {
         val candidate = value.trim(' ', ',', ';', '|', '.', ':', '-', '—')
         if (candidate.isBlank() || candidate.length > 48) return false
-        if (Regex("""(?iu)^(?:крп|кри|корп\.?|корпус|к\.?|стр\.?|строение|д\.?|дом|кв\.?|квартира)\.?(?=\s|$|№|-|\d)""")
+        if (Regex("""(?iu)^(?:крп|кри|корп\.?|корпус|к\.?|стр\.?|строение|д\.?|дом|кв\.?|квартира|уп)\.?(?=\s|$|№|-|\d)""")
                 .containsMatchIn(candidate)) return false
         if (Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){8,}(?!\d)""").containsMatchIn(candidate)) return false
         if (streetHint.containsMatchIn(candidate) || metadataHint.containsMatchIn(candidate)) return false
@@ -640,20 +640,21 @@ internal object PhotoRouteTextParser {
         val cash = block.withIndex()
             .filter { (_, line) -> Regex("""(?iu)(налич|деньг|забрат|оплат|инкассац|касс|документ)""").containsMatchIn(line) }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
-        val suffixName = afterHouse
-            .takeIf { isPlausibleStoreSuffix(it) }
-        val recipientLine = if (index >= 0) {
-            (index - 1 downTo (previousAddress + 1).coerceAtMost(index - 1))
+        fun cleanRecipientCell(value: String): String = value
+            .replace(Regex("""(?iu)\s+(?:x[0-9a-z]{2,}|[a-z]{2,}[-_]\d{6,}|\d{8,})\b.*$"""), "")
+            .trim(' ', ',', ';', '|', '.', ':', '-', '—')
+        val suffixName = cleanRecipientCell(afterHouse)
+            .takeIf(::isPlausibleStoreSuffix)
+        val precedingStart = (previousAddress + 1).coerceAtLeast(0)
+        val recipientLine = if (index > precedingStart) {
+            (precedingStart until index).toList().asReversed()
                 .asSequence()
-                .map { lines[it] }
+                .map { cleanRecipientCell(lines[it]) }
                 .firstOrNull(::isPlausibleStoreSuffix)
         } else null
-        // Prefer the recipient written beside the address. If it is on the
-        // preceding line, stay inside this address block so a previous/next
-        // delivery can never donate its store name.
-        val store = cleanDetectedStoreName(
-            suffixName ?: recipientLine ?: owner.ifBlank { companyLine }
-        )
+        // A recipient must be on the same row or before this address, after the
+        // previous address boundary. Never borrow the following customer's name.
+        val store = cleanDetectedStoreName(suffixName ?: recipientLine.orEmpty())
         val instructionPattern = Regex("""(?iu)(достав|до\s*\d|после\s*\d|открыва|режим|при[её]м|разгруз|подъезд|въезд|позвон|ворот|забрать|передать|инструкц|коммент)""")
         val comment = block.withIndex().filter { (lineIndex, line) ->
             val absoluteIndex = blockStart + lineIndex

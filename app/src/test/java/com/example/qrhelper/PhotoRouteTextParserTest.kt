@@ -246,7 +246,7 @@ class PhotoRouteTextParserTest {
         )
         assertEquals("Красное и Белое", metadata.storeName)
         assertEquals("", metadata.workingHours)
-        assertEquals("", metadata.timeSlot)
+        assertEquals("до 10:00", metadata.timeSlot)
     }
 
     @Test fun stripsApartmentAndTechnicalBarcodeNoiseFromStoreName() {
