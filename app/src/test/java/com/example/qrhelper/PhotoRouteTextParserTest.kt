@@ -897,4 +897,29 @@ class PhotoRouteTextParserTest {
         )
     }
 
+
+    @Test
+    fun tableParserKeepsHeaderlessSecondPhotoPageAndIgnoresPhotoSeparator() {
+        val lines = mutableListOf(
+            "№\tКод\tКлиент\tАдрес доставки\tКомментарий"
+        )
+        repeat(23) { index ->
+            val number = index + 1
+            lines += "$number\t17$number\tМагазин $number\tКалуга, ул. Тестовая, д. $number\t"
+        }
+        lines += "--- Следующая фотография ---"
+        repeat(13) { index ->
+            val number = index + 24
+            lines += "$number\t18$number\tМагазин $number\tКалуга, ул. Новая, д. $number\t"
+        }
+
+        val rows = PhotoRouteTableParser.parse(lines.joinToString("\n"), "Калуга")
+
+        assertEquals(36, rows.size)
+        assertEquals("1", rows.first().pointNumber)
+        assertEquals("Магазин 1", rows.first().organization)
+        assertEquals("Калуга, ул. Новая, д. 36", rows.last().address)
+        assertEquals("Магазин 36", rows.last().organization)
+    }
+
 }
