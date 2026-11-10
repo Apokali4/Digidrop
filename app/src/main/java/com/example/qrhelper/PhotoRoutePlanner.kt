@@ -524,6 +524,52 @@ internal object PhotoRouteGeocodingQuery {
         // Если геокодер не вернул административный регион, запрос уже ограничен областью.
         return region.isBlank() || region.contains("калуж")
     }
+
+    /**
+     * A geocoder result is usable only when it confirms BOTH the requested street
+     * and house. Geocoder.getFromLocationName is fuzzy and may otherwise return
+     * a nearby, unrelated address (which used to create phantom route stops).
+     */
+    fun matchesRequestedAddress(
+        requestedAddress: String,
+        candidateStreet: String?,
+        candidateHouse: String?,
+        candidateAddressLine: String? = null
+    ): Boolean {
+        val streetPattern = Regex(
+            """(?iu)(?<![А-Яа-яЁёA-Za-z])(ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)(?![А-Яа-яЁёA-Za-z])"""
+        )
+        val housePattern = Regex(
+            """(?iu)(?:[,\\s-]*(?:д\\.?|дом|вх\\.?|в)\\s*№?\\s*[-–—]?)?(\\d{1,4}(?:\\s*[А-Яа-яA-Za-z])?(?:(?:[/\\-]|к)\\d{1,4}[А-Яа-яA-Za-z]?)?)"""
+        )
+        fun normalized(value: String): String = value.lowercase(Locale("ru", "RU"))
+            .replace('ё', 'е')
+            .replace(Regex("""(?iu)^(?:ул\\.?|улица|пр\\.?|проспект|пер\\.?|переулок|ш\\.?|шоссе|наб\\.?|набережная|пл\\.?|площадь|б-р|бул\\.?)\\s*"""), "")
+            .replace(Regex("""[^\\p{L}\\p{N}]"""), "")
+
+        val requestedStreetMatch = streetPattern.find(requestedAddress) ?: return false
+        val requestedHouseMatch = housePattern.find(requestedAddress, requestedStreetMatch.range.last + 1)
+            ?: return false
+        val requestedStreet = normalized(
+            requestedAddress.substring(requestedStreetMatch.range.last + 1, requestedHouseMatch.range.first)
+                .replace(Regex("""(?iu)[,\\s]*(?:д\\.?|дом)\\s*$"""), "")
+        )
+        val requestedHouse = normalized(requestedHouseMatch.groupValues[1])
+        if (requestedStreet.isBlank() || requestedHouse.isBlank()) return false
+
+        val line = candidateAddressLine.orEmpty()
+        val resolvedStreet = candidateStreet?.takeIf { it.isNotBlank() }
+            ?: streetPattern.find(line)?.let { match ->
+                val house = housePattern.find(line, match.range.last + 1)
+                if (house != null) line.substring(match.range.last + 1, house.range.first) else ""
+            }.orEmpty()
+        val resolvedHouse = candidateHouse?.takeIf { it.isNotBlank() }
+            ?: streetPattern.find(line)?.let { match ->
+                housePattern.find(line, match.range.last + 1)?.groupValues?.getOrNull(1)
+            }.orEmpty()
+        return normalized(resolvedStreet) == requestedStreet &&
+            normalized(resolvedHouse) == requestedHouse
+    }
 }
 
 private suspend fun geocodePhotoStops(
@@ -540,7 +586,13 @@ private suspend fun geocodePhotoStops(
             val result = geocoder.getFromLocationName(query, 8)
                 ?.filter { candidate ->
                     PhotoRouteGeocodingQuery.isWithinSelectedCity(candidate.latitude, candidate.longitude, city) &&
-                        PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, city)
+                        PhotoRouteGeocodingQuery.isInSelectedRegion(candidate.adminArea, city) &&
+                        PhotoRouteGeocodingQuery.matchesRequestedAddress(
+                            requestedAddress = address,
+                            candidateStreet = candidate.thoroughfare,
+                            candidateHouse = candidate.subThoroughfare,
+                            candidateAddressLine = runCatching { candidate.getAddressLine(0) }.getOrNull()
+                        )
                 }
                 ?.minByOrNull { candidate ->
                     val locality = listOfNotNull(candidate.locality, candidate.subAdminArea)
