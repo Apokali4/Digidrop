@@ -1249,6 +1249,7 @@ fun DigitDropRoot(appearanceMode: AppearanceMode, onAppearanceModeChange: (Appea
                     .remove("unknown_codes")
                     .putString("active_manifest", manifest)
                     .putStringSet("scan_codes", authoritativeCodes)
+                    .putBoolean("manual_route_order", true)
                     .apply()
                 navigateTo(AppScreen.ROUTE_LIST)
                 Toast.makeText(
