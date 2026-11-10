@@ -79,8 +79,10 @@ internal class LogisticsRepository(context: Context) {
                             note = cargo.note,
                             ownerName = cargo.ownerName,
                             workingHours = cargo.workingHours,
+                            timeSlot = cargo.timeSlot,
                             cashNote = cargo.cashNote,
                             extraComment = cargo.extraComment,
+                            timeSlot = cargo.timeSlot,
                             discrepancyQty = cargo.discrepancyQty,
                             discrepancyReason = cargo.discrepancyReason
                         )
@@ -142,8 +144,10 @@ internal class LogisticsRepository(context: Context) {
                             note = cargo.note,
                             ownerName = cargo.ownerName,
                             workingHours = cargo.workingHours,
+                            timeSlot = cargo.timeSlot,
                             cashNote = cargo.cashNote,
                             extraComment = cargo.extraComment,
+                            timeSlot = cargo.timeSlot,
                             discrepancyQty = cargo.discrepancyQty,
                             discrepancyReason = cargo.discrepancyReason
                         )
