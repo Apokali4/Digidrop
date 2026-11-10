@@ -2996,6 +2996,7 @@ private fun RoutePhotoThumbnail(uri: Uri) {
     }
 }
 
+// [build-apk] Build the confirmed-coordinate partial navigation fix.
 private fun formatCompactRouteAddress(rawAddress: String): String {
     val cleaned = rawAddress
         .replace(Regex("""(?iu)\b(?:контакт|телефон|оплата|комментарий|доставка|штрихкод)\b.*$"""), "")
