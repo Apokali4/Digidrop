@@ -5,6 +5,7 @@ name: Android CI
 # Release build is intentionally opt-in after import-format verification.
 # [build-apk] Rebuild after wiring duplicate-safe camera route extraction.
 # [build-apk] Validate Yandex's 20-node cap including the driver's current position.
+# [build-apk] Verify OCR cleanup, segment handoff and no partial routes.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
