@@ -1687,16 +1687,13 @@ fun PhotoRoutePlannerScreen(
                             },
                             totalBoxes = delivery.packageCount,
                             phone = delivery.phone,
-                            note = (listOf(delivery.comment, delivery.cashNote) + delivery.extraColumns)
-                                .filter(String::isNotBlank).joinToString(" • ")
-                                .ifBlank { "Импортировано из маршрутного листа" },
+                            note = delivery.comment.ifBlank { "Импортировано из маршрутного листа" },
                             latitude = stop.latitude,
                             longitude = stop.longitude,
                             ownerName = delivery.ownerName,
                             workingHours = delivery.workingHours,
                             cashNote = delivery.cashNote,
-                            extraComment = (listOf(delivery.comment) + delivery.extraColumns)
-                                .filter(String::isNotBlank).joinToString(" • ")
+                            extraComment = delivery.extraColumns.joinToString(" • ")
                         )
                     }
                 }
