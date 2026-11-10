@@ -205,7 +205,7 @@ internal object PhotoRouteTextParser {
     internal fun cleanStoreName(candidate: String): String {
         var cleaned = candidate.trim()
             .replace(Regex("""(?iu)(?:^|\s+)(?:квартира|кв\.?|подъезд|офис|помещение)\b.*$"""), "")
-            .replace(Regex("""(?iu)\s+\b[\p{L}\p{N}-]{8,}\b.*$"""), "")
+            .replace(Regex("""(?iu)\s+(?:x[0-9a-z]{2,}|[a-z]{2,}[-_]\d{6,}|\d{8,})\b.*$"""), "")
             .trim(' ', ',', ';', '|', '.', ':', '-', '—')
         val words = cleaned.split(Regex("""\s+""")).toMutableList()
         while (words.size > 1 && words.last().length <= 2 && words.last().any { it.isLetter() } &&
@@ -315,7 +315,7 @@ internal object PhotoRouteTextParser {
         val afterHouse = houseMatch?.let { anchor.substring(it.range.last + 1) }
             ?.trim(' ', ',', ';', '|', '.', ':', '-', '—').orEmpty()
 
-        val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|УП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
+        val legalPattern = Regex("""(?iu)\b(ИП|ООО|АО|ПАО|ОАО|ЗАО|ЧУП|ГУП|МУП|ТОО|Тов\.?|товарищество)\b""")
         val companyLine = block.withIndex()
             .filter { (_, line) -> legalPattern.containsMatchIn(line) && !line.startsWith("ИП", ignoreCase = true) }
             .minByOrNull { (lineIndex, _) -> kotlin.math.abs(blockStart + lineIndex - index) }?.value.orEmpty()
