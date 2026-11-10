@@ -57,7 +57,8 @@ internal data class PhotoStopMetadata(
     val contactPerson: String = "",
     val packageCount: Int = 0,
     val placeCount: Int = 0,
-    val invoiceNumber: String = ""
+    val invoiceNumber: String = "",
+    val rawColumns: List<String> = emptyList()
 )
 
 internal data class PhotoRouteDeliveryRow(
@@ -1098,7 +1099,10 @@ fun PhotoRoutePlannerScreen(
                     contactPerson = metadata.optString("contactPerson"),
                     packageCount = metadata.optInt("packageCount"),
                     placeCount = metadata.optInt("placeCount"),
-                    invoiceNumber = metadata.optString("invoiceNumber")
+                    invoiceNumber = metadata.optString("invoiceNumber"),
+                    rawColumns = metadata.optJSONArray("rawColumns")?.let { array ->
+                        (0 until array.length()).map { array.optString(it) }
+                    }.orEmpty()
                 ),
                 additionalDeliveries = item.optJSONArray("additionalDeliveries")?.let { deliveries ->
                     (0 until deliveries.length()).mapNotNull { deliveryIndex ->
@@ -1115,7 +1119,10 @@ fun PhotoRoutePlannerScreen(
                                 contactPerson = delivery.optString("contactPerson"),
                                 packageCount = delivery.optInt("packageCount"),
                                 placeCount = delivery.optInt("placeCount"),
-                                invoiceNumber = delivery.optString("invoiceNumber")
+                                invoiceNumber = delivery.optString("invoiceNumber"),
+                                rawColumns = delivery.optJSONArray("rawColumns")?.let { array ->
+                                    (0 until array.length()).map { array.optString(it) }
+                                }.orEmpty()
                             )
                         }
                     }
@@ -1167,6 +1174,7 @@ fun PhotoRoutePlannerScreen(
                         put("packageCount", stop.metadata.packageCount)
                         put("placeCount", stop.metadata.placeCount)
                         put("invoiceNumber", stop.metadata.invoiceNumber)
+                        put("rawColumns", org.json.JSONArray(stop.metadata.rawColumns))
                     })
                     put("additionalDeliveries", org.json.JSONArray().apply {
                         stop.additionalDeliveries.forEach { delivery ->
@@ -1183,6 +1191,7 @@ fun PhotoRoutePlannerScreen(
                                 put("packageCount", delivery.packageCount)
                                 put("placeCount", delivery.placeCount)
                                 put("invoiceNumber", delivery.invoiceNumber)
+                                put("rawColumns", org.json.JSONArray(delivery.rawColumns))
                             })
                         }
                     })
@@ -1272,8 +1281,9 @@ fun PhotoRoutePlannerScreen(
                                 cashNote = tableDelivery.cashCollection,
                                 packageCount = tableDelivery.packageCount,
                                 placeCount = tableDelivery.placeCount,
-                                invoiceNumber = tableDelivery.invoiceNumber
-                            ).copy(cashNote = tableDelivery.cashCollection.ifBlank { tableDelivery.rawCells.joinToString(" | ") }) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                                invoiceNumber = tableDelivery.invoiceNumber,
+                                rawColumns = tableDelivery.rawCells
+                            ) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
                         }
                         stop.copy(
                             metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
