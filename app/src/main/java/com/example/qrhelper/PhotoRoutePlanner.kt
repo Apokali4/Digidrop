@@ -1154,6 +1154,7 @@ fun PhotoRoutePlannerScreen(
                     ownerName = metadata.optString("ownerName"),
                     phone = metadata.optString("phone"),
                     workingHours = metadata.optString("workingHours"),
+                     timeSlot = metadata.optString("timeSlot"),
                     cashNote = metadata.optString("cashNote"),
                     comment = metadata.optString("comment"),
                     customerCode = metadata.optString("customerCode"),
@@ -1177,6 +1178,7 @@ fun PhotoRoutePlannerScreen(
                                 ownerName = delivery.optString("ownerName"),
                                 phone = delivery.optString("phone"),
                                 workingHours = delivery.optString("workingHours"),
+                                 timeSlot = delivery.optString("timeSlot"),
                                 cashNote = delivery.optString("cashNote"),
                                 comment = delivery.optString("comment"),
                                 customerCode = delivery.optString("customerCode"),
@@ -1243,6 +1245,7 @@ fun PhotoRoutePlannerScreen(
                         put("ownerName", stop.metadata.ownerName)
                         put("phone", stop.metadata.phone)
                         put("workingHours", stop.metadata.workingHours)
+                         put("timeSlot", stop.metadata.timeSlot)
                         put("cashNote", stop.metadata.cashNote)
                         put("comment", stop.metadata.comment)
                         put("customerCode", stop.metadata.customerCode)
@@ -1261,6 +1264,7 @@ fun PhotoRoutePlannerScreen(
                                 put("ownerName", delivery.ownerName)
                                 put("phone", delivery.phone)
                                 put("workingHours", delivery.workingHours)
+                                 put("timeSlot", delivery.timeSlot)
                                 put("cashNote", delivery.cashNote)
                                 put("comment", delivery.comment)
                                 put("customerCode", delivery.customerCode)
