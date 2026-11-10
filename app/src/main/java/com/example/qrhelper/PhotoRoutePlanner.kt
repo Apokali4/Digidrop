@@ -58,7 +58,8 @@ internal data class PhotoStopMetadata(
     val packageCount: Int = 0,
     val placeCount: Int = 0,
     val invoiceNumber: String = "",
-    val rawColumns: List<String> = emptyList()
+    val rawColumns: List<String> = emptyList(),
+    val extraColumns: List<String> = emptyList()
 )
 
 internal data class PhotoRouteDeliveryRow(
@@ -75,7 +76,8 @@ internal data class PhotoRouteDeliveryRow(
     val comment: String = "",
     val rawCells: List<String> = emptyList(),
     val numericReviewFields: List<String> = emptyList(),
-    val cashReviewFields: List<String> = emptyList()
+    val cashReviewFields: List<String> = emptyList(),
+    val extraColumns: List<String> = emptyList()
 )
 
 /**
@@ -101,6 +103,7 @@ internal object PhotoRouteTableParser {
 
     fun parse(text: String, city: String = ""): List<PhotoRouteDeliveryRow> {
         var schema: Map<Column, Int>? = null
+        var headerCells: List<String> = emptyList()
         val rows = mutableListOf<PhotoRouteDeliveryRow>()
         text.lineSequence().forEach { source ->
             val line = source.trim()
@@ -109,6 +112,7 @@ internal object PhotoRouteTableParser {
             val detected = detectHeader(cells)
             if (detected != null) {
                 schema = detected
+                headerCells = cells
                 return@forEach
             }
             val columns = schema ?: return@forEach
@@ -152,6 +156,12 @@ internal object PhotoRouteTableParser {
                     if (raw.isNotBlank() && number(column) == 0) add("$label: $raw")
                 }
             }
+            val recognizedIndices = columns.values.toSet()
+            val extraColumns = cells.mapIndexedNotNull { index, value ->
+                val header = headerCells.getOrNull(index).orEmpty().trim()
+                val content = value.trim()
+                if (index !in recognizedIndices && header.isNotBlank() && content.isNotBlank()) "$header: $content" else null
+            }
             val rawCash = cells.getOrNull(columns[Column.CASH] ?: -1).orEmpty().trim()
             val cashReviewFields = buildList {
                 // Keep money as source text. Only identify OCR ambiguity; never coerce it to a number.
@@ -177,7 +187,8 @@ internal object PhotoRouteTableParser {
                 comment = comment,
                 rawCells = cells,
                 numericReviewFields = numericReviewFields,
-                cashReviewFields = cashReviewFields
+                cashReviewFields = cashReviewFields,
+                extraColumns = extraColumns
             )
         }
         return rows
@@ -1146,6 +1157,9 @@ fun PhotoRoutePlannerScreen(
                     invoiceNumber = metadata.optString("invoiceNumber"),
                     rawColumns = metadata.optJSONArray("rawColumns")?.let { array ->
                         (0 until array.length()).map { array.optString(it) }
+                    }.orEmpty(),
+                    extraColumns = metadata.optJSONArray("extraColumns")?.let { array ->
+                        (0 until array.length()).map { array.optString(it) }
                     }.orEmpty()
                 ),
                 additionalDeliveries = item.optJSONArray("additionalDeliveries")?.let { deliveries ->
@@ -1165,6 +1179,9 @@ fun PhotoRoutePlannerScreen(
                                 placeCount = delivery.optInt("placeCount"),
                                 invoiceNumber = delivery.optString("invoiceNumber"),
                                 rawColumns = delivery.optJSONArray("rawColumns")?.let { array ->
+                                    (0 until array.length()).map { array.optString(it) }
+                                }.orEmpty(),
+                                extraColumns = delivery.optJSONArray("extraColumns")?.let { array ->
                                     (0 until array.length()).map { array.optString(it) }
                                 }.orEmpty()
                             )
@@ -1228,6 +1245,7 @@ fun PhotoRoutePlannerScreen(
                         put("placeCount", stop.metadata.placeCount)
                         put("invoiceNumber", stop.metadata.invoiceNumber)
                         put("rawColumns", org.json.JSONArray(stop.metadata.rawColumns))
+                        put("extraColumns", org.json.JSONArray(stop.metadata.extraColumns))
                     })
                     put("additionalDeliveries", org.json.JSONArray().apply {
                         stop.additionalDeliveries.forEach { delivery ->
@@ -1245,6 +1263,7 @@ fun PhotoRoutePlannerScreen(
                                 put("placeCount", delivery.placeCount)
                                 put("invoiceNumber", delivery.invoiceNumber)
                                 put("rawColumns", org.json.JSONArray(delivery.rawColumns))
+                                put("extraColumns", org.json.JSONArray(delivery.extraColumns))
                             })
                         }
                     })
@@ -1336,7 +1355,8 @@ fun PhotoRoutePlannerScreen(
                                 packageCount = tableDelivery.packageCount,
                                 placeCount = tableDelivery.placeCount,
                                 invoiceNumber = tableDelivery.invoiceNumber,
-                                rawColumns = tableDelivery.rawCells
+                                rawColumns = tableDelivery.rawCells,
+                                extraColumns = tableDelivery.extraColumns
                             ) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
                         }
                         stop.copy(
