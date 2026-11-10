@@ -532,4 +532,14 @@ class PhotoRouteTextParserTest {
         )
     }
 
+    @Test fun ocrUsesQuarterTurnOnlyWhenFirstPassIsWeak() {
+        assertEquals(false, RussianOcrPassPlanner.shouldTryQuarterTurn(500))
+        assertEquals(true, RussianOcrPassPlanner.shouldTryQuarterTurn(100))
+    }
+
+    @Test fun ocrUsesAdaptiveThresholdOnlyAsRecovery() {
+        assertEquals(false, RussianOcrPassPlanner.shouldTryAdaptive(700))
+        assertEquals(true, RussianOcrPassPlanner.shouldTryAdaptive(200))
+    }
+
 }
