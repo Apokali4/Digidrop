@@ -84,14 +84,16 @@ internal object PhotoRouteTableParser {
     private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT }
     private val aliases = mapOf(
         Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
-        Column.CODE to listOf(Regex("""(?iu)^(?:код|код\\s+клиента|код\\s+торговой\\s+точки)$""")),
-        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговая\\s+точка|магазин|наименование)$""")),
-        Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адрес\\s+доставки|место\\s+доставки|адрес\\s+точки)$""")),
-        Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел.?|контакт|телефон\\s+контакта)$""")),
-        Column.PACKAGES to listOf(Regex("""(?iu)^(?:коробки|короб|кор.?|упаковки|упак.?|количество\\s+коробок)$""")),
-        Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количество\\s+мест|кол-во\\s+мест)$""")),
-        Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номер\\s+накладной|документ|№\\s*накладной)$""")),
-        Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент.?|примечание|примечания)$"""))
+        Column.CODE to listOf(Regex("""(?iu)^(?:код|код\s+клиента|код\s+торговой\s+точки)$""")),
+        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговая\s+точка|магазин|наименование)$""")),
+        Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адрес\s+доставки|место\s+доставки|адрес\s+точки)$""")),
+        Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел\.?|мобильный|номер\s+телефона)$""")),
+        Column.CONTACT to listOf(Regex("""(?iu)^(?:контакт|контактное\s+лицо|представитель)$""")),
+        Column.PACKAGES to listOf(Regex("""(?iu)^(?:коробки|короб|кор\.?|упаковки|упак\.?|количество\s+коробок)$""")),
+        Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количество\s+мест|кол-во\s+мест)$""")),
+        Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номер\s+накладной|документ|№\s*накладной)$""")),
+        Column.CASH to listOf(Regex("""(?iu)^(?:инкассация|сбор\s+денег|забрать\s+деньги|сумма\s+к\s+сбору|оплата)$""")),
+        Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент\.?|примечание|примечания)$"""))
     )
 
     fun parse(text: String, city: String = ""): List<PhotoRouteDeliveryRow> {
