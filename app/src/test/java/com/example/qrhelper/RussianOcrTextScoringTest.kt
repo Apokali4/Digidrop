@@ -66,4 +66,19 @@ class RussianOcrTextScoringTest {
         assertTrue(RussianOcrTextScoring.routeRowCount(rows) >= 8)
     }
 
+
+    @Test fun incompleteRowsAlsoTriggerAdaptiveThresholding() {
+        assertTrue(RussianOcrPassPlanner.shouldTryAdaptive(1700, 8))
+        assertTrue(!RussianOcrPassPlanner.shouldTryAdaptive(2500, 24))
+    }
+
+    @Test fun countsAddressOnlyRowsWhenTheDocumentHasNoPrintedRowNumbers() {
+        val text = """
+            Магазин Север г. Калуга, ул. Кирова, д. 8
+            Пятёрочка г. Калуга, ул. Ленина, д. 14
+            ИП Иванов г. Калуга, ул. Победы, д. 2
+        """.trimIndent()
+        assertTrue(RussianOcrTextScoring.routeRowCount(text) >= 3)
+    }
+
 }
