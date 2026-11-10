@@ -151,7 +151,7 @@ internal object RussianOcrCandidateMerger {
     }
 
     private fun routeRowNumber(line: String): Int? =
-        Regex("""^\\s*(?:№\\s*)?(\\d{1,3})[.)]?\\s+""")
+        Regex("""^\s*(?:№\s*)?(\d{1,3})[.)]?\s+""")
             .find(line)?.groupValues?.get(1)?.toIntOrNull()
 
     private fun normalizeOcrLine(value: String): String =
