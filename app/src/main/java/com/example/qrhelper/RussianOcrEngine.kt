@@ -148,19 +148,22 @@ internal object RussianOcrEngine {
                     onProgress("Распознаю страницу: поворот ${degrees}° (${index + 1}/4)…")
                 }
                 val oriented = rotate(bitmap, degrees)
-                val variants = prepareDocumentVariants(oriented)
                 try {
-                    variants.forEach { prepared ->
-                        api.setImage(prepared)
-                        val text = api.getUTF8Text().orEmpty().trim()
-                        val score = RussianOcrTextScoring.score(text)
-                        if (score > bestScore) {
-                            bestScore = score
-                            bestText = text
+                    for (adaptive in listOf(false, true)) {
+                        val prepared = prepareDocumentBitmap(oriented, adaptive)
+                        try {
+                            api.setImage(prepared)
+                            val text = api.getUTF8Text().orEmpty().trim()
+                            val score = RussianOcrTextScoring.score(text)
+                            if (score > bestScore) {
+                                bestScore = score
+                                bestText = text
+                            }
+                        } finally {
+                            prepared.recycle()
                         }
                     }
                 } finally {
-                    variants.forEach { it.recycle() }
                     if (oriented !== bitmap) oriented.recycle()
                 }
             }
@@ -183,59 +186,63 @@ internal object RussianOcrEngine {
      * locally thresholded version. Local thresholding handles uneven lighting
      * without clipping faint characters using one global threshold.
      */
-    private fun prepareDocumentVariants(source: Bitmap): List<Bitmap> {
+    /**
+     * Builds one OCR bitmap at a time to keep peak memory bounded on phones.
+     * The adaptive variant uses per-tile thresholds to compensate for shadows.
+     */
+    private fun prepareDocumentBitmap(source: Bitmap, adaptive: Boolean): Bitmap {
         val width = source.width
         val height = source.height
         val pixels = IntArray(width * height)
         source.getPixels(pixels, 0, width, 0, 0, width, height)
-        val gray = IntArray(pixels.size)
         var min = 255
         var max = 0
         for (i in pixels.indices) {
             val color = pixels[i]
             val value = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114) / 1000
-            gray[i] = value
+            pixels[i] = Color.rgb(value, value, value)
             min = minOf(min, value)
             max = maxOf(max, value)
         }
-        val range = (max - min).coerceAtLeast(1)
-        val contrastPixels = IntArray(gray.size)
-        for (i in gray.indices) {
-            val value = (((gray[i] - min) * 255) / range).coerceIn(0, 255)
-            contrastPixels[i] = Color.rgb(value, value, value)
-        }
-        val contrast = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        contrast.setPixels(contrastPixels, 0, width, 0, 0, width, height)
 
-        // Per-tile threshold compensates for shadows and gradients with bounded memory.
-        val adaptivePixels = IntArray(gray.size)
-        val tile = 32
-        for (top in 0 until height step tile) {
-            for (left in 0 until width step tile) {
-                val right = minOf(width, left + tile)
-                val bottom = minOf(height, top + tile)
-                var sum = 0L
-                var count = 0
-                for (y in top until bottom) {
-                    val row = y * width
-                    for (x in left until right) {
-                        sum += gray[row + x]
-                        count++
+        if (adaptive) {
+            // Per-tile threshold compensates for shadows and gradients with bounded memory.
+            val tile = 32
+            for (top in 0 until height step tile) {
+                for (left in 0 until width step tile) {
+                    val right = minOf(width, left + tile)
+                    val bottom = minOf(height, top + tile)
+                    var sum = 0L
+                    var count = 0
+                    for (y in top until bottom) {
+                        val row = y * width
+                        for (x in left until right) {
+                            sum += Color.red(pixels[row + x])
+                            count++
+                        }
                     }
-                }
-                val threshold = (sum / count.coerceAtLeast(1) - 28).toInt().coerceIn(70, 225)
-                for (y in top until bottom) {
-                    val row = y * width
-                    for (x in left until right) {
-                        val value = if (gray[row + x] < threshold) 0 else 255
-                        adaptivePixels[row + x] = Color.rgb(value, value, value)
+                    val threshold = (sum / count.coerceAtLeast(1) - 28).toInt().coerceIn(70, 225)
+                    for (y in top until bottom) {
+                        val row = y * width
+                        for (x in left until right) {
+                            val value = if (Color.red(pixels[row + x]) < threshold) 0 else 255
+                            pixels[row + x] = Color.rgb(value, value, value)
+                        }
                     }
                 }
             }
+        } else {
+            val range = (max - min).coerceAtLeast(1)
+            for (i in pixels.indices) {
+                val gray = Color.red(pixels[i])
+                val value = (((gray - min) * 255) / range).coerceIn(0, 255)
+                pixels[i] = Color.rgb(value, value, value)
+            }
         }
-        val adaptive = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        adaptive.setPixels(adaptivePixels, 0, width, 0, 0, width, height)
-        return listOf(contrast, adaptive)
+
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
+            it.setPixels(pixels, 0, width, 0, 0, width, height)
+        }
     }
 
     private suspend fun ensureRussianModel(
