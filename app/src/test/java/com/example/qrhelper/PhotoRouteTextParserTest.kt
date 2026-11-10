@@ -720,9 +720,9 @@ class PhotoRouteTextParserTest {
 
     @Test fun tableParserFlagsAmbiguousCashAmountsWithoutChangingOriginalText() {
         val text = listOf(
-            "№\\tКлиент\\tАдрес доставки\\tИнкассация",
-            "11\\tМагазин Тест\\tКалуга, ул. Кирова, д. 8\\t12З00 руб."
-        ).joinToString("\\n")
+            "№\tКлиент\tАдрес доставки\tИнкассация",
+            "11\tМагазин Тест\tКалуга, ул. Кирова, д. 8\t12З00 руб."
+        ).joinToString("\n")
         val row = PhotoRouteTableParser.parse(text, "Калуга").single()
         assertEquals("12З00 руб.", row.cashCollection)
         assertEquals(listOf("Инкассация: 12З00 руб."), row.cashReviewFields)
@@ -730,10 +730,10 @@ class PhotoRouteTextParserTest {
 
     @Test fun tableParserAcceptsClearCashAmountsAndDoesNotFlagZeroOrNoCollection() {
         val text = listOf(
-            "№\\tКлиент\\tАдрес доставки\\tИнкассация",
-            "12\\tМагазин А\\tКалуга, ул. Кирова, д. 8\\t12 500 руб.",
-            "13\\tМагазин Б\\tКалуга, ул. Победы, д. 2\\t0"
-        ).joinToString("\\n")
+            "№\tКлиент\tАдрес доставки\tИнкассация",
+            "12\tМагазин А\tКалуга, ул. Кирова, д. 8\t12 500 руб.",
+            "13\tМагазин Б\tКалуга, ул. Победы, д. 2\t0"
+        ).joinToString("\n")
         val rows = PhotoRouteTableParser.parse(text, "Калуга")
         assertEquals(emptyList<String>(), rows[0].cashReviewFields)
         assertEquals(emptyList<String>(), rows[1].cashReviewFields)
