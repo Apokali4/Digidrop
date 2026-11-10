@@ -267,6 +267,39 @@ internal object PhotoRouteTextParser {
     internal fun extractRouteAddressRows(text: String, city: String = ""): List<String> =
         extractAddressRows(text, city)
 
+    /**
+     * Photo route import is intentionally stricter than generic address extraction:
+     * a delivery address must belong to a numbered table row with a customer code.
+     * Header/footer text and random street mentions are never promoted to stops.
+     */
+    internal fun extractNumberedRouteAddressRows(text: String, city: String = ""): List<String> {
+        val lines = text.lineSequence()
+            .map { it.replace(Regex("""^[\\s•*№\\-–—]+"""), "").trim() }
+            .filter { it.isNotBlank() }
+            .toList()
+        val rowStart = Regex("""(?iu)^\\s*(?:№\\s*)?(\\d{1,3})[.)]?\\s+(\\d{2,8})\\s+(.+)$""")
+        val result = mutableListOf<String>()
+        lines.forEachIndexed { index, line ->
+            val row = rowStart.find(line) ?: return@forEachIndexed
+            val tail = row.groupValues[3]
+            val street = streetHint.find(tail) ?: return@forEachIndexed
+            var candidate = tail
+            if (houseAfterStreet.find(candidate, street.range.last + 1) == null) {
+                val next = lines.getOrNull(index + 1).orEmpty()
+                if (next.isNotBlank() && !rowStart.containsMatchIn(next) &&
+                    !streetHint.containsMatchIn(next) &&
+                    Regex("""(?<!\\d)\\d{1,4}(?!\\d)""").containsMatchIn(next)
+                ) candidate = "$candidate $next"
+            }
+            val address = cleanAddressFragment(candidate, city) ?: return@forEachIndexed
+            // Do not accept a bare city/street fragment or a row with no valid house.
+            val addressStreet = streetHint.find(address) ?: return@forEachIndexed
+            if (houseAfterStreet.find(address, addressStreet.range.last + 1) == null) return@forEachIndexed
+            result += address
+        }
+        return result
+    }
+
     private fun extractAddressRows(text: String, city: String): List<String> {
         val lines = text.lineSequence()
             .map { it.replace(Regex("""^[\s•*№\-–—]+"""), "").trim() }
@@ -1051,7 +1084,7 @@ fun PhotoRoutePlannerScreen(
                 rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
                 check(rawText.isNotBlank()) { "OCR не распознал текст. Попробуйте снимок крупнее и без бликов." }
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
-                addresses = PhotoRouteTextParser.extractRouteAddressRows(rawText, routeCity)
+                addresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
                 } else {
@@ -1234,7 +1267,7 @@ fun PhotoRoutePlannerScreen(
             OutlinedTextField(rawText, { rawText = it }, label = { Text("Распознанный текст") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 220.dp), minLines = 4)
             PhotoPlannerTile("Повторно выделить адреса", "Перестроить список по исправленному тексту") {
-                addresses = PhotoRouteTextParser.extractRouteAddressRows(rawText, routeCity)
+                addresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
                 located = emptyList()
                 routeOrigin = null
                 status = "Найдено адресов: ${addresses.size}."
