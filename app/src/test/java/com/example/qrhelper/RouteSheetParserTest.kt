@@ -159,4 +159,20 @@ class RouteSheetParserTest {
         assertTrue(result.single().note.contains("Доставить до 10:00"))
     }
 
+
+    @Test fun attachesAddressContinuationRowsToPreviousDeliveryInsteadOfCreatingPhantomStops() {
+        val text = """
+            №\tКод\tКлиент\tАдрес доставки\tКомментарий
+            1\t1708\tБалтика ПК ООО\tг. Калуга, ул. Болдина, д. 9\t
+            \t\t\tкорпус 2, вход со двора\t
+            2\t1646\tАльфа Рязань ООО\tг. Калуга, ул. Кирова, д. 12\t
+        """.trimIndent().replace("\\t", "\t")
+
+        val result = RouteSheetParser.parse(text)
+
+        assertEquals(2, result.size)
+        assertTrue(result[0].address.contains("корпус 2"))
+        assertEquals("Альфа Рязань ООО", result[1].storeName)
+    }
+
 }
