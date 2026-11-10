@@ -490,7 +490,7 @@ internal object PhotoRouteNavigationUrls {
     }
 
     internal fun yandexNavigatorUrl(stops: List<PhotoRouteCoordinate>, startsFromPreviousStop: Boolean = false): String {
-        validate(stops)
+        require(stops.isNotEmpty()) { "Нет точки назначения" }
         require(stops.size <= YANDEX_MAX_STOPS) {
             "Яндекс Навигатор принимает не больше 20 точек за один участок"
         }
@@ -500,9 +500,7 @@ internal object PhotoRouteNavigationUrls {
             query += "lon_from" to stops.first().longitude.toString()
             stops.drop(1)
         } else stops
-        require(destinations.size >= 2 || (startsFromPreviousStop && destinations.size == 1)) {
-            "Для маршрута нужны минимум две точки"
-        }
+        require(destinations.isNotEmpty()) { "Нет точки назначения" }
         destinations.dropLast(1).forEachIndexed { index, point ->
             query += "lat_via_$index" to point.latitude.toString()
             query += "lon_via_$index" to point.longitude.toString()
