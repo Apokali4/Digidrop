@@ -249,8 +249,6 @@ internal object RussianOcrEngine {
                         bestScore = rotatedScore
                         bestRotation = degrees
                     }
-                    // A clearly structured table no longer needs more rotations.
-                    if (bestScore >= RussianOcrPassPlanner.QUARTER_TURN_SCORE_THRESHOLD) break
                 } finally {
                     rotated.recycle()
                 }
