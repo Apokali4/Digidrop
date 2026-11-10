@@ -51,8 +51,107 @@ internal data class PhotoStopMetadata(
     val phone: String = "",
     val workingHours: String = "",
     val cashNote: String = "",
-    val comment: String = ""
+    val comment: String = "",
+    val customerCode: String = "",
+    val pointNumber: String = "",
+    val packageCount: Int = 0,
+    val placeCount: Int = 0,
+    val invoiceNumber: String = ""
 )
+
+internal data class PhotoRouteDeliveryRow(
+    val pointNumber: String = "",
+    val customerCode: String = "",
+    val organization: String = "",
+    val address: String = "",
+    val phone: String = "",
+    val packageCount: Int = 0,
+    val placeCount: Int = 0,
+    val invoiceNumber: String = "",
+    val comment: String = "",
+    val rawCells: List<String> = emptyList()
+)
+
+/**
+ * Reads the column layout from the photographed sheet itself. The first page's
+ * header remains active on continuation pages where OCR did not capture it.
+ * Rows are records, not stops: duplicate addresses are deliberately retained.
+ */
+internal object PhotoRouteTableParser {
+    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, PACKAGES, PLACES, INVOICE, COMMENT }
+    private val aliases = mapOf(
+        Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
+        Column.CODE to listOf(Regex("""(?iu)^(?:код|кодs+клиента|кодs+торговойs+точки)$""")),
+        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговаяs+точка|магазин|наименование)$""")),
+        Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адресs+доставки|местоs+доставки|адресs+точки)$""")),
+        Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел.?|контакт|телефонs+контакта)$""")),
+        Column.PACKAGES to listOf(Regex("""(?iu)^(?:коробки|короб|кор.?|упаковки|упак.?|количествоs+коробок)$""")),
+        Column.PLACES to listOf(Regex("""(?iu)^(?:места|мест|количествоs+мест|кол-воs+мест)$""")),
+        Column.INVOICE to listOf(Regex("""(?iu)^(?:накладная|номерs+накладной|документ|№s*накладной)$""")),
+        Column.COMMENT to listOf(Regex("""(?iu)^(?:комментарий|коммент.?|примечание|примечания)$"""))
+    )
+
+    fun parse(text: String, city: String = ""): List<PhotoRouteDeliveryRow> {
+        var schema: Map<Column, Int>? = null
+        val rows = mutableListOf<PhotoRouteDeliveryRow>()
+        text.lineSequence().forEach { source ->
+            val line = source.trim()
+            if (line.isBlank() || line.startsWith("---")) return@forEach
+            val cells = splitCells(line)
+            val detected = detectHeader(cells)
+            if (detected != null) {
+                schema = detected
+                return@forEach
+            }
+            val columns = schema ?: return@forEach
+            val addressCell = cells.getOrNull(columns[Column.ADDRESS] ?: -1).orEmpty()
+            val address = PhotoRouteTextParser.extractCandidates(addressCell, city).firstOrNull()
+                ?: PhotoRouteTextParser.extractCandidates(cells.joinToString(" "), city).firstOrNull()
+                ?: return@forEach
+            val organization = cells.getOrNull(columns[Column.ORGANIZATION] ?: -1).orEmpty()
+                .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
+            val comment = cells.getOrNull(columns[Column.COMMENT] ?: -1).orEmpty()
+            val phone = cells.getOrNull(columns[Column.PHONE] ?: -1).orEmpty()
+                .takeIf { Regex("""(?<!\d)(?:\+7|8)?(?:[\s()\-]*\d){10}(?!\d)""").containsMatchIn(it) }.orEmpty()
+            fun number(column: Column): Int = cells.getOrNull(columns[column] ?: -1)
+                ?.replace(Regex("""[^\d]"""), "")?.toIntOrNull() ?: 0
+            rows += PhotoRouteDeliveryRow(
+                pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty(),
+                customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty(),
+                organization = organization,
+                address = address,
+                phone = phone,
+                packageCount = number(Column.PACKAGES),
+                placeCount = number(Column.PLACES),
+                invoiceNumber = cells.getOrNull(columns[Column.INVOICE] ?: -1).orEmpty(),
+                comment = comment,
+                rawCells = cells
+            )
+        }
+        return rows
+    }
+
+    private fun detectHeader(cells: List<String>): Map<Column, Int>? {
+        val found = mutableMapOf<Column, Int>()
+        cells.forEachIndexed { index, raw ->
+            val value = raw.trim().trim(':', '.', '#').replace(Regex("""\s+"""), " ")
+            aliases.entries.firstOrNull { (_, patterns) -> patterns.any { it.matches(value) } }
+                ?.key?.let { found.putIfAbsent(it, index) }
+        }
+        return found.takeIf { Column.ADDRESS in it && it.size >= 2 }
+    }
+
+    private fun splitCells(line: String): List<String> {
+        val delimiter = when {
+            '\t' in line -> "\\t"
+            '|' in line -> "\\|"
+            ';' in line -> ";"
+            Regex("""\s{2,}""").containsMatchIn(line) -> """\s{2,}"""
+            else -> return listOf(line)
+        }
+        return line.split(Regex(delimiter)).map(String::trim)
+    }
+}
 
 data class PhotoRouteHeader(
     val driver: String = "",
@@ -1113,7 +1212,9 @@ fun PhotoRoutePlannerScreen(
                 rawText = recognizedTexts.filter { it.isNotBlank() }.joinToString("\n\n--- Следующая фотография ---\n\n")
                 check(rawText.isNotBlank()) { "OCR не распознал текст. Попробуйте снимок крупнее и без бликов." }
                 routeHeader = PhotoRouteHeaderParser.parse(rawText)
-                addresses = PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
+                val tableRows = PhotoRouteTableParser.parse(rawText, routeCity)
+                addresses = if (tableRows.isNotEmpty()) tableRows.map { it.address }
+                    else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
                 } else {
@@ -1125,7 +1226,21 @@ fun PhotoRoutePlannerScreen(
                             PhotoRouteTextParser.canonicalAddressKey(it.first()) == PhotoRouteTextParser.canonicalAddressKey(stop.address)
                         }.orEmpty()
                         val deliveries = group.mapIndexed { occurrence, address ->
-                            PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
+                            val tableDelivery = tableRows.filter {
+                                PhotoRouteTextParser.canonicalAddressKey(it.address) ==
+                                    PhotoRouteTextParser.canonicalAddressKey(address)
+                            }.getOrNull(occurrence)
+                            if (tableDelivery != null) PhotoStopMetadata(
+                                storeName = tableDelivery.organization,
+                                ownerName = tableDelivery.organization,
+                                phone = tableDelivery.phone,
+                                comment = tableDelivery.comment,
+                                customerCode = tableDelivery.customerCode,
+                                pointNumber = tableDelivery.pointNumber,
+                                packageCount = tableDelivery.packageCount,
+                                placeCount = tableDelivery.placeCount,
+                                invoiceNumber = tableDelivery.invoiceNumber
+                            ) else PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence)
                         }
                         stop.copy(
                             metadata = deliveries.firstOrNull() ?: PhotoStopMetadata(),
