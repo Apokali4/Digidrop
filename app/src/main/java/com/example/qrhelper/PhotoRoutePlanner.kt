@@ -1324,8 +1324,14 @@ fun PhotoRoutePlannerScreen(
     var addresses by remember { mutableStateOf(readStringList("addresses")) }
     var located by remember { mutableStateOf(readLocatedStops()) }
     var detectedNamesByAddress by remember { mutableStateOf(emptyMap<String, List<String>>()) }
-    val rowsNeedingAddressReview = remember(rawText, routeCity) {
-        PhotoRouteTableParser.parse(rawText, routeCity).filter { it.address.isBlank() }
+    val parsedRouteRows = remember(rawText, routeCity) {
+        PhotoRouteTableParser.parse(rawText, routeCity)
+    }
+    val rowsNeedingAddressReview = remember(parsedRouteRows) {
+        parsedRouteRows.filter { it.address.isBlank() }
+    }
+    val unnumberedOcrEvidence = remember(parsedRouteRows) {
+        PhotoRouteUnnumberedEvidence.collect(parsedRouteRows)
     }
     val missingPointNumbers = remember(rawText, routeCity) {
         RouteNumberingAudit.missingPointNumbers(PhotoRouteTableParser.parse(rawText, routeCity))
@@ -1744,6 +1750,27 @@ fun PhotoRoutePlannerScreen(
             }
         }
 
+        if (unnumberedOcrEvidence.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, palette.outline)
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("НЕПРИВЯЗАННЫЕ СТРОКИ: ${unnumberedOcrEvidence.size}",
+                        color = palette.error, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Распознанный текст сохранён отдельно и не добавлен в маршрут как новая точка. Сверьте его с фотографией.",
+                        color = palette.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    unnumberedOcrEvidence.forEach { evidence ->
+                        Text(evidence.removePrefix("Строка без номера точки/клиента пропущена:").trim(),
+                            color = palette.onSurface, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         if (rowsNeedingAddressReview.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
