@@ -70,6 +70,27 @@ class RoutePlanningTest {
             routeForNavigation(listOf(completed, farther, nearer), manualOrder = false).map { it.storeName })
     }
 
+    @Test
+    fun rebuildKeepsDifferentDeliveryRowsAtSamePhysicalAddressTogether() {
+        val first = RouteItem("a", "Бристоль", "Калуга, ул. Кирова, 10", "Товар A", 1, "",
+            latitude = 54.51, longitude = 36.25)
+        val second = RouteItem("b", "Точка 2", "г. Калуга, улица Кирова д. 10", "Товар B", 1, "",
+            latitude = 54.51, longitude = 36.25)
+        val other = RouteItem("c", "Магнит", "Калуга, ул. Ленина, 2", "Товар C", 1, "",
+            latitude = 54.52, longitude = 36.26)
+
+        val result = rebuildRemainingRoute(listOf(first, second, other))
+
+        assertEquals(3, result.size)
+        assertEquals(setOf("a", "b", "c"), result.map { it.barcode }.toSet())
+        val sameAddressPositions = result.mapIndexedNotNull { index, item ->
+            index.takeIf { PhotoRouteTextParser.canonicalAddressKey(item.address) ==
+                PhotoRouteTextParser.canonicalAddressKey(first.address) }
+        }
+        assertEquals(2, sameAddressPositions.size)
+        assertEquals(1, sameAddressPositions.last() - sameAddressPositions.first())
+    }
+
 }
 
 
