@@ -116,6 +116,27 @@ class RouteImportMapperTest {
         assertEquals("Позвонить заранее", cargo.extraComment)
     }
 
+    @Test fun keepsStoreHoursAndDeliveryWindowAsSeparateFieldsForEachCargoRow() {
+        val items = listOf(
+            RouteItem(
+                "a", "Магазин", "Калуга, ул. Кирова, 1", "Молоко", 2, "",
+                workingHours = "08:00-22:00",
+                timeSlot = "09:00-11:00"
+            ),
+            RouteItem(
+                "b", "Магазин", "Калуга, ул. Кирова, 1", "Хлеб", 1, "",
+                workingHours = "08:00-22:00",
+                timeSlot = "13:00-15:00"
+            )
+        )
+
+        val point = RouteImportMapper.map(items).single()
+
+        assertEquals(2, point.cargo.size)
+        assertEquals(listOf("08:00-22:00", "08:00-22:00"), point.cargo.map { it.workingHours })
+        assertEquals(listOf("09:00-11:00", "13:00-15:00"), point.cargo.map { it.timeSlot })
+    }
+
     @Test fun discrepancyReasonAndQuantityProduceProblemStatus() {
         val item = RouteItem(
             barcode = "4601234567890",
