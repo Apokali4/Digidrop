@@ -1313,6 +1313,7 @@ fun PhotoRoutePlannerScreen(
     var routeCity by remember { mutableStateOf(plannerPrefs.getString("route_city", "Калуга").orEmpty()) }
     var addresses by remember { mutableStateOf(readStringList("addresses")) }
     var located by remember { mutableStateOf(readLocatedStops()) }
+    var detectedNamesByAddress by remember { mutableStateOf(emptyMap<String, List<String>>()) }
     val rowsNeedingAddressReview = remember(rawText, routeCity) {
         PhotoRouteTableParser.parse(rawText, routeCity).filter { it.address.isBlank() }
     }
@@ -1399,6 +1400,7 @@ fun PhotoRoutePlannerScreen(
             routeHeader = PhotoRouteHeader()
             addresses = emptyList()
             located = emptyList()
+            detectedNamesByAddress = emptyMap()
             capturedUris = emptyList()
             routeCity = "Калуга"
         }
@@ -1438,6 +1440,21 @@ fun PhotoRoutePlannerScreen(
                 val rowsWithoutAddress = tableRows.count { it.address.isBlank() }
                 addresses = if (tableRows.isNotEmpty()) tableRows.mapNotNull { it.address.takeIf(String::isNotBlank) }
                     else PhotoRouteTextParser.extractNumberedRouteAddressRows(rawText, routeCity)
+                val nameOccurrences = mutableMapOf<String, Int>()
+                val namesByAddress = linkedMapOf<String, MutableList<String>>()
+                addresses.forEach { address ->
+                    val key = PhotoRouteTextParser.canonicalAddressKey(address)
+                    val occurrence = nameOccurrences.getOrDefault(key, 0)
+                    nameOccurrences[key] = occurrence + 1
+                    val tableRow = tableRows.filter {
+                        PhotoRouteTextParser.canonicalAddressKey(it.address) == key
+                    }.getOrNull(occurrence)
+                    val detectedName = tableRow?.detectStoreName(rawText, occurrence)
+                        ?: PhotoRouteTextParser.extractMetadataForOccurrence(rawText, address, occurrence).storeName
+                    val cleanName = PhotoRouteTextParser.cleanDetectedStoreName(detectedName)
+                    if (cleanName.isNotBlank()) namesByAddress.getOrPut(key) { mutableListOf() }.add(cleanName)
+                }
+                detectedNamesByAddress = namesByAddress.mapValues { (_, names) -> names.distinct() }
                 if (addresses.isEmpty()) {
                     status = "Текст распознан, но адреса не выделены. Проверьте распознанный текст."
                 } else {
@@ -1727,9 +1744,12 @@ fun PhotoRoutePlannerScreen(
                 ) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("ТОЧКА ${index + 1}", color = palette.primary, style = MaterialTheme.typography.labelLarge)
-                        val recognizedNames = located.firstOrNull {
-                            PhotoRouteTextParser.canonicalAddressKey(it.address) == PhotoRouteTextParser.canonicalAddressKey(address)
-                        }?.deliveries.orEmpty().map { it.storeName }.filter(String::isNotBlank).distinct()
+                        val addressKey = PhotoRouteTextParser.canonicalAddressKey(address)
+                        val recognizedNames = (
+                            detectedNamesByAddress[addressKey].orEmpty() +
+                                located.firstOrNull { PhotoRouteTextParser.canonicalAddressKey(it.address) == addressKey }
+                                    ?.deliveries.orEmpty().map { it.storeName }
+                            ).filter(String::isNotBlank).distinct()
                         if (recognizedNames.isNotEmpty()) {
                             Text(recognizedNames.joinToString(" • "), color = palette.onSurface,
                                 style = MaterialTheme.typography.titleSmall)
