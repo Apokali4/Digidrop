@@ -100,7 +100,7 @@ abstract class LogisticsDatabase:RoomDatabase(){abstract fun dao():LogisticsDao
     database.execSQL("ALTER TABLE cargo_items ADD COLUMN timeSlot TEXT NOT NULL DEFAULT ''")
    }
   }
-  private val MIGRATION_5_6=object:Migration(5,6){
+  internal val MIGRATION_5_6=object:Migration(5,6){
    override fun migrate(database:SupportSQLiteDatabase){
     database.execSQL("ALTER TABLE delivery_points ADD COLUMN workingHours TEXT NOT NULL DEFAULT ''")
     // Version 5 stored shop hours on every cargo row. Preserve existing data

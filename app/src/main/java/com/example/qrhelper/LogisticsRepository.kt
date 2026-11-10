@@ -128,7 +128,8 @@ internal class LogisticsRepository(context: Context) {
                         latitude = point.latitude,
                         longitude = point.longitude,
                         photoDocUri = point.photoDocUri,
-                        signaturePath = point.signaturePath
+                        signaturePath = point.signaturePath,
+                        workingHours = point.workingHours
                     )
                 )
                 dao.insertCargo(
@@ -142,7 +143,6 @@ internal class LogisticsRepository(context: Context) {
                             barcodeType = cargo.barcodeType,
                             note = cargo.note,
                             ownerName = cargo.ownerName,
-                            workingHours = cargo.workingHours,
                             cashNote = cargo.cashNote,
                             extraComment = cargo.extraComment,
                             timeSlot = cargo.timeSlot,
