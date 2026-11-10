@@ -111,7 +111,8 @@ internal fun PhotoRouteDeliveryRow.detectStoreName(
     // counterparty, not the shop at the delivery address. Never present it as
     // the store name. If OCR did not capture a name beside the address, leave
     // it for manual review instead of confidently showing the wrong company.
-    return PhotoRouteTextParser.cleanDetectedStoreName(fromAddressRow)
+    return PhotoRouteTextParser.cleanDetectedStoreName(storeName)
+        .ifBlank { PhotoRouteTextParser.cleanDetectedStoreName(fromAddressRow) }
 }
 
 /** Route-photo import deliberately creates only the two requested fields: name and address. */
