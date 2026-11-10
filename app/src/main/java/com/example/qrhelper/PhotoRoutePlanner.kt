@@ -67,6 +67,7 @@ internal data class PhotoRouteDeliveryRow(
     val pointNumber: String = "",
     val customerCode: String = "",
     val organization: String = "",
+    val storeName: String = "",
     val address: String = "",
     val phone: String = "",
     val packageCount: Int = 0,
@@ -89,11 +90,12 @@ internal data class PhotoRouteDeliveryRow(
  * Rows are records, not stops: duplicate addresses are deliberately retained.
  */
 internal object PhotoRouteTableParser {
-    private enum class Column { POINT, CODE, ORGANIZATION, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT, WORKING_HOURS, TIME_SLOT }
+    private enum class Column { POINT, CODE, ORGANIZATION, STORE_NAME, ADDRESS, PHONE, CONTACT, PACKAGES, PLACES, INVOICE, CASH, COMMENT, WORKING_HOURS, TIME_SLOT }
     private val aliases = mapOf(
         Column.POINT to listOf(Regex("""(?iu)^(?:№|номер|п/п|пункт|точка)$""")),
         Column.CODE to listOf(Regex("""(?iu)^(?:код|код\s+клиента|код\s+торговой\s+точки)$""")),
-        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|торговая\s+точка|магазин|наименование)$""")),
+        Column.ORGANIZATION to listOf(Regex("""(?iu)^(?:клиент|организация|получатель|наименование)$""")),
+        Column.STORE_NAME to listOf(Regex("""(?iu)^(?:магазин|название\s+магазина|торговая\s+точка)$""")),
         Column.ADDRESS to listOf(Regex("""(?iu)^(?:адрес|адрес\s+доставки|место\s+доставки|адрес\s+точки)$""")),
         Column.PHONE to listOf(Regex("""(?iu)^(?:телефон|тел\.?|мобильный|номер\s+телефона)$""")),
         Column.CONTACT to listOf(Regex("""(?iu)^(?:контакт|контактное\s+лицо|представитель)$""")),
@@ -135,6 +137,8 @@ internal object PhotoRouteTableParser {
                     } else null
                 ).orEmpty()
             val organization = cells.getOrNull(columns[Column.ORGANIZATION] ?: -1).orEmpty()
+                .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
+            val storeName = cells.getOrNull(columns[Column.STORE_NAME] ?: -1).orEmpty()
                 .takeIf { it.isNotBlank() && !it.contains(Regex("""(?iu)итого|всего|маршрут""")) }.orEmpty()
             val pointNumber = cells.getOrNull(columns[Column.POINT] ?: -1).orEmpty()
             val customerCode = cells.getOrNull(columns[Column.CODE] ?: -1).orEmpty()
@@ -254,6 +258,7 @@ internal object PhotoRouteTableParser {
                 pointNumber = pointNumber,
                 customerCode = customerCode,
                 organization = organization,
+                storeName = storeName,
                 address = address,
                 phone = phone,
                 packageCount = number(Column.PACKAGES),
