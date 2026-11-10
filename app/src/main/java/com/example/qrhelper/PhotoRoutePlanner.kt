@@ -1687,7 +1687,8 @@ fun PhotoRoutePlannerScreen(
                             },
                             totalBoxes = delivery.packageCount,
                             phone = delivery.phone,
-                            note = listOf(delivery.comment, delivery.cashNote).filter(String::isNotBlank).joinToString(" • ")
+                            note = (listOf(delivery.comment, delivery.cashNote) + delivery.extraColumns)
+                                .filter(String::isNotBlank).joinToString(" • ")
                                 .ifBlank { "Импортировано из маршрутного листа" },
                             latitude = stop.latitude,
                             longitude = stop.longitude,
