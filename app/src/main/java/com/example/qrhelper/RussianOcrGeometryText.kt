@@ -62,7 +62,12 @@ internal object RussianOcrGeometryText {
                 if (previousGroup != null && gap < columnGap) previousGroup += word
                 else headerGroups += mutableListOf(word)
             }
-            val anchors = headerGroups.map { group -> group.minOf { it.left } }
+            // Use the visual center of each header cell. Word left edges are
+            // unstable for long client names and can spill text into the address
+            // column when a word begins close to a column boundary.
+            val anchors = headerGroups.map { group ->
+                group.map { it.left + it.width / 2f }.average().toFloat()
+            }
             if (anchors.size >= 2) {
                 return orderedRows.mapIndexed { index, row ->
                     if (index == headerIndex) {
@@ -74,8 +79,9 @@ internal object RussianOcrGeometryText {
                     } else {
                         val cells = MutableList(anchors.size) { mutableListOf<String>() }
                         row.forEach { word ->
+                            val wordCenter = word.left + word.width / 2f
                             val column = anchors.indices.minByOrNull { column ->
-                                kotlin.math.abs(word.left - anchors[column])
+                                kotlin.math.abs(wordCenter - anchors[column])
                             } ?: 0
                             cells[column] += word.text.trim()
                         }
