@@ -649,6 +649,18 @@ class PhotoRouteTextParserTest {
         assertEquals("Позвонить", row.comment)
     }
 
+    @Test fun tableParserMapsStoreHoursAndDeliveryWindowToDedicatedFields() {
+        val text = listOf(
+            "№\tКлиент\tАдрес\tВремя работы\tОкно доставки\tСумма долга",
+            "4\tМагазин Центр\tКалуга, ул. Ленина, д. 1\t08:00-22:00\t10:00-12:00\t3400"
+        ).joinToString("\n")
+
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+        assertEquals("08:00-22:00", row.workingHours)
+        assertEquals("10:00-12:00", row.timeSlot)
+        assertEquals(listOf("Сумма долга: 3400"), row.extraColumns)
+    }
+
 
     @Test fun geometryOcrGroupsWordsByVerticalPositionAndKeepsColumnGaps() {
         val text = RussianOcrGeometryText.reconstruct(
