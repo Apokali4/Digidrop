@@ -194,6 +194,20 @@ class RouteOcrCandidateSelectorTest {
 
 
     @Test
+    fun readsShopNameFromAnExplicitStoreColumn() {
+        val text = listOf(
+            "№\tКод\tМагазин\tАдрес доставки",
+            "1\t1708\tБристоль\tг. Калуга, ул. Врубовая, д. 2"
+        ).joinToString("\n")
+
+        val row = PhotoRouteTableParser.parse(text, "Калуга").single()
+
+        assertEquals("Бристоль", row.storeName)
+        assertEquals("Бристоль", row.toRouteItem(1).storeName)
+        assertEquals("", row.organization)
+    }
+
+    @Test
     fun supplierOrganizationIsNeverUsedAsShopNameWhenAddressHasNoStoreLabel() {
         val row = PhotoRouteDeliveryRow(
             pointNumber = "1",
