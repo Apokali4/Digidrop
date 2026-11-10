@@ -8,6 +8,7 @@ name: Android CI
 # [build-apk] Verify OCR cleanup, segment handoff and no partial routes.
 # [build-apk] Build fixed-start physical-stop route optimization.
 # [build-apk] Re-run unit tests with package-count completion logic.
+# [build-apk] Reject incorrect geocoding outside Kaluga and Yukhnov.
 # Keep shell line continuations in the Russian OCR model download intact.
 on:
   push:
