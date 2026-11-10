@@ -439,4 +439,5 @@ internal class LogisticsRepository(context: Context) {
             ) updated++
         }
         updated
-    }}
+    }
+}
