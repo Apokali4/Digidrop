@@ -81,6 +81,22 @@ class RouteSheetParserTest {
         assertEquals("Альфа Рязань ООО", result[1].storeName)
     }
 
+    @Test fun ocrImportIgnoresUnnumberedHeaderAndFooterAddresses() {
+        val text = """
+            Задание на отгрузку №Л00000006924
+            г. Калуга, ул. Ленина, д. 13
+            1 1708 Балтика ПК ООО г. Калуга, ул. Врубовая, д. 2, Бристоль
+            Итого: 1 точка
+            ул. Победы, д. 7
+        """.trimIndent()
+
+        val result = RouteSheetParser.parseOcrText(text)
+
+        assertEquals(1, result.size)
+        assertEquals("г. Калуга, ул. Врубовая, д. 2", result.single().address)
+        assertEquals("Бристоль", result.single().storeName)
+    }
+
     @Test fun preservesRepeatedAddressRowsForDifferentCustomersInOcrText() {
         val text = """
             1 1708 Балтика ПК ООО г. Калуга, ул. Болдина, д. 9, Красное и Белое
