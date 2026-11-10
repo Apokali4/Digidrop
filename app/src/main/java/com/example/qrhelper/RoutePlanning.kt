@@ -14,7 +14,7 @@ internal fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
             id = addressKey,
             latitude = first.latitude,
             longitude = first.longitude,
-            completed = group.all { it.isDelivered }
+            completed = deliveryPointStatus(group) == com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
         )
     }
     val optimized = RouteOrderOptimizer.optimize(stops)
@@ -25,7 +25,7 @@ internal fun rebuildRemainingRoute(items: List<RouteItem>): List<RouteItem> {
 /** Returns the first physical address that still has an undelivered row. */
 internal fun nextPendingPoint(items: List<RouteItem>): List<RouteItem>? =
     items.groupBy { PhotoRouteTextParser.canonicalAddressKey(it.address) }.values.firstOrNull { group ->
-        !group.all { it.isDelivered }
+        deliveryPointStatus(group) != com.example.qrhelper.domain.DeliveryPointStatus.DELIVERED
     }
 
 /** True when a package barcode resolves to a destination other than the current delivery point. */
