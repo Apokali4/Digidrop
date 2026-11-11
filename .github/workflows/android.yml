@@ -18,6 +18,7 @@ name: Android CI
 # [build-apk] Reject OCR garbage labels and neighboring stop name leakage.
 # [build-apk] Allow delivery points throughout Kaluga Oblast, including Yukhnov.
 # Keep shell line continuations in the Russian OCR model download intact.
+# [build-apk] Build current DigiDrop APK after OCR header tests passed.
 on:
   push:
     branches: [ main ]
