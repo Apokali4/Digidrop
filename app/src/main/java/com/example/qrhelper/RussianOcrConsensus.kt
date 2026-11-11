@@ -7,11 +7,12 @@ package com.example.qrhelper
  */
 internal object RussianOcrConsensus {
     fun rank(candidates: List<String>): List<String> {
-        val texts = candidates.map(String::trim).filter(String::isNotBlank).distinct()
+        val passes = candidates.map(String::trim).filter(String::isNotBlank)
+        val texts = passes.distinct()
         if (texts.size < 2) return texts
 
         val routeLineCounts = mutableMapOf<String, Int>()
-        texts.forEach { text ->
+        passes.forEach { text ->
             val seenInPass = mutableSetOf<String>()
             text.lineSequence().forEach { line ->
                 if (PhotoRouteTextParser.extractRouteAddressRows(line).isEmpty()) return@forEach
