@@ -95,3 +95,4 @@ jobs:
       - name: Compile Android instrumentation tests
         if: always()
         run: ./gradlew --no-daemon --stacktrace compileDebugAndroidTestKotlin
+# [build-apk] User requested a fresh DigiDrop debug APK after green OCR tests.
