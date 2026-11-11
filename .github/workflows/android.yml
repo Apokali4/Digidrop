@@ -1,4 +1,5 @@
 name: Android CI
+# Explicit APK build requested after green OCR regression tests.
 # [build-apk] Build APK after OCR regression suite passed.
 # [build-apk] Final verification of multi-layout OCR and 36-to-27 grouping.
 # [build-apk] Build and validate generalized multi-layout route OCR recovery.
