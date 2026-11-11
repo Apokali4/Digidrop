@@ -101,8 +101,7 @@ internal object RussianOcrCandidateMerger {
         val multiRowCandidates = nonBlank.filter {
             RussianOcrTextScoring.routeRowCount(it) >= 2
         }
-        val ranked = (multiRowCandidates.ifEmpty { nonBlank })
-            .sortedByDescending(RussianOcrTextScoring::score)
+        val ranked = RussianOcrConsensus.rank(multiRowCandidates.ifEmpty { nonBlank })
 
         val output = ranked.first().lineSequence().toMutableList()
         val baseCounts = mutableMapOf<String, Int>()
