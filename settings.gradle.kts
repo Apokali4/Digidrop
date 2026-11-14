@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DigiDrop"
-include(":app", ":pipboy-watchface")
+include(":app", ":pipboy-watchface", ":watchface-manager")
