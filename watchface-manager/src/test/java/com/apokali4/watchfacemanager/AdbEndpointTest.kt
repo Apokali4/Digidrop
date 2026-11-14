@@ -19,4 +19,9 @@ class AdbEndpointTest {
     @Test fun rejectsEmptyHost() {
         assertThrows(IllegalArgumentException::class.java) { AdbEndpoint.normalizeHost("  ") }
     }
+
+    @Test fun reportsNestedAdbFailureDetails() {
+        val failure = IllegalStateException("Pair завершился", java.io.IOException("Connection refused"))
+        assertEquals("Сопряжение: Pair завершился → Connection refused", AdbEndpoint.describeFailure("Сопряжение", failure))
+    }
 }
