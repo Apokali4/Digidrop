@@ -2,6 +2,7 @@
 <WatchFace width="450" height="450">
     <Scene>
         <PartDraw x="0" y="0" width="450" height="450">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
             <Ellipse x="0" y="0" width="450" height="450">
                 <Fill color="#000000" />
             </Ellipse>
@@ -68,7 +69,6 @@
             x="36" y="373" width="176" height="54">
             <Variant mode="AMBIENT" target="alpha" value="0" />
             <BoundingRectangle x="0" y="0" width="176" height="54" />
-            <DefaultProviderPolicy defaultSystemProvider="WORLD_CLOCK" defaultSystemProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
                 <PartText x="0" y="0" width="176" height="54">
                     <Text align="CENTER">
