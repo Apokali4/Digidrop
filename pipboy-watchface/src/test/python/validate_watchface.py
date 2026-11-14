@@ -20,13 +20,12 @@ class WatchFacePackageTest(unittest.TestCase):
         for token in ("DigitalClock", "[STEP_COUNT]", "[BATTERY_PERCENT]", "AMBIENT"):
             self.assertIn(token, xml)
 
-    def test_watch_installer_receiver_is_declared(self):
+    def test_watch_package_does_not_require_phone_side_receiver(self):
         manifest = ET.parse(ROOT / "AndroidManifest.xml").getroot()
         app = manifest.find("application")
         activities = [node.attrib.get("{http://schemas.android.com/apk/res/android}name")
                       for node in app.findall("activity")]
-        self.assertIn(".InstallReceiverActivity", activities)
-        self.assertTrue((ROOT / "java/com/apokali4/pipboy/InstallReceiverActivity.kt").is_file())
+        self.assertNotIn(".InstallReceiverActivity", activities)
 
 if __name__ == "__main__":
     unittest.main()
