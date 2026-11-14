@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WatchFace width="450" height="450">
+    <Scene>
+        <PartDraw x="0" y="0" width="450" height="450">
+            <Ellipse x="0" y="0" width="450" height="450">
+                <Fill color="#000000" />
+            </Ellipse>
+            <Ellipse x="12" y="12" width="426" height="426">
+                <Fill color="#001407" />
+                <Stroke color="#164d25" width="2" />
+            </Ellipse>
+            <Rectangle x="28" y="94" width="394" height="260">
+                <Fill color="#001b08" />
+                <Stroke color="#35ff65" width="2" />
+            </Rectangle>
+            <Line x="28" y="146" x2="422" y2="146">
+                <Stroke color="#35ff65" width="2" />
+            </Line>
+            <Line x="28" y="286" x2="422" y2="286">
+                <Stroke color="#35ff65" width="2" />
+            </Line>
+        </PartDraw>
+
+        <PartText x="0" y="25" width="450" height="58">
+            <Text align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="38" weight="BOLD" color="#35ff65">PIP-BOY 3000</Font>
+            </Text>
+        </PartText>
+
+        <PartText x="28" y="103" width="394" height="36">
+            <Text align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="24" color="#35ff65">
+                    <Template><![CDATA[%s  |  %d %s]]><Parameter expression="[DAY_OF_WEEK_S]"/><Parameter expression="[DAY]"/><Parameter expression="[MONTH_S]"/></Template>
+                </Font>
+            </Text>
+        </PartText>
+
+        <DigitalClock x="105" y="154" width="240" height="100">
+            <TimeText x="0" y="0" width="240" height="100" format="hh:mm">
+                <Font family="SYNC_TO_DEVICE" size="82" weight="BOLD" color="#35ff65" />
+            </TimeText>
+        </DigitalClock>
+
+        <PartText x="38" y="258" width="175" height="34">
+            <Text align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="23" color="#35ff65">
+                    <Template><![CDATA[Шаги  %s]]><Parameter expression="[STEP_COUNT]"/></Template>
+                </Font>
+            </Text>
+        </PartText>
+        <PartText x="237" y="258" width="175" height="34">
+            <Text align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="23" color="#35ff65">
+                    <Template><![CDATA[Заряд  %d%%]]><Parameter expression="[BATTERY_PERCENT]"/></Template>
+                </Font>
+            </Text>
+        </PartText>
+        <PartText x="0" y="365" width="450" height="42">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+            <Text align="CENTER">
+                <Font family="SYNC_TO_DEVICE" size="20" color="#35ff65">VAULT-TEC INDUSTRIES</Font>
+            </Text>
+        </PartText>
+
+        <PartDraw x="0" y="0" width="450" height="450">
+            <Line x="22" y="28" x2="428" y2="28">
+                <Stroke color="#35ff65" width="1" />
+            </Line>
+            <Line x="22" y="422" x2="428" y2="422">
+                <Stroke color="#35ff65" width="1" />
+            </Line>
+        </PartDraw>
+    </Scene>
+</WatchFace>
