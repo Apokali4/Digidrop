@@ -45,6 +45,7 @@
         </DigitalClock>
 
         <PartText x="36" y="298" width="176" height="64">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
             <Text align="CENTER">
                 <Font family="SYNC_TO_DEVICE" size="19" color="#35ff65">STEPS</Font>
                 <Font family="SYNC_TO_DEVICE" size="27" weight="BOLD" color="#35ff65">
@@ -54,6 +55,7 @@
         </PartText>
 
         <PartText x="238" y="298" width="176" height="64">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
             <Text align="CENTER">
                 <Font family="SYNC_TO_DEVICE" size="19" color="#35ff65">BATTERY</Font>
                 <Font family="SYNC_TO_DEVICE" size="27" weight="BOLD" color="#35ff65">
@@ -64,6 +66,7 @@
 
         <ComplicationSlot slotId="1" supportedTypes="SHORT_TEXT SMALL_IMAGE EMPTY"
             x="36" y="373" width="176" height="54">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
             <BoundingRectangle x="0" y="0" width="176" height="54" />
             <DefaultProviderPolicy defaultSystemProvider="WORLD_CLOCK" defaultSystemProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -84,6 +87,7 @@
 
         <ComplicationSlot slotId="2" supportedTypes="SHORT_TEXT SMALL_IMAGE EMPTY"
             x="238" y="373" width="176" height="54">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
             <BoundingRectangle x="0" y="0" width="176" height="54" />
             <DefaultProviderPolicy defaultSystemProvider="WORLD_CLOCK" defaultSystemProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -102,11 +106,5 @@
             </Complication>
         </ComplicationSlot>
 
-        <PartText x="0" y="0" width="450" height="450">
-            <Variant mode="AMBIENT" target="alpha" value="0" />
-            <Text align="CENTER">
-                <Font family="SYNC_TO_DEVICE" size="1" color="#000000"> </Font>
-            </Text>
-        </PartText>
     </Scene>
 </WatchFace>
