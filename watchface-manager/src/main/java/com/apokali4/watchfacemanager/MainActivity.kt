@@ -34,6 +34,7 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.RemoteActivityHelper
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -115,7 +116,7 @@ private suspend fun installPipBoy(context: android.content.Context) {
     val nodes = Wearable.getNodeClient(context).connectedNodes.await()
     check(nodes.isNotEmpty()) { "часы не найдены. Проверь, что они сопряжены и подключены." }
 
-    val apkBytes = with(Dispatchers.IO) {
+    val apkBytes = withContext(Dispatchers.IO) {
         context.assets.open("watchfaces/pipboy-watchface.apk").use { it.readBytes() }
     }
     check(apkBytes.isNotEmpty()) { "APK циферблата не найден внутри каталога." }
