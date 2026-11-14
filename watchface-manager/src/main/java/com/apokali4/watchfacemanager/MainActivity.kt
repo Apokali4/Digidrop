@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -74,7 +76,7 @@ private fun WatchfaceVaultScreen() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = PipDark) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(20.dp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text("WATCHFACE VAULT", color = PipGreen, fontSize = 23.sp, fontWeight = FontWeight.Black)
@@ -126,25 +128,33 @@ private fun WatchfaceVaultScreen() {
                             scope.launch {
                                 busy = true
                                 status = "Сопрягаюсь с часами…"
+                                var stage = "Проверка введённых данных"
                                 status = runCatching {
                                     val normalizedHost = AdbEndpoint.normalizeHost(host)
                                     val pairPort = AdbEndpoint.parsePort(pairingPort)
                                     val adbPort = AdbEndpoint.parsePort(connectPort)
                                     require(pairingCode.length == 6) { "Код сопряжения должен состоять из 6 цифр." }
+                                    stage = "Сопряжение Pair"
+                                    status = "Шаг 1/2: отправляю код сопряжения часам…"
                                     withContext(Dispatchers.IO) {
                                         configureAdbIdentity(context)
                                         Kadb.pair(normalizedHost, pairPort, pairingCode)
+                                    }
+                                    stage = "Подключение Connect"
+                                    status = "Шаг 2/2: Pair принят. Проверяю ADB-подключение к порту $adbPort…"
+                                    withContext(Dispatchers.IO) {
                                         Kadb.create(normalizedHost, adbPort).use { adb ->
-                                            check(adb.shell("echo watchface-vault").output.contains("watchface-vault")) {
-                                                "Часы ответили неожиданно."
+                                            val response = adb.shell("echo watchface-vault").output
+                                            check(response.contains("watchface-vault")) {
+                                                "ADB подключился, но тестовая команда не вернула ожидаемый ответ: $response"
                                             }
                                         }
                                     }
                                     prefs.edit().putString(KEY_HOST, normalizedHost).putInt(KEY_PORT, adbPort).apply()
                                     paired = true
                                     pairingCode = ""
-                                    "Часы сопряжены и сохранены. Теперь установка в один тап."
-                                }.getOrElse { "Не удалось подключиться: ${it.message ?: "проверь IP, порты и код"}" }
+                                    "УСПЕХ: часы сопряжены и ADB-подключение проверено. Можно устанавливать циферблат."
+                                }.getOrElse { AdbEndpoint.describeFailure(stage, it) }
                                 busy = false
                             }
                         },
@@ -215,8 +225,15 @@ private fun WatchfaceVaultScreen() {
                         }
                     }
                 }
-                Text(status, color = Muted, fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
+                Text(
+                    status,
+                    color = if (status.startsWith("УСПЕХ")) PipGreen else Color(0xFFFFD180),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                        .background(PipPanel, RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                )
                 Text("НОВЫЕ ЦИФЕРБЛАТЫ БУДУТ ПОЯВЛЯТЬСЯ В КАТАЛОГЕ", color = PipGreen.copy(alpha = .7f), fontSize = 10.sp)
             }
         }
