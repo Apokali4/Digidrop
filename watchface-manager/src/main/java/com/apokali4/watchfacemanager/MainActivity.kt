@@ -136,7 +136,7 @@ private fun WatchfaceVaultScreen() {
                                         configureAdbIdentity(context)
                                         Kadb.pair(normalizedHost, pairPort, pairingCode)
                                         Kadb.create(normalizedHost, adbPort).use { adb ->
-                                            check(adb.shell("echo watchface-vault").allOutput.contains("watchface-vault")) {
+                                            check(adb.shell("echo watchface-vault").output.contains("watchface-vault")) {
                                                 "Часы ответили неожиданно."
                                             }
                                         }
