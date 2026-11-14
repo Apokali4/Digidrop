@@ -108,6 +108,20 @@ jobs:
           path: pipboy-watchface/build/outputs/apk/debug/pipboy-watchface-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Build phone watchface catalog APK
+        if: github.ref == 'refs/heads/feature/pipboy-watchface' || (github.event_name == 'workflow_dispatch' && inputs.build_apk == true)
+        run: ./gradlew --no-daemon --stacktrace :watchface-manager:assembleDebug
+      - name: Upload phone watchface catalog APK
+        if: github.ref == 'refs/heads/feature/pipboy-watchface' || (github.event_name == 'workflow_dispatch' && inputs.build_apk == true)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Watchface-Vault-Phone-APK
+          path: watchface-manager/build/outputs/apk/debug/watchface-manager-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Run watchface catalog unit tests
+        if: always()
+        run: ./gradlew --no-daemon --stacktrace :watchface-manager:testDebugUnitTest
       - name: Run unit tests
         if: always()
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
