@@ -21,7 +21,7 @@ name: Android CI
 # [build-apk] Build current DigiDrop APK after OCR header tests passed.
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "feature/pipboy-watchface" ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -87,6 +87,19 @@ jobs:
         with:
           name: DigiDrop-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Validate Pip-Boy Watch Face XML and package contract
+        run: python3 pipboy-watchface/src/test/python/validate_watchface.py
+      - name: Build Pip-Boy Watch Face APK
+        if: github.ref == 'refs/heads/feature/pipboy-watchface' || (github.event_name == 'workflow_dispatch' && inputs.build_apk == true)
+        run: ./gradlew --no-daemon --stacktrace :pipboy-watchface:assembleDebug
+      - name: Upload Pip-Boy Watch Face APK
+        if: github.ref == 'refs/heads/feature/pipboy-watchface' || (github.event_name == 'workflow_dispatch' && inputs.build_apk == true)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PipBoy-Watchface-APK
+          path: pipboy-watchface/build/outputs/apk/debug/pipboy-watchface-debug.apk
           if-no-files-found: error
           retention-days: 14
       - name: Run unit tests
