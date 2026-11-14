@@ -20,7 +20,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
-    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/pipboyAssets"))
+    sourceSets.getByName("main").assets.srcDir("${layout.buildDirectory.get()}/generated/pipboyAssets")
 }
 
 val bundlePipBoyApk by tasks.registering(Copy::class) {
