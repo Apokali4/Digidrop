@@ -13,4 +13,13 @@ internal object AdbEndpoint {
         require(port != null && port in 1..65535) { "Порт должен быть числом от 1 до 65535." }
         return port
     }
+
+    fun describeFailure(stage: String, error: Throwable): String {
+        val details = generateSequence(error) { it.cause }
+            .mapNotNull { it.message?.takeIf(String::isNotBlank) }
+            .distinct()
+            .joinToString(" → ")
+            .ifBlank { error::class.java.simpleName }
+        return "$stage: $details"
+    }
 }
