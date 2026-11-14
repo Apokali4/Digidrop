@@ -20,6 +20,18 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/pipboyAssets"))
+}
+
+val bundlePipBoyApk by tasks.registering(Copy::class) {
+    dependsOn(":pipboy-watchface:assembleDebug")
+    from(project(":pipboy-watchface").layout.buildDirectory.file("outputs/apk/debug/pipboy-watchface-debug.apk"))
+    into(layout.buildDirectory.dir("generated/pipboyAssets/watchfaces"))
+    rename { "pipboy-watchface.apk" }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(bundlePipBoyApk)
 }
 
 dependencies {
