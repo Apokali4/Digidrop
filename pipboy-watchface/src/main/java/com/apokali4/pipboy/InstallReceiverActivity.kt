@@ -46,7 +46,7 @@ class InstallReceiverActivity : ComponentActivity() {
         for (attempt in 0 until 20) {
             val items = client.getDataItems(Uri.parse("wear://*/watchfaces/install")).await()
             try {
-                val item = items.firstOrNull()
+                val item = if (items.count > 0) items.get(0) else null
                 if (item != null) {
                     apkAsset = DataMapItem.fromDataItem(item).dataMap.getAsset("apk")
                 }
