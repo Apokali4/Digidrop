@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="watch_face_name">Pip-Boy 3000</string>
+    <string name="theme_label">Цвет интерфейса</string>
+    <string name="theme_green">Pip-Boy Green</string>
+    <string name="theme_amber">Amber</string>
+    <string name="theme_blue">Cold Blue</string>
+    <string name="theme_white">Monochrome</string>
+    <string name="slot_heart_rate">Пульс</string>
+    <string name="slot_activity">Калории и этажи</string>
+    <string name="slot_weather">Погода</string>
+    <string name="slot_watch_battery">Заряд часов</string>
+    <string name="slot_phone_battery">Заряд телефона</string>
 </resources>
