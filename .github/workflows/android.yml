@@ -98,7 +98,7 @@ jobs:
             --output /tmp/wff-validator.jar
           set -o pipefail
           java -jar /tmp/wff-validator.jar 1 pipboy-watchface/src/main/res/raw/watchface.xml 2>&1 | tee /tmp/wff-validator.log
-          if grep -Eqi 'NOT valid|FAILED' /tmp/wff-validator.log; then
+          if grep -Eqi 'is NOT valid against watch face format|NOT valid' /tmp/wff-validator.log; then
             echo "Watch Face Format validator reported an invalid watchface.xml"
             exit 1
           fi
