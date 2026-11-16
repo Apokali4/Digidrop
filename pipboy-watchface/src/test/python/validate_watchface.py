@@ -1,8 +1,10 @@
 import pathlib
+import re
 import unittest
 import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[2] / "main"
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 
 
@@ -56,6 +58,30 @@ class WatchFacePackageTest(unittest.TestCase):
 
     def test_vault_boy_asset_exists(self):
         self.assertTrue((ROOT / "res/drawable/vault_boy.png").is_file())
+
+    def test_phone_and_watch_packages_share_data_layer_identity(self):
+        watch_gradle = (PROJECT_ROOT / "pipboy-watchface/build.gradle.kts").read_text()
+        phone_gradle = (PROJECT_ROOT / "watchface-manager/build.gradle.kts").read_text()
+        watch_id = re.search(r'applicationId\s*=\s*"([^"]+)"', watch_gradle).group(1)
+        phone_id = re.search(r'applicationId\s*=\s*"([^"]+)"', phone_gradle).group(1)
+        self.assertEqual(watch_id, phone_id)
+
+    def test_phone_battery_listener_and_complication_provider_are_declared(self):
+        app = self.manifest.find("application")
+        services = {s.attrib.get(ANDROID + "name"): s for s in app.findall("service")}
+        self.assertIn(".PhoneBatteryListenerService", services)
+        self.assertIn(".PhoneBatteryComplicationService", services)
+        self.assertEqual(
+            services[".PhoneBatteryComplicationService"].attrib.get(ANDROID + "permission"),
+            "com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER",
+        )
+
+    def test_phone_manager_schedules_battery_sync(self):
+        manager = PROJECT_ROOT / "watchface-manager/src/main/java/com/apokali4/watchfacemanager"
+        source = manager / "PhoneBatterySyncWorker.kt"
+        activity = (manager / "MainActivity.kt").read_text(encoding="utf-8")
+        self.assertTrue(source.is_file())
+        self.assertIn("PhoneBatterySync.schedule", activity)
 
 
 if __name__ == "__main__":
