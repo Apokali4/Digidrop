@@ -39,7 +39,7 @@ class WatchFacePackageTest(unittest.TestCase):
 
     def test_main_face_contains_activity_weather_and_both_batteries(self):
         xml = self.watchface_path.read_text(encoding="utf-8")
-        for token in ("[STEP_COUNT]", "heart_rate", "weather", "floors",
+        for token in ("[STEP_COUNT]", "[HEART_RATE_Z]", "weather", "calories", "floors",
                       "watch_battery", "phone_battery", "vault_boy"):
             self.assertIn(token, xml)
         self.assertIn("CAL", xml)
