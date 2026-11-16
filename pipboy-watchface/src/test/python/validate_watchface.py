@@ -34,8 +34,10 @@ class WatchFacePackageTest(unittest.TestCase):
         self.assertEqual(set(groups), {"main_screen", "always_on_display"})
         main = groups["main_screen"]
         aod = groups["always_on_display"]
-        self.assertTrue(any(v.attrib.get("mode") == "AMBIENT" for v in main.findall("Variant")))
-        self.assertTrue(any(v.attrib.get("mode") == "INTERACTIVE" for v in aod.findall("Variant")))
+        self.assertTrue(any(v.attrib.get("mode") == "AMBIENT" and v.attrib.get("value") == "0" for v in main.findall("Variant")))
+        self.assertEqual(aod.attrib.get("alpha"), "0")
+        self.assertTrue(any(v.attrib.get("mode") == "AMBIENT" and v.attrib.get("value") == "255" for v in aod.findall("Variant")))
+        self.assertNotIn('mode="INTERACTIVE"', self.watchface_path.read_text(encoding="utf-8"))
 
     def test_main_face_contains_activity_weather_and_both_batteries(self):
         xml = self.watchface_path.read_text(encoding="utf-8")
