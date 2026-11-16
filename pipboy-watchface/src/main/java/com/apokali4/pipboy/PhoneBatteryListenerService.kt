@@ -1,6 +1,7 @@
 package com.apokali4.pipboy
 
 import android.content.ComponentName
+import android.content.Context
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
@@ -18,10 +19,10 @@ class PhoneBatteryListenerService : WearableListenerService() {
             val percent = data.getInt(KEY_PERCENT, -1)
             if (percent !in 0..100) return@forEach
 
-            getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit()
+            getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
                 .putInt(KEY_PERCENT, percent)
                 .putLong(KEY_UPDATED_AT, if (data.containsKey(KEY_UPDATED_AT)) data.getLong(KEY_UPDATED_AT) else 0L)
-                .apply()
+                 .apply()
 
             ComplicationDataSourceUpdateRequester.create(
                 this,
