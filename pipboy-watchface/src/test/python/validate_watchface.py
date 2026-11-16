@@ -50,11 +50,18 @@ class WatchFacePackageTest(unittest.TestCase):
                       "[HOUR_0_23]", "[MINUTE]", "[DAY]", "[MONTH_S]"):
             self.assertIn(token, xml)
 
-    def test_complication_slot_ids_are_unique_and_within_wff_limit(self):
-        slots = self.watchface.findall(".//ComplicationSlot")
+    def test_complication_slots_are_direct_scene_children_and_within_wff_limit(self):
+        scene = self.watchface.find("Scene")
+        slots = scene.findall("ComplicationSlot")
         ids = [slot.attrib["slotId"] for slot in slots]
-        self.assertLessEqual(len(slots), 8)
+        self.assertEqual(len(slots), 8)
         self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(self.watchface.findall(".//Group/ComplicationSlot"), [])
+
+    def test_heart_rate_uses_the_native_wff_v1_sensor_expression(self):
+        xml = self.watchface_path.read_text(encoding="utf-8")
+        self.assertIn("[HEART_RATE_Z]", xml)
+        self.assertNotIn('name="heart_rate"', xml)
 
     def test_vault_boy_asset_exists(self):
         self.assertTrue((ROOT / "res/drawable/vault_boy.png").is_file())
@@ -78,15 +85,28 @@ class WatchFacePackageTest(unittest.TestCase):
             self.assertEqual(policy.attrib.get("primaryProvider"), expected)
             self.assertEqual(policy.attrib.get("primaryProviderType"), "SHORT_TEXT")
 
-    def test_phone_battery_listener_and_complication_provider_are_declared(self):
+    def test_phone_data_listener_and_battery_weather_providers_are_declared(self):
         app = self.manifest.find("application")
         services = {s.attrib.get(ANDROID + "name"): s for s in app.findall("service")}
         self.assertIn(".PhoneBatteryListenerService", services)
-        self.assertIn(".PhoneBatteryComplicationService", services)
-        self.assertEqual(
-            services[".PhoneBatteryComplicationService"].attrib.get(ANDROID + "permission"),
-            "com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER",
-        )
+        for name in (".PhoneBatteryComplicationService", ".PhoneWeatherComplicationService"):
+            self.assertIn(name, services)
+            self.assertEqual(
+                services[name].attrib.get(ANDROID + "permission"),
+                "com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER",
+            )
+
+    def test_both_weather_slots_default_to_the_bundled_provider(self):
+        expected = "com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneWeatherComplicationService"
+        slots = {
+            slot.attrib.get("name"): slot
+            for slot in self.watchface.findall(".//ComplicationSlot")
+        }
+        for name in ("weather", "aod_weather"):
+            policy = slots[name].find("DefaultProviderPolicy")
+            self.assertIsNotNone(policy)
+            self.assertEqual(policy.attrib.get("primaryProvider"), expected)
+            self.assertEqual(policy.attrib.get("primaryProviderType"), "SHORT_TEXT")
 
     def test_phone_manager_schedules_battery_sync(self):
         manager = PROJECT_ROOT / "watchface-manager/src/main/java/com/apokali4/watchfacemanager"
@@ -94,6 +114,7 @@ class WatchFacePackageTest(unittest.TestCase):
         activity = (manager / "MainActivity.kt").read_text(encoding="utf-8")
         self.assertTrue(source.is_file())
         self.assertIn("PhoneBatterySync.schedule", activity)
+        self.assertIn("weather", source.read_text(encoding="utf-8").lower())
 
 
 if __name__ == "__main__":
