@@ -5,6 +5,7 @@ import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -82,7 +83,7 @@ class BackupManagerTest {
     }
 
     @Test fun cleanupRemovesOnlyTheDedicatedRestoredEvidenceDirectory() {
-        val root = createTempDir(prefix = "backup-evidence-")
+        val root = Files.createTempDirectory("backup-evidence-").toFile()
         try {
             val restored = File(root, "delivery-evidence/restored_123")
             check(restored.mkdirs())
