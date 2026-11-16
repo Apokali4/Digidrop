@@ -106,7 +106,7 @@ class BackupManagerTest {
     }
 
     @Test fun cleanupIgnoresEvidenceOutsideRestoredDirectory() {
-        val root = createTempDir(prefix = "backup-evidence-")
+        val root = Files.createTempDirectory("backup-evidence-").toFile()
         try {
             val evidence = File(root, "delivery-evidence/photo_keep.jpg").apply {
                 parentFile?.mkdirs()
