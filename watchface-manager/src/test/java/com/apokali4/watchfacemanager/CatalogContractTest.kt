@@ -7,7 +7,7 @@ import org.junit.Test
 class CatalogContractTest {
     @Test
     fun pipBoyPackageAndAssetRemainStableForCatalogDelivery() {
-        assertEquals("com.apokali4.pipboy", WatchfaceCatalog.pipBoy.packageName)
+        assertEquals("com.apokali4.watchfacemanager", WatchfaceCatalog.pipBoy.packageName)
         assertEquals("watchfaces/pipboy-watchface.apk", WatchfaceCatalog.pipBoy.assetPath)
     }
 
