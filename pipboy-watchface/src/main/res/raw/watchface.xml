@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<WatchFace width="450" height="450">
+<WatchFace width="450" height="450" clipShape="CIRCLE">
     <UserConfigurations>
         <ColorConfiguration id="pipboyTheme" displayName="theme_label" defaultValue="0">
             <ColorOption id="0" displayName="theme_green" colors="#FF62FF4D #FFB5FFA8 #FF32D91E #FFE0FFDA" />
@@ -22,7 +22,7 @@
                 <Rectangle x="0" y="0" width="394" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
             </PartDraw>
             <PartImage x="142" y="118" width="166" height="238" tintColor="[CONFIGURATION.pipboyTheme.0]">
-                <Image resource="vault_boy" />
+                <Image resource="@drawable/vault_boy" />
             </PartImage>
 
             <PartText x="12" y="92" width="126" height="28">
