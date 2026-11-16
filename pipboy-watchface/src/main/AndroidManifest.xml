@@ -29,6 +29,24 @@
                 android:value="900" />
         </service>
 
+
+        <service
+            android:name=".PhoneWeatherComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_weather"
+            android:label="@string/slot_weather"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="1800" />
+        </service>
+
         <service
             android:name=".PhoneBatteryListenerService"
             android:exported="true">
