@@ -1,5 +1,6 @@
 package com.apokali4.pipboy
 
+import android.content.Context
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
@@ -11,7 +12,7 @@ class PhoneBatteryComplicationService : SuspendingComplicationDataSourceService(
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         val percent = getSharedPreferences(
             PhoneBatteryListenerService.PREFERENCES,
-            MODE_PRIVATE
+            Context.MODE_PRIVATE
         ).getInt(PhoneBatteryListenerService.KEY_PERCENT, -1)
         val value = if (percent in 0..100) "$percent%" else "--%"
         return shortText(value)
