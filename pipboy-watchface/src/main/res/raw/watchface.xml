@@ -8,30 +8,30 @@
             </Ellipse>
             <Ellipse x="10" y="10" width="430" height="430">
                 <Fill color="#001008" />
-                <Stroke color="#245b32" width="3" />
+                <Stroke color="#245b32" />
             </Ellipse>
             <Ellipse x="20" y="20" width="410" height="410">
                 <Fill color="#001008" />
-                <Stroke color="#35ff65" width="1" />
+                <Stroke color="#35ff65" />
             </Ellipse>
 
-            <Line x="48" y="82" x2="402" y2="82"><Stroke color="#35ff65" width="2" /></Line>
-            <Line x="48" y="133" x2="402" y2="133"><Stroke color="#35ff65" width="1" /></Line>
-            <Line x="48" y="286" x2="402" y2="286"><Stroke color="#35ff65" width="2" /></Line>
-            <Line x="48" y="356" x2="402" y2="356"><Stroke color="#35ff65" width="1" /></Line>
-            <Line x="225" y="292" x2="225" y2="350"><Stroke color="#245b32" width="1" /></Line>
+            <Line x="48" y="82" x2="402" y2="82"><Stroke color="#35ff65" /></Line>
+            <Line x="48" y="133" x2="402" y2="133"><Stroke color="#35ff65" /></Line>
+            <Line x="48" y="286" x2="402" y2="286"><Stroke color="#35ff65" /></Line>
+            <Line x="48" y="356" x2="402" y2="356"><Stroke color="#35ff65" /></Line>
+            <Line x="225" y="292" x2="225" y2="350"><Stroke color="#245b32" /></Line>
 
             <Rectangle x="48" y="96" width="112" height="76">
                 <Fill color="#001b0b" />
-                <Stroke color="#35ff65" width="1" />
+                <Stroke color="#35ff65" />
             </Rectangle>
             <Rectangle x="290" y="96" width="112" height="76">
                 <Fill color="#001b0b" />
-                <Stroke color="#35ff65" width="1" />
+                <Stroke color="#35ff65" />
             </Rectangle>
             <Rectangle x="48" y="292" width="354" height="58">
                 <Fill color="#001b0b" />
-                <Stroke color="#245b32" width="1" />
+                <Stroke color="#245b32" />
             </Rectangle>
         </PartDraw>
 
