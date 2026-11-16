@@ -4,7 +4,7 @@ import unittest
 import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[2] / "main"
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[4]
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 
 
