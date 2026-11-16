@@ -66,6 +66,18 @@ class WatchFacePackageTest(unittest.TestCase):
         phone_id = re.search(r'applicationId\s*=\s*"([^"]+)"', phone_gradle).group(1)
         self.assertEqual(watch_id, phone_id)
 
+    def test_both_phone_battery_slots_default_to_the_bundled_provider(self):
+        expected = "com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService"
+        slots = {
+            slot.attrib.get("name"): slot
+            for slot in self.watchface.findall(".//ComplicationSlot")
+        }
+        for name in ("phone_battery", "aod_phone_battery"):
+            policy = slots[name].find("DefaultProviderPolicy")
+            self.assertIsNotNone(policy)
+            self.assertEqual(policy.attrib.get("primaryProvider"), expected)
+            self.assertEqual(policy.attrib.get("primaryProviderType"), "SHORT_TEXT")
+
     def test_phone_battery_listener_and_complication_provider_are_declared(self):
         app = self.manifest.find("application")
         services = {s.attrib.get(ANDROID + "name"): s for s in app.findall("service")}
