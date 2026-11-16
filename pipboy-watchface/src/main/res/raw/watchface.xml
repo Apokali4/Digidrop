@@ -175,6 +175,7 @@
             </PartText>
             <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="240" y="336" width="190" height="42">
+                <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
                 <BoundingRectangle x="0" y="0" width="190" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="190" height="42">
