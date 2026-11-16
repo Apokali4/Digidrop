@@ -126,6 +126,207 @@
             </PartText>
             <ComplicationSlot slotId="4" name="phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="234" y="382" width="200" height="42">
+                <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
+                <BoundingRectangle x="0" y="0" width="200" height="42" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="200" height="42">
+                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+        </Group>
+
+        <!-- Always-On Display: time, date, both batteries and weather. -->
+        <Group x="0" y="0" width="450" height="450" name="always_on_display">
+            <Variant mode="INTERACTIVE" target="alpha" value="0" />
+            <PartText x="40" y="76" width="370" height="34">
+                <Text align="CENTER"><Font size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">PIP-BOY 3000</Font></Text>
+            </PartText>
+            <PartText x="20" y="142" width="410" height="104">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
+                    <Template><![CDATA[%02d:%02d]]><Parameter expression="[HOUR_0_23]" /><Parameter expression="[MINUTE]" /></Template>
+                </Font></Text>
+            </PartText>
+            <PartText x="40" y="254" width="370" height="40">
+                <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.0]">
+                    <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
+                </Font></Text>
+            </PartText>
+
+            <PartText x="20" y="310" width="190" height="26">
+                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="5" name="aod_watch_battery" displayName="@string/slot_watch_battery"
+                supportedTypes="SHORT_TEXT EMPTY" x="20" y="336" width="190" height="42">
+                <DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY" defaultSystemProviderType="SHORT_TEXT" />
+                <BoundingRectangle x="0" y="0" width="190" height="42" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="190" height="42">
+                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+            <PartText x="240" y="310" width="190" height="26">
+                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="@string/slot_phone_battery"
+                supportedTypes="SHORT_TEXT EMPTY" x="240" y="336" width="190" height="42">
+                <BoundingRectangle x="0" y="0" width="190" height="42" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="190" height="42">
+                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+            <ComplicationSlot slotId="7" name="aod_weather" displayName="@string/slot_weather"
+                supportedTypes="SHORT_TEXT EMPTY" x="48" y="390" width="354" height="38">
+                <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
+                <BoundingRectangle x="0" y="0" width="354" height="38" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="354" height="38">
+                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+        </Group>
+    </Scene>
+</WatchFace><DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
+                <BoundingRectangle x="0" y="0" width="200" height="42" />"450" height="450">
+    <UserConfigurations>
+        <ColorConfiguration id="pipboyTheme" displayName="@string/theme_label" defaultValue="0">
+            <ColorOption id="0" displayName="@string/theme_green" colors="#FF62FF4D #FFB5FFA8 #FF32D91E #FFE0FFDA" />
+            <ColorOption id="1" displayName="@string/theme_amber" colors="#FFFFB34D #FFFFD08A #FFE58A24 #FFFFE8C7" />
+            <ColorOption id="2" displayName="@string/theme_blue" colors="#FF55DFFF #FF9BEAFF #FF20AFCF #FFD5F8FF" />
+            <ColorOption id="3" displayName="@string/theme_white" colors="#FFE8E8D8 #FFFFFFFF #FFBDBDAF #FFFFFFFF" />
+        </ColorConfiguration>
+    </UserConfigurations>
+    <Scene>
+        <PartDraw x="0" y="0" width="450" height="450">
+            <Rectangle x="0" y="0" width="450" height="450">
+                <Fill color="#FF000000" />
+            </Rectangle>
+        </PartDraw>
+
+        <!-- Main face: full information, shown only while interactive. -->
+        <Group x="0" y="0" width="450" height="450" name="main_screen">
+            <Variant mode="AMBIENT" target="alpha" value="0" />
+
+            <PartText x="22" y="14" width="406" height="30">
+                <Text align="CENTER">
+                    <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">STAT   INV   DATA   MAP   RADIO</Font>
+                </Text>
+            </PartText>
+            <PartDraw x="28" y="48" width="394" height="2">
+                <Rectangle x="0" y="0" width="394" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
+            </PartDraw>
+
+            <!-- Vault Boy is the central focal point. No device shell or bezel. -->
+            <PartImage x="142" y="118" width="166" height="238" tintColor="[CONFIGURATION.pipboyTheme.0]">
+                <Image resource="vault_boy" />
+            </PartImage>
+
+            <!-- Left-side activity column. -->
+            <PartText x="12" y="92" width="126" height="28">
+                <Text align="CENTER"><Font size="17" color="[CONFIGURATION.pipboyTheme.0]">♥ PULSE</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="0" name="heart_rate" displayName="@string/slot_heart_rate"
+                supportedTypes="SHORT_TEXT EMPTY" x="12" y="120" width="126" height="42">
+                <BoundingRectangle x="0" y="0" width="126" height="42" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="126" height="42">
+                        <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+
+            <PartText x="12" y="174" width="126" height="25">
+                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">STEPS</Font></Text>
+            </PartText>
+            <PartText x="12" y="198" width="126" height="42">
+                <Text align="CENTER"><Font size="26" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
+                    <Template><![CDATA[%s]]><Parameter expression="[STEP_COUNT]" /></Template>
+                </Font></Text>
+            </PartText>
+
+            <PartText x="12" y="258" width="126" height="26">
+                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">KCAL / FLOORS</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="1" name="floors" displayName="@string/slot_activity"
+                supportedTypes="SHORT_TEXT EMPTY" x="12" y="284" width="126" height="48">
+                <BoundingRectangle x="0" y="0" width="126" height="48" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="126" height="48">
+                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+
+            <!-- Right-side clock and weather. -->
+            <PartText x="310" y="92" width="128" height="28">
+                <Text align="CENTER"><Font size="18" color="[CONFIGURATION.pipboyTheme.0]">
+                    <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
+                </Font></Text>
+            </PartText>
+            <PartText x="294" y="126" width="158" height="72">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="48" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
+                    <Template><![CDATA[%02d:%02d]]><Parameter expression="[HOUR_0_23]" /><Parameter expression="[MINUTE]" /></Template>
+                </Font></Text>
+            </PartText>
+            <PartDraw x="310" y="204" width="126" height="2">
+                <Rectangle x="0" y="0" width="126" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
+            </PartDraw>
+            <ComplicationSlot slotId="2" name="weather" displayName="@string/slot_weather"
+                supportedTypes="SHORT_TEXT SMALL_IMAGE EMPTY" x="304" y="218" width="140" height="76">
+                <BoundingRectangle x="0" y="0" width="140" height="76" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="140" height="76">
+                        <Text align="CENTER"><Font size="22" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+                <Complication type="SMALL_IMAGE">
+                    <PartImage x="42" y="8" width="56" height="56"><Image resource="[COMPLICATION.SMALL_IMAGE]" /></PartImage>
+                </Complication>
+            </ComplicationSlot>
+
+            <!-- Device battery indicators along the lower edge. -->
+            <PartDraw x="22" y="350" width="406" height="2">
+                <Rectangle x="0" y="0" width="406" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
+            </PartDraw>
+            <PartText x="16" y="358" width="200" height="24">
+                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="3" name="watch_battery" displayName="@string/slot_watch_battery"
+                supportedTypes="SHORT_TEXT EMPTY" x="16" y="382" width="200" height="42">
+                <DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY" defaultSystemProviderType="SHORT_TEXT" />
+                <BoundingRectangle x="0" y="0" width="200" height="42" />
+                <Complication type="SHORT_TEXT">
+                    <PartText x="0" y="0" width="200" height="42">
+                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                            <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
+                        </Font></Text>
+                    </PartText>
+                </Complication>
+            </ComplicationSlot>
+            <PartText x="234" y="358" width="200" height="24">
+                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+            </PartText>
+            <ComplicationSlot slotId="4" name="phone_battery" displayName="@string/slot_phone_battery"
+                supportedTypes="SHORT_TEXT EMPTY" x="234" y="382" width="200" height="42">
+                <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
                 <BoundingRectangle x="0" y="0" width="200" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="200" height="42">
