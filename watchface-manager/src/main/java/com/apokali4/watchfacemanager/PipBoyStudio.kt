@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +59,7 @@ fun PipBoyStudioApp() {
     MaterialTheme {
         Surface(color = StudioBg) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("PIP-BOY STUDIO", color = StudioGreen, fontSize = 23.sp, fontWeight = FontWeight.Black)
@@ -102,6 +104,15 @@ fun PipBoyStudioApp() {
                             Text("Показывать элемент", color = Color.White, modifier = Modifier.weight(1f))
                             Switch(checked = selectedStyle.visible, onCheckedChange = { v -> design = design.updateElement(selected, selectedStyle.copy(visible = v)) })
                         }
+                    }
+                    Text("ФОРМАТ ВРЕМЕНИ", color = StudioGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { design = design.copy(timeFormat = TimeFormat.H24) }, colors = ButtonDefaults.buttonColors(containerColor = if (design.timeFormat == TimeFormat.H24) StudioGreen else StudioPanel, contentColor = if (design.timeFormat == TimeFormat.H24) Color.Black else Color.White)) { Text("24 ЧАСА") }
+                        Button(onClick = { design = design.copy(timeFormat = TimeFormat.H12) }, colors = ButtonDefaults.buttonColors(containerColor = if (design.timeFormat == TimeFormat.H12) StudioGreen else StudioPanel, contentColor = if (design.timeFormat == TimeFormat.H12) Color.Black else Color.White)) { Text("12 ЧАСОВ") }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("ПОКАЗЫВАТЬ СЕКУНДЫ", color = Color.White, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                        Switch(checked = design.showSeconds, onCheckedChange = { design = design.copy(showSeconds = it) })
                     }
                     Text("ЦВЕТОВАЯ ТЕМА", color = StudioGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
