@@ -96,7 +96,12 @@ jobs:
           curl --fail --location --retry 3 \
             https://github.com/google/watchface/releases/download/release/wff-validator.jar \
             --output /tmp/wff-validator.jar
-          java -jar /tmp/wff-validator.jar 1 pipboy-watchface/src/main/res/raw/watchface.xml
+          set -o pipefail
+          java -jar /tmp/wff-validator.jar 1 pipboy-watchface/src/main/res/raw/watchface.xml 2>&1 | tee /tmp/wff-validator.log
+          if grep -Eqi 'NOT valid|FAILED' /tmp/wff-validator.log; then
+            echo "Watch Face Format validator reported an invalid watchface.xml"
+            exit 1
+          fi
       - name: Build Pip-Boy Watch Face APK
         if: github.ref == 'refs/heads/feature/pipboy-watchface' || (github.event_name == 'workflow_dispatch' && inputs.build_apk == true)
         run: ./gradlew --no-daemon --stacktrace :pipboy-watchface:assembleDebug
