@@ -55,6 +55,7 @@ private const val KEY_PRIVATE_KEY = "private_key"
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PhoneBatterySync.schedule(applicationContext)
         setContent { WatchfaceVaultScreen() }
     }
 }
