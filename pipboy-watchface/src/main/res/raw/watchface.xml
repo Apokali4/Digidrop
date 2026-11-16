@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <WatchFace width="450" height="450">
     <UserConfigurations>
-        <ColorConfiguration id="pipboyTheme" displayName="@string/theme_label" defaultValue="0">
-            <ColorOption id="0" displayName="@string/theme_green" colors="#FF62FF4D #FFB5FFA8 #FF32D91E #FFE0FFDA" />
-            <ColorOption id="1" displayName="@string/theme_amber" colors="#FFFFB34D #FFFFD08A #FFE58A24 #FFFFE8C7" />
-            <ColorOption id="2" displayName="@string/theme_blue" colors="#FF55DFFF #FF9BEAFF #FF20AFCF #FFD5F8FF" />
-            <ColorOption id="3" displayName="@string/theme_white" colors="#FFE8E8D8 #FFFFFFFF #FFBDBDAF #FFFFFFFF" />
+        <ColorConfiguration id="pipboyTheme" displayName="theme_label" defaultValue="0">
+            <ColorOption id="0" displayName="theme_green" colors="#FF62FF4D #FFB5FFA8 #FF32D91E #FFE0FFDA" />
+            <ColorOption id="1" displayName="theme_amber" colors="#FFFFB34D #FFFFD08A #FFE58A24 #FFFFE8C7" />
+            <ColorOption id="2" displayName="theme_blue" colors="#FF55DFFF #FF9BEAFF #FF20AFCF #FFD5F8FF" />
+            <ColorOption id="3" displayName="theme_white" colors="#FFE8E8D8 #FFFFFFFF #FFBDBDAF #FFFFFFFF" />
         </ColorConfiguration>
     </UserConfigurations>
     <Scene>
@@ -96,7 +96,7 @@
             </PartText>
         </Group>
 
-        <ComplicationSlot slotId="0" name="calories" displayName="@string/slot_activity" x="12" y="274" width="126" height="32" supportedTypes="SHORT_TEXT EMPTY">
+        <ComplicationSlot slotId="0" name="calories" displayName="slot_activity" x="12" y="274" width="126" height="32" supportedTypes="SHORT_TEXT EMPTY">
             <BoundingBox x="0" y="0" width="126" height="32" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
             <Complication type="SHORT_TEXT">
@@ -110,7 +110,7 @@
             </Complication>
             <Variant mode="AMBIENT" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="1" name="floors" displayName="@string/slot_activity" x="12" y="330" width="126" height="18" supportedTypes="SHORT_TEXT EMPTY">
+        <ComplicationSlot slotId="1" name="floors" displayName="slot_activity" x="12" y="330" width="126" height="18" supportedTypes="SHORT_TEXT EMPTY">
             <BoundingBox x="0" y="0" width="126" height="18" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" />
             <Complication type="SHORT_TEXT">
@@ -124,7 +124,7 @@
             </Complication>
             <Variant mode="AMBIENT" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="2" name="weather" displayName="@string/slot_weather" x="304" y="218" width="140" height="76" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
+        <ComplicationSlot slotId="2" name="weather" displayName="slot_weather" x="304" y="218" width="140" height="76" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
             <BoundingBox x="0" y="0" width="140" height="76" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneWeatherComplicationService" primaryProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -138,7 +138,7 @@
             </Complication>
             <Variant mode="AMBIENT" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="3" name="watch_battery" displayName="@string/slot_watch_battery" x="16" y="382" width="200" height="42" supportedTypes="SHORT_TEXT EMPTY">
+        <ComplicationSlot slotId="3" name="watch_battery" displayName="slot_watch_battery" x="16" y="382" width="200" height="42" supportedTypes="SHORT_TEXT EMPTY">
             <BoundingBox x="0" y="0" width="200" height="42" />
             <DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY" defaultSystemProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -152,7 +152,7 @@
             </Complication>
             <Variant mode="AMBIENT" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="4" name="phone_battery" displayName="@string/slot_phone_battery" x="234" y="382" width="200" height="42" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
+        <ComplicationSlot slotId="4" name="phone_battery" displayName="slot_phone_battery" x="234" y="382" width="200" height="42" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
             <BoundingBox x="0" y="0" width="200" height="42" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -166,7 +166,7 @@
             </Complication>
             <Variant mode="AMBIENT" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="5" name="aod_watch_battery" displayName="@string/slot_watch_battery" x="20" y="336" width="190" height="42" supportedTypes="SHORT_TEXT EMPTY">
+        <ComplicationSlot slotId="5" name="aod_watch_battery" displayName="slot_watch_battery" x="20" y="336" width="190" height="42" supportedTypes="SHORT_TEXT EMPTY">
             <BoundingBox x="0" y="0" width="190" height="42" />
             <DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY" defaultSystemProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -180,7 +180,7 @@
             </Complication>
             <Variant mode="INTERACTIVE" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="@string/slot_phone_battery" x="240" y="336" width="190" height="42" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
+        <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="slot_phone_battery" x="240" y="336" width="190" height="42" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
             <BoundingBox x="0" y="0" width="190" height="42" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneBatteryComplicationService" primaryProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
@@ -194,7 +194,7 @@
             </Complication>
             <Variant mode="INTERACTIVE" target="alpha" value="0" />
         </ComplicationSlot>
-        <ComplicationSlot slotId="7" name="aod_weather" displayName="@string/slot_weather" x="48" y="390" width="354" height="38" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
+        <ComplicationSlot slotId="7" name="aod_weather" displayName="slot_weather" x="48" y="390" width="354" height="38" supportedTypes="SHORT_TEXT EMPTY" isCustomizable="FALSE">
             <BoundingBox x="0" y="0" width="354" height="38" />
             <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY" primaryProvider="com.apokali4.watchfacemanager/com.apokali4.pipboy.PhoneWeatherComplicationService" primaryProviderType="SHORT_TEXT" />
             <Complication type="SHORT_TEXT">
