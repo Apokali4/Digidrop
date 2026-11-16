@@ -52,6 +52,9 @@ jobs:
             --output /tmp/wff-validator.jar
           java -jar /tmp/wff-validator.jar 1 pipboy-watchface/src/main/res/raw/watchface.xml
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Build Pip-Boy APK
         run: ./gradlew --no-daemon --stacktrace :pipboy-watchface:assembleDebug
 
