@@ -1,0 +1,64 @@
+name: Pip-Boy Watch Face
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pipboy-watchface/**"
+      - "settings.gradle.kts"
+      - "gradle/**"
+      - ".github/workflows/pipboy-watchface.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipboy-watchface-main
+  cancel-in-progress: false
+
+jobs:
+  build-watchface:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate watch-face package contract
+        run: python3 pipboy-watchface/src/test/python/validate_watchface.py
+
+      - name: Validate Watch Face Format 1 schema
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/google/watchface/releases/download/release/wff-validator.jar \
+            --output /tmp/wff-validator.jar
+          java -jar /tmp/wff-validator.jar 1 pipboy-watchface/src/main/res/raw/watchface.xml
+
+      - name: Build Pip-Boy APK
+        run: ./gradlew --no-daemon --stacktrace :pipboy-watchface:assembleDebug
+
+      - name: Upload Pip-Boy APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PipBoy-Watchface-APK
+          path: pipboy-watchface/build/outputs/apk/debug/pipboy-watchface-debug.apk
+          if-no-files-found: error
+          retention-days: 30
