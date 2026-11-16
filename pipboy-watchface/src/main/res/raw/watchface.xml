@@ -35,14 +35,14 @@
 
             <!-- Left-side activity column. -->
             <PartText x="12" y="92" width="126" height="28">
-                <Text align="CENTER"><Font size="17" color="[CONFIGURATION.pipboyTheme.0]">♥ PULSE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.pipboyTheme.0]">♥ PULSE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="0" name="heart_rate" displayName="@string/slot_heart_rate"
                 supportedTypes="SHORT_TEXT EMPTY" x="12" y="120" width="126" height="42">
                 <BoundingRectangle x="0" y="0" width="126" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="126" height="42">
-                        <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="25" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -50,23 +50,23 @@
             </ComplicationSlot>
 
             <PartText x="12" y="174" width="126" height="25">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">STEPS</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">STEPS</Font></Text>
             </PartText>
             <PartText x="12" y="198" width="126" height="42">
-                <Text align="CENTER"><Font size="26" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
                     <Template><![CDATA[%s]]><Parameter expression="[STEP_COUNT]" /></Template>
                 </Font></Text>
             </PartText>
 
             <PartText x="12" y="258" width="126" height="26">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">KCAL / FLOORS</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">KCAL / FLOORS</Font></Text>
             </PartText>
             <ComplicationSlot slotId="1" name="floors" displayName="@string/slot_activity"
                 supportedTypes="SHORT_TEXT EMPTY" x="12" y="284" width="126" height="48">
                 <BoundingRectangle x="0" y="0" width="126" height="48" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="126" height="48">
-                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="21" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -75,7 +75,7 @@
 
             <!-- Right-side clock and weather. -->
             <PartText x="310" y="92" width="128" height="28">
-                <Text align="CENTER"><Font size="18" color="[CONFIGURATION.pipboyTheme.0]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="18" color="[CONFIGURATION.pipboyTheme.0]">
                     <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
                 </Font></Text>
             </PartText>
@@ -92,7 +92,7 @@
                 <BoundingRectangle x="0" y="0" width="140" height="76" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="140" height="76">
-                        <Text align="CENTER"><Font size="22" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -107,7 +107,7 @@
                 <Rectangle x="0" y="0" width="406" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
             </PartDraw>
             <PartText x="16" y="358" width="200" height="24">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
             </PartText>
             <ComplicationSlot slotId="3" name="watch_battery" displayName="@string/slot_watch_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="16" y="382" width="200" height="42">
@@ -115,14 +115,14 @@
                 <BoundingRectangle x="0" y="0" width="200" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="200" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
                 </Complication>
             </ComplicationSlot>
             <PartText x="234" y="358" width="200" height="24">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="4" name="phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="234" y="382" width="200" height="42">
@@ -130,7 +130,7 @@
                 <BoundingRectangle x="0" y="0" width="200" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="200" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -142,7 +142,7 @@
         <Group x="0" y="0" width="450" height="450" name="always_on_display">
             <Variant mode="INTERACTIVE" target="alpha" value="0" />
             <PartText x="40" y="76" width="370" height="34">
-                <Text align="CENTER"><Font size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">PIP-BOY 3000</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">PIP-BOY 3000</Font></Text>
             </PartText>
             <PartText x="20" y="142" width="410" height="104">
                 <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
@@ -150,13 +150,13 @@
                 </Font></Text>
             </PartText>
             <PartText x="40" y="254" width="370" height="40">
-                <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.0]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="25" color="[CONFIGURATION.pipboyTheme.0]">
                     <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
                 </Font></Text>
             </PartText>
 
             <PartText x="20" y="310" width="190" height="26">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
             </PartText>
             <ComplicationSlot slotId="5" name="aod_watch_battery" displayName="@string/slot_watch_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="20" y="336" width="190" height="42">
@@ -164,14 +164,14 @@
                 <BoundingRectangle x="0" y="0" width="190" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="190" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
                 </Complication>
             </ComplicationSlot>
             <PartText x="240" y="310" width="190" height="26">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="240" y="336" width="190" height="42">
@@ -179,7 +179,7 @@
                 <BoundingRectangle x="0" y="0" width="190" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="190" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -191,7 +191,7 @@
                 <BoundingRectangle x="0" y="0" width="354" height="38" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="354" height="38">
-                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="21" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -236,14 +236,14 @@
 
             <!-- Left-side activity column. -->
             <PartText x="12" y="92" width="126" height="28">
-                <Text align="CENTER"><Font size="17" color="[CONFIGURATION.pipboyTheme.0]">♥ PULSE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.pipboyTheme.0]">♥ PULSE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="0" name="heart_rate" displayName="@string/slot_heart_rate"
                 supportedTypes="SHORT_TEXT EMPTY" x="12" y="120" width="126" height="42">
                 <BoundingRectangle x="0" y="0" width="126" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="126" height="42">
-                        <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="25" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -251,23 +251,23 @@
             </ComplicationSlot>
 
             <PartText x="12" y="174" width="126" height="25">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">STEPS</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">STEPS</Font></Text>
             </PartText>
             <PartText x="12" y="198" width="126" height="42">
-                <Text align="CENTER"><Font size="26" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
                     <Template><![CDATA[%s]]><Parameter expression="[STEP_COUNT]" /></Template>
                 </Font></Text>
             </PartText>
 
             <PartText x="12" y="258" width="126" height="26">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">KCAL / FLOORS</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">KCAL / FLOORS</Font></Text>
             </PartText>
             <ComplicationSlot slotId="1" name="floors" displayName="@string/slot_activity"
                 supportedTypes="SHORT_TEXT EMPTY" x="12" y="284" width="126" height="48">
                 <BoundingRectangle x="0" y="0" width="126" height="48" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="126" height="48">
-                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="21" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -276,7 +276,7 @@
 
             <!-- Right-side clock and weather. -->
             <PartText x="310" y="92" width="128" height="28">
-                <Text align="CENTER"><Font size="18" color="[CONFIGURATION.pipboyTheme.0]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="18" color="[CONFIGURATION.pipboyTheme.0]">
                     <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
                 </Font></Text>
             </PartText>
@@ -293,7 +293,7 @@
                 <BoundingRectangle x="0" y="0" width="140" height="76" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="140" height="76">
-                        <Text align="CENTER"><Font size="22" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="22" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -308,7 +308,7 @@
                 <Rectangle x="0" y="0" width="406" height="2"><Fill color="[CONFIGURATION.pipboyTheme.2]" /></Rectangle>
             </PartDraw>
             <PartText x="16" y="358" width="200" height="24">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
             </PartText>
             <ComplicationSlot slotId="3" name="watch_battery" displayName="@string/slot_watch_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="16" y="382" width="200" height="42">
@@ -316,14 +316,14 @@
                 <BoundingRectangle x="0" y="0" width="200" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="200" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
                 </Complication>
             </ComplicationSlot>
             <PartText x="234" y="358" width="200" height="24">
-                <Text align="CENTER"><Font size="15" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="15" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="4" name="phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="234" y="382" width="200" height="42">
@@ -331,7 +331,7 @@
                 <BoundingRectangle x="0" y="0" width="200" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="200" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -343,7 +343,7 @@
         <Group x="0" y="0" width="450" height="450" name="always_on_display">
             <Variant mode="INTERACTIVE" target="alpha" value="0" />
             <PartText x="40" y="76" width="370" height="34">
-                <Text align="CENTER"><Font size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">PIP-BOY 3000</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="[CONFIGURATION.pipboyTheme.0]">PIP-BOY 3000</Font></Text>
             </PartText>
             <PartText x="20" y="142" width="410" height="104">
                 <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="86" weight="BOLD" color="[CONFIGURATION.pipboyTheme.1]">
@@ -351,13 +351,13 @@
                 </Font></Text>
             </PartText>
             <PartText x="40" y="254" width="370" height="40">
-                <Text align="CENTER"><Font size="25" color="[CONFIGURATION.pipboyTheme.0]">
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="25" color="[CONFIGURATION.pipboyTheme.0]">
                     <Template><![CDATA[%02d %s]]><Parameter expression="[DAY]" /><Parameter expression="[MONTH_S]" /></Template>
                 </Font></Text>
             </PartText>
 
             <PartText x="20" y="310" width="190" height="26">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">WATCH</Font></Text>
             </PartText>
             <ComplicationSlot slotId="5" name="aod_watch_battery" displayName="@string/slot_watch_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="20" y="336" width="190" height="42">
@@ -365,21 +365,21 @@
                 <BoundingRectangle x="0" y="0" width="190" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="190" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
                 </Complication>
             </ComplicationSlot>
             <PartText x="240" y="310" width="190" height="26">
-                <Text align="CENTER"><Font size="16" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
+                <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="16" color="[CONFIGURATION.pipboyTheme.0]">PHONE</Font></Text>
             </PartText>
             <ComplicationSlot slotId="6" name="aod_phone_battery" displayName="@string/slot_phone_battery"
                 supportedTypes="SHORT_TEXT EMPTY" x="240" y="336" width="190" height="42">
                 <BoundingRectangle x="0" y="0" width="190" height="42" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="190" height="42">
-                        <Text align="CENTER"><Font size="23" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="23" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
@@ -391,7 +391,7 @@
                 <BoundingRectangle x="0" y="0" width="354" height="38" />
                 <Complication type="SHORT_TEXT">
                     <PartText x="0" y="0" width="354" height="38">
-                        <Text align="CENTER"><Font size="21" color="[CONFIGURATION.pipboyTheme.1]">
+                        <Text align="CENTER"><Font family="SYNC_TO_DEVICE" size="21" color="[CONFIGURATION.pipboyTheme.1]">
                             <Template><![CDATA[%s]]><Parameter expression="[COMPLICATION.TEXT]" /></Template>
                         </Font></Text>
                     </PartText>
