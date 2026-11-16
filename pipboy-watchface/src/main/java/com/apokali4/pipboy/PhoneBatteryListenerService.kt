@@ -20,7 +20,7 @@ class PhoneBatteryListenerService : WearableListenerService() {
 
             getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit()
                 .putInt(KEY_PERCENT, percent)
-                .putLong(KEY_UPDATED_AT, data.getLong(KEY_UPDATED_AT, 0L))
+                .putLong(KEY_UPDATED_AT, if (data.containsKey(KEY_UPDATED_AT)) data.getLong(KEY_UPDATED_AT) else 0L)
                 .apply()
 
             ComplicationDataSourceUpdateRequester.create(
