@@ -56,12 +56,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         PhoneBatterySync.schedule(applicationContext)
-        setContent { WatchfaceVaultScreen() }
+        setContent { PipBoyStudioApp() }
     }
 }
 
 @Composable
-private fun WatchfaceVaultScreen() {
+fun WatchfaceVaultScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
