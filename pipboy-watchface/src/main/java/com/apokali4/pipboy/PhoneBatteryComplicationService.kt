@@ -11,7 +11,7 @@ import androidx.wear.watchface.complications.datasource.SuspendingComplicationDa
 class PhoneBatteryComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         val percent = getSharedPreferences(
-            PhoneBatteryListenerService.PREFERENCES,
+            PhoneBatteryListenerService.BATTERY_PREFERENCES,
             Context.MODE_PRIVATE
         ).getInt(PhoneBatteryListenerService.KEY_PERCENT, -1)
         val value = if (percent in 0..100) "$percent%" else "--%"
